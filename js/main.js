@@ -13,12 +13,16 @@
   const menuModal = $('#menuModal');
 
   // ---------- telas ----------
+  let isoStarted = false;
   function showGame() {
     startScreen.classList.add('hidden');
     hud.classList.remove('hidden');
     game.classList.remove('hidden');
     UI.cache();
     UI.renderAll(G.state);
+    // inicializa a cena isométrica (uma vez); depois só se ajusta ao tamanho
+    if (!isoStarted) { window.IsoOffice.init(document.getElementById('officeCanvas')); isoStarted = true; }
+    else window.IsoOffice.resize();
   }
   function showStart() {
     startScreen.classList.remove('hidden');
@@ -29,7 +33,10 @@
 
   // ---------- eventos do jogo -> toasts ----------
   const kindMap = { complete: 'good', level: 'gold', upgrade: 'gold', fail: 'bad', error: 'bad', warn: 'bad', info: '' };
-  G.on('event', (e) => UI.toast(e.msg, kindMap[e.type] || ''));
+  G.on('event', (e) => {
+    UI.toast(e.msg, kindMap[e.type] || '');
+    if (e.type === 'complete' && e.gain) window.IsoOffice.popMoney('+R$ ' + G.fmt(e.gain));
+  });
   G.on('change', (s) => UI.renderAll(s));
   G.on('tick', (s) => UI.renderTick(s));
 

@@ -40,42 +40,9 @@
   // ---------- Escritório ----------
   function renderOffice(s) {
     const max = G.maxDesks();
-    const seated = G.employeesSeated();
     el.officeCap.textContent = `${s.desks}/${max} mesas · ${s.employees.length} funcionários`;
     el.deskCost.textContent = s.desks >= max ? 'lotado' : money(G.deskCost());
-
-    const cols = Math.min(6, Math.max(3, Math.ceil(Math.sqrt(max))));
-    el.officeGrid.style.setProperty('--cols', cols);
-
-    let html = '';
-    for (let i = 0; i < s.desks; i++) {
-      const emp = s.employees[i];
-      if (emp) {
-        const role = D.ROLES.find((r) => r.id === emp.role);
-        const working = s.active.length > 0;
-        html += `<div class="desk filled ${working ? 'working' : ''}" title="${role.name}">
-          <div class="worker">${role.emoji}</div>
-          <div class="gear">${working ? '⌨️' : '💤'}</div>
-          <div class="role-tag">${role.name.split(' ')[0]}</div>
-        </div>`;
-      } else {
-        html += `<div class="desk empty" title="Mesa vazia — contrate alguém">
-          <div class="worker" style="opacity:.35">🪑</div>
-          <div class="role-tag">vazia</div>
-        </div>`;
-      }
-    }
-    // mesa "+" para comprar
-    if (s.desks < max) {
-      html += `<div class="desk plus" id="deskPlus" title="Comprar mesa (${money(G.deskCost())})">+</div>`;
-    }
-    // mesas bloqueadas (visual do potencial do tier)
-    for (let i = s.desks + (s.desks < max ? 1 : 0); i < max; i++) {
-      html += `<div class="desk locked"></div>`;
-    }
-    el.officeGrid.innerHTML = html;
-    const plus = document.getElementById('deskPlus');
-    if (plus) plus.onclick = () => G.buyDesk();
+    // a cena isométrica (canvas) desenha o escritório e lê o estado sozinha
   }
 
   // ---------- Projetos ----------

@@ -4,6 +4,12 @@ Jogo web no estilo **tycoon** para empreendedores. Você comanda uma agência de
 desenvolvimento de aplicativos: começa com **uma mesa numa garagem** e faz a
 empresa crescer até virar um campus de tecnologia.
 
+O escritório é uma **cena isométrica 3D animada** (renderizada em Canvas, sem
+imagens externas): trabalhadores andam pelo ambiente, digitam nas mesas com telas
+brilhando, um robô aspirador patrulha, entregas de apps deslizam até a porta,
+carros passam na rua e o letreiro neon exibe o nome da empresa — tudo em
+movimento contínuo.
+
 ## 🎮 Como jogar
 
 Abra o arquivo **`index.html`** no navegador (não precisa de servidor, instalação
@@ -44,8 +50,12 @@ index.html        # marcação e telas
 css/styles.css    # visual (tema escuro)
 js/data.js        # dados e balanceamento (tiers, cargos, upgrades, contratos)
 js/game.js        # motor: estado, regras, economia e loop
-js/ui.js          # renderização da interface
+js/iso.js         # cena isométrica animada do escritório (Canvas 2D)
+js/ui.js          # renderização dos painéis (projetos, equipe, loja)
 js/main.js        # inicialização, eventos e game loop
 ```
+
+Dica: clique no **pad "+"** pulsante no chão do escritório para comprar uma nova
+mesa direto na cena.
 
 Feito com HTML, CSS e JavaScript puro — sem dependências nem build.
