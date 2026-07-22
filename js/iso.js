@@ -15,7 +15,8 @@
   let canvas, ctx, dpr = 1;
   let cam = { scale: 1, ox: 0, oy: 0 };
   let layout = null;         // { W, H, desks:[{gx,gy}] , perRow }
-  let workers = [];          // personagens
+  let workers = [];          // personagens (funcionários)
+  let npcs = [];             // NPCs decorativos (atendente, cliente)
   let packages = [];         // entregas em movimento
   let pops = [];             // popups flutuantes (+R$)
   let cars = [];             // carros na rua
@@ -38,11 +39,30 @@
   function iso(gx, gy) {
     return { x: (gx - gy) * HW, y: (gx + gy) * HH };
   }
+  // canto de um cuboide (com altura h em pixels)
+  function corner(gx, gy, h) {
+    return { x: (gx - gy) * HW, y: (gx + gy) * HH - (h || 0) };
+  }
+
+  // toolkit passado ao pacote de arte (js/props.js)
+  let TK = null;
+  function buildTK() {
+    TK = {
+      get ctx() { return ctx; }, t: 0,
+      xy: iso, corner,
+      box: cuboid, shade, roundRect, quad,
+      shadow: (gx, gy, rx, ry) => shadow(gx, gy, rx, ry),
+    };
+  }
+  function prop(type, gx, gy, opt) {
+    if (window.Props && Props.draw[type]) { TK.t = t; Props.draw[type](TK, gx, gy, opt); }
+  }
 
   // ---------- inicialização ----------
   function init(cv) {
     canvas = cv;
     ctx = canvas.getContext('2d');
+    buildTK();
     window.addEventListener('resize', resize);
     canvas.addEventListener('click', onClick);
     resize();
@@ -62,25 +82,65 @@
   function buildLayout() {
     const s = G.state;
     const max = G.maxDesks();
-    const perRow = Math.min(6, Math.max(2, Math.ceil(Math.sqrt(max))));
+    const perRow = Math.min(5, Math.max(2, Math.ceil(Math.sqrt(max))));
     const rows = Math.ceil(max / perRow);
-    const DX = 1.5, DY = 1.7;
+    const DX = 1.45, DY = 1.7;
+    // zona de trabalho deslocada: margem esquerda p/ cozinha+lounge,
+    // margem direita/frente p/ recepção+reunião
+    const WX0 = 2.4, WY0 = 2.1;
     const desks = [];
     for (let i = 0; i < max; i++) {
-      const gx = 0.9 + (i % perRow) * DX;
-      const gy = 1.0 + Math.floor(i / perRow) * DY;
+      const gx = WX0 + (i % perRow) * DX;
+      const gy = WY0 + Math.floor(i / perRow) * DY;
       desks.push({ gx, gy });
     }
-    const W = 0.9 + perRow * DX + 0.4;
-    const H = 1.0 + rows * DY + 0.6;
+    const W = WX0 + perRow * DX + 2.4;
+    const H = WY0 + rows * DY + 2.3;
     layout = { W, H, desks, perRow, max };
 
-    // objetos de decoração fixos
-    layout.coffee = { gx: W - 0.5, gy: 0.5 };
-    layout.door = { gx: W - 0.6, gy: H - 0.2 };
-    layout.plants = [
-      { gx: 0.3, gy: 0.3 }, { gx: W - 0.3, gy: H - 0.3 }, { gx: 0.3, gy: H - 0.4 },
+    layout.door = { gx: W - 0.9, gy: H - 0.1 };
+    layout.coffee = { gx: 1.5, gy: 0.55 };          // na cozinha
+
+    // ---- MÓVEIS (o pacote de arte) por zona ----
+    const F = [];
+    // COZINHA (fundo-esquerda / norte-oeste)
+    F.push({ type: 'fridge', gx: 0.25, gy: 0.3 });
+    F.push({ type: 'stove', gx: 0.3, gy: 1.05 });
+    F.push({ type: 'sink', gx: 0.3, gy: 1.7 });
+    F.push({ type: 'microwave', gx: 1.15, gy: 0.35 });
+    F.push({ type: 'diningTable', gx: 1.5, gy: 1.35 });
+    F.push({ type: 'stool', gx: 1.35, gy: 1.15, col: '#e0a54b' });
+    F.push({ type: 'stool', gx: 2.15, gy: 1.75, col: '#c94f4f' });
+    // LOUNGE (frente-esquerda / sul-oeste)
+    F.push({ type: 'sofa', gx: 0.4, gy: H - 1.6, col: '#3f6fd6' });
+    F.push({ type: 'coffeeTable', gx: 0.55, gy: H - 0.95 });
+    F.push({ type: 'tv', gx: 0.25, gy: H - 2.4 });
+    F.push({ type: 'plantBig', gx: 1.5, gy: H - 0.5 });
+    // RECEPÇÃO (frente-direita, perto da porta)
+    layout.reception = { gx: W - 2.2, gy: H - 1.7 };
+    F.push({ type: 'reception', gx: W - 2.2, gy: H - 1.7 });
+    F.push({ type: 'chair', gx: W - 0.7, gy: H - 1.6, col: '#7c5cff' });
+    F.push({ type: 'chair', gx: W - 0.7, gy: H - 1.0, col: '#7c5cff' });
+    F.push({ type: 'plantBig', gx: W - 0.4, gy: H - 2.3 });
+    // REUNIÃO (fundo-direita / norte-leste)
+    F.push({ type: 'meetingTable', gx: W - 2.2, gy: 0.6 });
+    [[-0.2, 0.4], [-0.2, 1.0], [1.35, 0.4], [1.35, 1.0], [0.5, -0.15], [0.5, 1.5]].forEach(([dx, dy]) =>
+      F.push({ type: 'chair', gx: W - 2.2 + dx, gy: 0.6 + dy, col: '#556071' }));
+    // EQUIPAMENTOS
+    F.push({ type: 'serverRack', gx: 0.35, gy: H * 0.5 });
+    F.push({ type: 'waterCooler', gx: W - 0.5, gy: H * 0.5 });
+    F.push({ type: 'printer', gx: WX0 - 0.7, gy: WY0 + 0.4 });
+    F.push({ type: 'bookshelf', gx: W - 0.4, gy: 2.4 });
+    layout.furniture = F;
+
+    // tapetes e luminárias (decoração de piso)
+    layout.rugs = [
+      { gx: 0.55, gy: H - 1.3, w: 1.1, h: 0.9, col: 'rgba(90,120,200,.16)' },   // lounge
+      { gx: W - 2.0, gy: 0.8, w: 1.4, h: 0.8, col: 'rgba(120,92,255,.12)' },     // reunião
     ];
+    layout.lamps = [];
+    for (let gx = WX0; gx < WX0 + perRow * DX; gx += 1.6)
+      for (let gy = WY0; gy < WY0 + rows * DY; gy += 1.7) layout.lamps.push({ gx: gx + 0.5, gy: gy + 0.4 });
     // árvores de FRENTE (cantos externos) — pequenas, só pra emoldurar
     layout.trees = [];
     layout.trees.push({ gx: -0.9, gy: H + 0.6, s: 0.9 });
@@ -118,8 +178,19 @@
   // ---------- sincroniza entidades com o estado ----------
   function syncEntities() {
     const s = G.state;
-    if (!layout || s.tier !== lastTier) { lastTier = s.tier; buildLayout(); workers = []; }
+    if (!layout || s.tier !== lastTier) { lastTier = s.tier; buildLayout(); workers = []; npcs = []; }
     const emp = Math.min(s.employees.length, s.desks);
+
+    // NPCs decorativos: atendente (recepção) + cliente ocasional
+    if (npcs.length === 0 && layout) {
+      const r = layout.reception;
+      const att = makeWorker(-1, { gx: r.gx + 0.35, gy: r.gy - 0.25 });
+      att.shirt = '#7c5cff'; att.role = 'atendente';
+      att.home = { gx: r.gx + 0.35, gy: r.gy - 0.25 };
+      att.hx = att.home.gx; att.hy = att.home.gy; att.gx = att.hx; att.gy = att.hy;
+      att.state = 'work'; att.desk = { gx: att.home.gx, gy: att.home.gy - 0.55 };
+      npcs.push(att);
+    }
 
     // trabalhadores = funcionários sentados
     while (workers.length < emp) {
@@ -185,6 +256,22 @@
       }
       if (w.state === 'return' && reached(w)) { w.state = 'work'; w.timer = rand(5, 13); }
       stepToward(w, dt);
+    });
+
+    // NPCs (atendente): fica na recepção e dá voltinhas curtas por perto
+    npcs.forEach((n) => {
+      n.timer -= dt;
+      if (n.state === 'work' && n.timer <= 0) {
+        n.hx = n.home.gx + rand(-0.6, 0.6); n.hy = n.home.gy + rand(-0.3, 0.6);
+        n.state = 'walk'; n.timer = 3;
+      } else if (n.state === 'walk' && reached(n)) {
+        n.state = 'pause'; n.timer = rand(0.8, 2.5);
+      } else if (n.state === 'pause' && n.timer <= 0) {
+        n.hx = n.home.gx; n.hy = n.home.gy; n.state = 'return'; n.timer = 4;
+      } else if (n.state === 'return' && reached(n)) {
+        n.state = 'work'; n.timer = rand(4, 9);
+      }
+      stepToward(n, dt);
     });
 
     // fluxo de entregas (pacotes) proporcional à produção -> movimento constante
@@ -303,34 +390,27 @@
 
     // piso interno
     drawFloor(W, H);
+    // tapetes e luminárias no piso
+    drawFloorDecor();
 
-    // decorações fixas no piso (tapetes de luz)
     // coleta de entidades para z-sort
     const ents = [];
-    // mesas
     layout.desks.forEach((d, i) => ents.push({ d: d.gx + d.gy, kind: 'desk', o: d, idx: i }));
-    // plantas
-    layout.plants.forEach((p) => ents.push({ d: p.gx + p.gy, kind: 'plant', o: p }));
-    // máquina de café
+    layout.furniture.forEach((f) => ents.push({ d: f.gx + f.gy, kind: 'furn', o: f }));
     ents.push({ d: layout.coffee.gx + layout.coffee.gy, kind: 'coffee', o: layout.coffee });
-    // árvores
     layout.trees.forEach((tr) => ents.push({ d: tr.gx + tr.gy, kind: 'tree', o: tr }));
-    // trabalhadores
     workers.forEach((w) => ents.push({ d: w.gx + w.gy + 0.01, kind: 'worker', o: w }));
-    // pacotes
+    npcs.forEach((n) => ents.push({ d: n.gx + n.gy + 0.01, kind: 'worker', o: n }));
     packages.forEach((p) => ents.push({ d: p.gx + p.gy + 0.02, kind: 'pkg', o: p }));
-    // robô
     if (robot) ents.push({ d: robot.gx + robot.gy + 0.01, kind: 'robot', o: robot });
-    // carros
     cars.forEach((c) => ents.push({ d: c.gx + c.gy, kind: 'car', o: c }));
-    // partículas
     particles.forEach((p) => ents.push({ d: p.gx + p.gy + 0.5, kind: 'part', o: p }));
 
     ents.sort((a, b) => a.d - b.d);
     ents.forEach((e) => {
       if (e.kind === 'desk') drawDesk(e.o, e.idx);
+      else if (e.kind === 'furn') prop(e.o.type, e.o.gx, e.o.gy, e.o);
       else if (e.kind === 'worker') drawWorker(e.o);
-      else if (e.kind === 'plant') drawPlant(e.o);
       else if (e.kind === 'coffee') drawCoffee(e.o);
       else if (e.kind === 'tree') drawTree(e.o);
       else if (e.kind === 'pkg') drawPackage(e.o);
@@ -388,16 +468,40 @@
     for (let gx = 0; gx < W; gx += 1) {
       for (let gy = 0; gy < H; gy += 1) {
         const w = Math.min(1, W - gx), h = Math.min(1, H - gy);
-        tile(gx, gy, w, h, ((gx + gy) | 0) % 2 === 0 ? '#5b6580' : '#525d75');
+        tile(gx, gy, w, h, ((gx + gy) | 0) % 2 === 0 ? '#6d7791' : '#646e88');
       }
     }
-    // brilho quente perto das paredes (como no exemplo)
-    const glow = ctx.createLinearGradient(iso(0, 0).x, iso(0, 0).y, iso(W * .5, H * .5).x, iso(W * .5, H * .5).y);
-    glow.addColorStop(0, 'rgba(255,175,70,.30)'); glow.addColorStop(1, 'rgba(255,175,70,0)');
     ctx.save(); ctx.beginPath();
     const a = iso(0, 0), b = iso(W, 0), c = iso(W, H), d = iso(0, H);
     ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath();
-    ctx.clip(); ctx.fillStyle = glow; ctx.fill(); ctx.restore();
+    ctx.clip();
+    // luz ambiente central (clareia o miolo do escritório)
+    const cen = iso(W / 2, H / 2);
+    const amb = ctx.createRadialGradient(cen.x, cen.y, 10, cen.x, cen.y, Math.max(W, H) * TH);
+    amb.addColorStop(0, 'rgba(255,248,225,.18)'); amb.addColorStop(1, 'rgba(255,248,225,0)');
+    ctx.fillStyle = amb; ctx.fillRect(cen.x - 900, cen.y - 900, 1800, 1800);
+    // brilho quente perto das paredes de fundo
+    const glow = ctx.createLinearGradient(iso(0, 0).x, iso(0, 0).y, iso(W * .5, H * .5).x, iso(W * .5, H * .5).y);
+    glow.addColorStop(0, 'rgba(255,180,80,.34)'); glow.addColorStop(1, 'rgba(255,180,80,0)');
+    ctx.fillStyle = glow; ctx.fill();
+    ctx.restore();
+  }
+
+  function drawFloorDecor() {
+    // tapetes
+    (layout.rugs || []).forEach((r) => {
+      tile(r.gx, r.gy, r.w, r.h, r.col);
+      tile(r.gx + 0.06, r.gy + 0.06, r.w - 0.12, r.h - 0.12, 'rgba(255,255,255,.04)');
+    });
+    // luz das luminárias no piso (poças quentes)
+    (layout.lamps || []).forEach((l) => {
+      const p = iso(l.gx, l.gy);
+      const g = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, 46);
+      g.addColorStop(0, 'rgba(255,244,210,.22)'); g.addColorStop(1, 'rgba(255,244,210,0)');
+      ctx.fillStyle = g;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 0.5);
+      ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    });
   }
 
   // cuboide isométrico
@@ -433,13 +537,34 @@
     quad(n0.x, n0.y - wallH, n1.x, n1.y - wallH, n1.x, n1.y, n0.x, n0.y, g2);
     quad(n0.x, n0.y, n1.x, n1.y, n1.x, n1.y - 6, n0.x, n0.y - 6, 'rgba(255,160,50,.35)');
 
-    // letreiro neon no topo da parede norte
-    const mid = iso(W / 2, 0);
+    // painel na parede norte (retângulo no plano da parede)
+    const wallRect = (gxa, gxb, h1, h2, fill, stroke) => {
+      const A = iso(gxa, 0), B = iso(gxb, 0);
+      quad(A.x, A.y - h2, B.x, B.y - h2, B.x, B.y - h1, A.x, A.y - h1, fill);
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
+    };
+    // janelas (parede oeste) — luz do dia
+    const wallRectW = (gya, gyb, h1, h2, fill) => {
+      const A = iso(0, gya), B = iso(0, gyb);
+      quad(A.x, A.y - h2, B.x, B.y - h2, B.x, B.y - h1, A.x, A.y - h1, fill);
+    };
+    for (let gy = 1.0; gy < H - 1.2; gy += 1.8) wallRectW(gy, gy + 0.9, 34, 60, 'rgba(150,200,255,.16)');
+
+    // lousa branca (sobre a área de reunião, à direita)
+    if (W > 5) { wallRect(W - 2.3, W - 1.0, 26, 52, '#eef1f6'); wallRect(W - 2.3, W - 1.0, 26, 52, null, 'rgba(0,0,0,.2)');
+      const bp = iso(W - 1.65, 0);
+      ctx.strokeStyle = '#4f8cff'; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(bp.x - 14, bp.y - 44); ctx.lineTo(bp.x - 2, bp.y - 40); ctx.lineTo(bp.x + 10, bp.y - 46); ctx.stroke();
+      ctx.strokeStyle = '#ff5c6c'; ctx.beginPath(); ctx.moveTo(bp.x - 12, bp.y - 34); ctx.lineTo(bp.x + 6, bp.y - 36); ctx.stroke();
+    }
+
+    // letreiro neon no topo da parede norte (à esquerda do quadro)
+    const mid = iso(W / 2 - 1.1, 0);
     ctx.save();
-    ctx.font = 'bold 20px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+    ctx.font = 'bold 19px Segoe UI, sans-serif'; ctx.textAlign = 'center';
     ctx.shadowColor = '#4f8cff'; ctx.shadowBlur = 16;
     ctx.fillStyle = '#bcd4ff';
-    ctx.fillText('★ ' + (G.state.company || 'AGÊNCIA').toUpperCase() + ' ★', mid.x, mid.y - wallH + 26);
+    ctx.fillText('★ ' + (G.state.company || 'AGÊNCIA').toUpperCase() + ' ★', mid.x, mid.y - wallH + 24);
     ctx.restore();
   }
 

@@ -8,12 +8,12 @@
   // ---- Tiers do escritório (crescimento) ----
   // maxDesks: mesas máximas; slots: projetos simultâneos; cost: para expandir PARA este tier
   const TIERS = [
-    { id: 0, name: 'Garagem',        icon: '🏚️', maxDesks: 2,  slots: 1, cost: 0,       repReq: 0 },
-    { id: 1, name: 'Sala compartilhada', icon: '🏬', maxDesks: 4,  slots: 2, cost: 4000,    repReq: 20 },
-    { id: 2, name: 'Escritório',     icon: '🏢', maxDesks: 8,  slots: 3, cost: 18000,   repReq: 80 },
-    { id: 3, name: 'Andar próprio',  icon: '🏙️', maxDesks: 14, slots: 4, cost: 70000,   repReq: 220 },
-    { id: 4, name: 'Sede corporativa', icon: '🏰', maxDesks: 24, slots: 6, cost: 260000,  repReq: 550 },
-    { id: 5, name: 'Campus Tech',    icon: '🌆', maxDesks: 40, slots: 9, cost: 1000000, repReq: 1400 },
+    { id: 0, name: 'Escritório inicial', icon: '🏢', maxDesks: 6,  slots: 2, cost: 0,       repReq: 0 },
+    { id: 1, name: 'Escritório ampliado', icon: '🏬', maxDesks: 10, slots: 3, cost: 7000,    repReq: 25 },
+    { id: 2, name: 'Andar próprio',  icon: '🏙️', maxDesks: 16, slots: 4, cost: 26000,   repReq: 90 },
+    { id: 3, name: 'Dois andares',   icon: '🏙️', maxDesks: 24, slots: 5, cost: 95000,   repReq: 250 },
+    { id: 4, name: 'Sede corporativa', icon: '🏰', maxDesks: 34, slots: 7, cost: 330000,  repReq: 650 },
+    { id: 5, name: 'Campus Tech',    icon: '🌆', maxDesks: 48, slots: 10, cost: 1200000, repReq: 1600 },
   ];
 
   // ---- Tipos de funcionário ----

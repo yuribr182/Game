@@ -30,15 +30,15 @@
   function freshState() {
     return {
       company: 'Minha Agência',
-      money: 1200,
+      money: 1500,
       rep: 0,
       level: 1,
       xp: 0,
       day: 1,
       dayProgress: 0,
       tier: 0,
-      desks: 1,          // mesas compradas
-      employees: [],     // { uid, role }
+      desks: 3,          // já começa com um escritório montado
+      employees: [{ uid: nextId(), role: 'junior' }], // 1 programador de largada
       active: [],        // projetos em andamento
       available: [],     // contratos ofertados
       upgrades: [],      // ids comprados
