@@ -228,6 +228,7 @@
     if (npcs.length === 0 && layout) {
       const r = layout.reception;
       const att = makeWorker(-1, { gx: r.gx + 0.35, gy: r.gy - 0.25 }, 'atendente');
+      att.pname = window.DATA && window.DATA.FIRST_NAMES ? pick(window.DATA.FIRST_NAMES) : 'Recepção';
       att.home = { gx: r.gx + 0.35, gy: r.gy - 0.25 };
       att.hx = att.home.gx; att.hy = att.home.gy; att.gx = att.hx; att.gy = att.hy;
       att.state = 'work'; att.desk = { gx: att.home.gx, gy: att.home.gy - 0.55 };
@@ -243,6 +244,7 @@
     while (workers.length > emp) workers.pop();
     // reatribui mesa e cargo (caso layout ou equipe mudou)
     workers.forEach((w, i) => {
+      w.i = i;
       w.desk = layout.desks[i];
       const roleId = s.employees[i].role;
       if (w.role !== roleId) {
@@ -299,11 +301,20 @@
     t += dt;
     const producing = s.active.length > 0 && G.production() > 0;
 
-    // trabalhadores (desocupados = sem projeto ativo -> vão à cozinha tomar café)
-    const idle = s.active.length === 0;
+    // trabalhadores (sem projeto OU descansando -> vão à cozinha tomar café)
+    const noWork = s.active.length === 0;
     workers.forEach((w) => {
+      const emp = s.employees[w.i];
+      const idle = noWork || (emp && emp.resting);
       w.timer -= dt;
       if (w.mug > 0) w.mug -= dt;
+      if (w.bubble && (w.bubble.life -= dt) <= 0) w.bubble = null;
+      // balões contextuais
+      if (!w.bubble) {
+        if (emp && emp.resting && Math.random() < dt * 0.25) w.bubble = { emoji: '😴', life: 2.2 };
+        else if (w.mug > 0 && Math.random() < dt * 0.2) w.bubble = { emoji: '☕', life: 2 };
+        else if (w.state === 'work' && !noWork && Math.random() < dt * 0.05) w.bubble = { emoji: pick(['💡', '🐛', '🚀', '🤔']), life: 2.2 };
+      }
       if (w.state === 'work') {
         // na mesa; desocupado levanta logo, ocupado só de vez em quando
         if (w.timer <= 0) {
@@ -445,12 +456,13 @@
   function spawnPuff(gx, gy) { for (let k = 0; k < 4; k++) particles.push({ gx: gx + rand(-0.1, 0.1), gy, z: rand(6, 12), life: rand(0.4, 0.7), r: rand(3, 6) }); }
   function spawnSmoke(gx, gy) { particles.push({ gx, gy, z: 30, life: 0.6, r: 4 }); }
 
-  // popup de dinheiro
+  // popup de dinheiro + comemoração da equipe
   function popMoney(text) {
     if (!workers.length || !layout) return;
     const w = pick(workers);
     const p = iso(w.gx, w.gy);
     pops.push({ x: p.x, y: p.y - 40, text, life: 1.6, color: '#ffca4b' });
+    workers.forEach((wk) => { if (Math.random() < 0.6) wk.bubble = { emoji: '🎉', life: 2.4 }; });
   }
 
   // ---------- desenho ----------
@@ -461,12 +473,25 @@
     requestAnimationFrame(frame);
   }
 
+  // 0 = dia claro, 1 = noite fechada (ciclo de 6 dias de jogo)
+  function nightFactor() {
+    const s = G.state;
+    const cyc = ((s.day % 6) + s.dayProgress / G.DAY_LENGTH) / 6;
+    return 0.5 - 0.5 * Math.cos(cyc * Math.PI * 2);
+  }
+  const mix = (a, b, k) => Math.round(a + (b - a) * k);
+  function mixColor(c1, c2, k) {
+    return `rgb(${mix(c1[0], c2[0], k)},${mix(c1[1], c2[1], k)},${mix(c1[2], c2[2], k)})`;
+  }
+
   function draw() {
     const { W, H } = layout;
+    const night = nightFactor();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    // céu
+    // céu muda com o horário (dia -> noite)
     const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    sky.addColorStop(0, '#20304d'); sky.addColorStop(1, '#0e1622');
+    sky.addColorStop(0, mixColor([58, 92, 140], [16, 24, 42], night));
+    sky.addColorStop(1, mixColor([26, 38, 58], [8, 12, 22], night));
     ctx.fillStyle = sky; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.setTransform(cam.scale * dpr, 0, 0, cam.scale * dpr, cam.ox * dpr, cam.oy * dpr);
@@ -517,6 +542,15 @@
 
     // pad "+"
     if (plusPad) drawPlus(plusPad);
+
+    // véu noturno sobre a cena (mantém interior aconchegante)
+    if (night > 0.05) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(8,12,34,${(night * 0.30).toFixed(3)})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
 
     // popups em espaço de tela
     pops.forEach((p) => {
@@ -644,7 +678,12 @@
       const A = iso(0, gya), B = iso(0, gyb);
       quad(A.x, A.y - h2, B.x, B.y - h2, B.x, B.y - h1, A.x, A.y - h1, fill);
     };
-    for (let gy = 1.0; gy < H - 1.2; gy += 1.8) wallRectW(gy, gy + 0.9, 34, 60, 'rgba(150,200,255,.16)');
+    // de dia: luz azulada; de noite: janelas acesas em amarelo quente
+    const nf = nightFactor();
+    const winCol = nf > 0.5
+      ? `rgba(255,214,120,${(0.10 + nf * 0.3).toFixed(2)})`
+      : 'rgba(150,200,255,.16)';
+    for (let gy = 1.0; gy < H - 1.2; gy += 1.8) wallRectW(gy, gy + 0.9, 34, 60, winCol);
 
     // lousa branca (sobre a área de reunião, à direita)
     if (W > 5) { wallRect(W - 2.3, W - 1.0, 26, 52, '#eef1f6'); wallRect(W - 2.3, W - 1.0, 26, 52, null, 'rgba(0,0,0,.2)');
@@ -756,6 +795,20 @@
       ctx.fillStyle = '#20242e'; ctx.fillRect(p.x + 6.1, baseY - 32, 3.2, 4.6);
       ctx.beginPath(); ctx.moveTo(p.x + 7.5, baseY - 28); ctx.quadraticCurveTo(p.x + 6, baseY - 24, p.x + 2.5, baseY - 25); ctx.stroke();
       ctx.beginPath(); ctx.arc(p.x + 2.2, baseY - 25, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // ---- balão de fala ----
+    if (w.bubble) {
+      const alpha = Math.min(1, w.bubble.life);
+      ctx.globalAlpha = alpha;
+      const by = baseY - 50;
+      roundRect(p.x - 11, by - 10, 22, 20, 7, 'rgba(255,255,255,.92)');
+      ctx.beginPath(); ctx.moveTo(p.x - 3, by + 10); ctx.lineTo(p.x + 3, by + 10); ctx.lineTo(p.x, by + 15); ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
+      ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(w.bubble.emoji, p.x, by + 5);
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
     }
 
     // ---- caneca de café (depois do intervalo) ----
@@ -928,13 +981,42 @@
     const wasDrag = dragging && dragging.moved;
     dragging = null;
     if (wasDrag) return;               // arrastou: não é clique
-    if (!plusPad) return;
     const m = localXY(ev);
     const wx = (m.x - cam.ox) / cam.scale;
     const wy = (m.y - cam.oy) / cam.scale;
+
+    // clique num personagem? (procura o mais próximo num raio de ~22px de mundo)
+    let best = null, bestD = 26 / Math.max(0.5, cam.scale / fit.scale);
+    const consider = (kind, idx, gx, gy) => {
+      const p = iso(gx, gy);
+      const d = Math.hypot(wx - p.x, wy - (p.y - 18));
+      if (d < bestD) { bestD = d; best = { kind, idx, sx: m.x, sy: m.y }; }
+    };
+    workers.forEach((w, i) => consider('emp', i, w.gx, w.gy));
+    npcs.forEach((n, i) => consider('npc', i, n.gx, n.gy));
+    if (best) {
+      window.dispatchEvent(new CustomEvent('workerclick', { detail: best }));
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('scenebgclick'));
+
+    if (!plusPad) return;
     const tx = plusPad.x + HW * 0.35, ty = plusPad.y + HH * 0.35;
     if (Math.hypot(wx - tx, wy - ty) < 34) G.buyDesk();
   }
 
-  window.IsoOffice = { init, resize, popMoney };
+  function npcInfo(i) {
+    const n = npcs[i];
+    return n ? { name: n.pname || 'Atendente', role: n.role } : null;
+  }
+
+  // posição em px CSS de um personagem no canvas (para testes/overlays)
+  function workerScreenPos(i) {
+    const w = workers[i];
+    if (!w) return null;
+    const p = iso(w.gx, w.gy);
+    return { x: p.x * cam.scale + cam.ox, y: (p.y - 18) * cam.scale + cam.oy };
+  }
+
+  window.IsoOffice = { init, resize, popMoney, npcInfo, workerScreenPos };
 })();

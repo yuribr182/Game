@@ -1,0 +1,14 @@
+{
+  "name": "App Agency Tycoon",
+  "short_name": "Agency Tycoon",
+  "description": "Simule uma agência de desenvolvimento de aplicativos: contrate, entregue projetos e expanda seu escritório.",
+  "lang": "pt-BR",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0e1420",
+  "theme_color": "#141c2b",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

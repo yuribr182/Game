@@ -23,6 +23,27 @@ Na aba **Equipe**, cada funcionário tem um seletor **🎯 Tarefa**: deixe em
 específico** para priorizar uma entrega. Os cartões de projeto mostram a
 velocidade efetiva (⚡ pts/s) e quantos estão fixados.
 
+### Sistemas de jogo
+
+- **Ganhos offline**: a agência continua produzindo enquanto o jogo está
+  fechado (eficiência 60%, cap de 8h). Ao voltar, um resumo mostra dias
+  passados, apps entregues, saldo e reputação do período.
+- **Eventos aleatórios**: cliente VIP, destaque na mídia, queda de energia,
+  bug em produção, pedido de aumento e proposta de investidor — vários com
+  **escolhas** que afetam dinheiro, reputação e moral da equipe (ter um QA
+  no time evita o evento de bug!).
+- **Energia individual**: trabalhar cansa; funcionário exausto pausa sozinho
+  para um café e volta renovado. A energia afeta a produção (50%–110%).
+- **Fases de projeto**: todo app passa por Design 🎨 → Código ⌨️ → Testes 🧪.
+  Designers brilham na 1ª fase, devs na 2ª e QAs na 3ª — escale bem!
+- **Evolução de carreira**: devs acumulam experiência e podem ser
+  **promovidos** (júnior → pleno → sênior) pagando a taxa de promoção.
+- **Produtos próprios**: com 25 ⭐, lance apps seus que geram renda passiva
+  diária — podem viralizar (+35%) ou sofrer com a concorrência.
+- **Ciclo dia/noite** na cena, com janelas acesas à noite.
+- **Personagens clicáveis**: clique em alguém na cena para ver nome, cargo,
+  energia e tarefa atual.
+
 ### Câmera
 
 - **Roda do mouse**: zoom (centrado no cursor)
@@ -95,3 +116,7 @@ Dica: clique no **pad "+"** pulsante no chão do escritório para comprar uma no
 mesa direto na cena.
 
 Feito com HTML, CSS e JavaScript puro — sem dependências nem build.
+
+Inclui `manifest.json` + `sw.js`: quando servido por HTTP(S), o jogo é um
+**PWA instalável** que funciona offline. O save usa versionamento (v2) com
+migração automática de versões antigas.

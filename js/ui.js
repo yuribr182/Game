@@ -13,7 +13,7 @@
   function cache() {
     ['statMoney','statRep','statLevel','statProd','statDay','tierBadge','companyName',
      'officeCap','officeGrid','deskCost','activeCount','activeProjects','availableProjects',
-     'hireList','teamList','teamCount','upgradeList'].forEach((id) => (el[id] = document.getElementById(id)));
+     'hireList','teamList','teamCount','upgradeList','productList'].forEach((id) => (el[id] = document.getElementById(id)));
   }
 
   const money = (n) => 'R$ ' + fmt(n);
@@ -59,13 +59,17 @@
         const warn = p.daysLeft <= 3;
         const rate = rates[p.uid] || 0;
         const pinned = G.assignedCount(p.uid);
+        const ph = D.phaseFor(p.done / p.work);
         return `<div class="card">
           <div class="card-top">
             <div>
               <div class="card-title">${p.emoji} ${p.name}</div>
               <div class="card-sub">${p.client}</div>
             </div>
-            <div class="card-badge">${warn ? '⚠️ ' : '📅 '}${p.daysLeft}d</div>
+            <div>
+              <span class="phase-badge">${ph.emoji} ${ph.name}</span>
+              <span class="card-badge">${warn ? '⚠️ ' : '📅 '}${p.daysLeft}d</span>
+            </div>
           </div>
           <div class="bar ${warn ? 'warn' : ''}"><span style="width:${pct}%"></span></div>
           <div class="card-meta">
@@ -88,10 +92,10 @@
     } else {
       el.availableProjects.innerHTML = s.available.map((p) => {
         const locked = s.rep < p.repReq;
-        return `<div class="card">
+        return `<div class="card" ${p.vip ? 'style="border-color:var(--gold)"' : ''}>
           <div class="card-top">
             <div>
-              <div class="card-title">${p.emoji} ${p.name}</div>
+              <div class="card-title">${p.emoji} ${p.name} ${p.vip ? '<span class="card-badge vip-badge">VIP</span>' : ''}</div>
               <div class="card-sub">${p.client}</div>
             </div>
             <div class="card-badge">📅 ${p.deadline}d</div>
@@ -160,15 +164,31 @@
         const seated = i < s.desks;
         const opts = s.active.map((p) =>
           `<option value="${p.uid}" ${e.assign === p.uid ? 'selected' : ''}>${p.emoji} ${p.name} — ${p.client}</option>`).join('');
+        const en = e.energy == null ? 100 : e.energy;
+        const salary = Math.round(role.salary * (e.salaryMult || 1));
+        const mood = e.mood ? (e.mood.mult > 1 ? ' 😊' : ' 😒') : '';
+        const pr = G.promotionFor(e);
+        let promoHtml = '';
+        if (pr) {
+          const toRole = D.ROLES.find((r) => r.id === pr.to);
+          const ready = (e.exp || 0) >= pr.xp;
+          const pct = Math.min(100, ((e.exp || 0) / pr.xp) * 100);
+          promoHtml = ready
+            ? `<button class="btn btn-accent btn-mini" data-promote="${e.uid}" ${s.money < pr.cost ? 'disabled' : ''} style="margin-top:7px;width:100%">
+                 🎓 Promover a ${toRole.name} · R$ ${fmt(pr.cost)}</button>`
+            : `<div class="xp-note">🎓 Experiência p/ ${toRole.name}: ${Math.floor(pct)}%</div>`;
+        }
         return `<div class="card">
           <div class="member">
             <div class="avatar">${role.emoji}</div>
             <div class="info">
-              <div class="name">${role.name} ${seated ? '' : '<span style="color:var(--red)">(sem mesa)</span>'}</div>
-              <div class="sub">⚡ ${role.speed}/s · R$ ${fmt(role.salary)}/dia</div>
+              <div class="name">${e.name || role.name}${mood} ${e.resting ? '☕' : ''} ${seated ? '' : '<span style="color:var(--red)">(sem mesa)</span>'}</div>
+              <div class="sub">${role.name} · ⚡ ${role.speed}/s · R$ ${fmt(salary)}/dia</div>
             </div>
             <button class="btn btn-danger btn-mini" data-fire="${e.uid}">Demitir</button>
           </div>
+          <div class="energy-bar ${en < 30 ? 'low' : ''}"><span data-energy="${e.uid}" style="width:${en}%"></span></div>
+          ${promoHtml}
           <div class="assign-row">
             <span class="assign-label">🎯 Tarefa</span>
             <select class="assign-select" data-assign="${e.uid}">
@@ -237,6 +257,38 @@
     if (btn) btn.onclick = () => G.upgradeOffice();
   }
 
+  // ---------- Produtos próprios ----------
+  function renderProducts(s) {
+    if (!el.productList) return;
+    const unlocked = G.productsUnlocked();
+    const cost = G.productCost();
+    const launchCard = unlocked
+      ? `<div class="card" style="border-color:var(--gold)">
+          <div class="card-title">💡 Lançar produto próprio</div>
+          <div class="card-sub">Invista para criar um app seu que gera renda todo dia — sem depender de clientes.</div>
+          <div class="card-actions" style="margin-top:9px">
+            <button class="btn btn-primary btn-mini" id="btnLaunchProduct" ${s.money < cost ? 'disabled' : ''}>
+              ${s.money < cost ? 'Sem R$' : `Lançar · R$ ${fmt(cost)}`}
+            </button>
+          </div>
+        </div>`
+      : `<div class="empty-msg">🔒 Alcance <b>25 ⭐</b> de reputação para lançar produtos próprios.</div>`;
+    const items = (s.products || []).map((p) => `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <div class="card-title">📱 ${p.name}</div>
+            <div class="card-sub">${p.ageDays} dias no mercado</div>
+          </div>
+          <div class="card-badge" style="color:var(--green)">+R$ ${fmt(p.income)}/dia</div>
+        </div>
+        <div class="card-meta"><span>Total ganho: <b>R$ ${fmt(p.total || 0)}</b></span></div>
+      </div>`).join('');
+    el.productList.innerHTML = launchCard + items;
+    const btn = document.getElementById('btnLaunchProduct');
+    if (btn) btn.onclick = () => G.launchProduct();
+  }
+
   // ---------- render completo (mudanças estruturais) ----------
   function renderAll(s) {
     if (!s) return;
@@ -246,6 +298,7 @@
     renderAvailableProjects(s);
     renderTeam(s);
     renderShop(s);
+    renderProducts(s);
   }
 
   // ---------- render leve (a cada frame) ----------
@@ -254,8 +307,17 @@
     if (!s) return;
     renderHUD(s);
     renderActiveProjects(s); // barras de progresso animadas
+    // barras de energia da equipe ao vivo (sem reconstruir a lista)
+    s.employees.forEach((e) => {
+      const bar = document.querySelector(`[data-energy="${e.uid}"]`);
+      if (bar) {
+        const en = e.energy == null ? 100 : e.energy;
+        bar.style.width = en + '%';
+        bar.parentElement.classList.toggle('low', en < 30);
+      }
+    });
     // quando o dia vira, prazos e contratos mudam -> render completo
-    if (s.day !== lastDay) { lastDay = s.day; renderAvailableProjects(s); renderOffice(s); }
+    if (s.day !== lastDay) { lastDay = s.day; renderAvailableProjects(s); renderOffice(s); renderProducts(s); }
     // quando a quantidade de projetos ativos muda, atualiza disponíveis (vagas)
     const sig = s.active.length + '/' + s.available.length;
     if (sig !== lastActiveSig) { lastActiveSig = sig; renderAvailableProjects(s); renderOffice(s); }

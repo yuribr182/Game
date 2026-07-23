@@ -50,22 +50,65 @@
 
   // ---------- delegação de cliques ----------
   document.addEventListener('click', (ev) => {
-    const t = ev.target.closest('[data-accept],[data-decline],[data-hire],[data-fire],[data-upg]');
+    const t = ev.target.closest('[data-accept],[data-decline],[data-hire],[data-fire],[data-upg],[data-promote]');
     if (!t) return;
     if (t.dataset.accept) G.acceptProject(t.dataset.accept);
     else if (t.dataset.decline) G.declineProject(t.dataset.decline);
     else if (t.dataset.hire) G.hire(t.dataset.hire);
     else if (t.dataset.fire) G.fire(t.dataset.fire);
     else if (t.dataset.upg) G.buyUpgrade(t.dataset.upg);
+    else if (t.dataset.promote) G.promote(t.dataset.promote);
   });
+
+  // ---------- modal de evento com escolha ----------
+  const eventModal = $('#eventModal');
+  function syncEventModal(s) {
+    const pe = s && s.pendingEvent;
+    if (!pe) { eventModal.classList.add('hidden'); return; }
+    $('#eventTitle').textContent = pe.title;
+    $('#eventText').textContent = pe.text;
+    $('#eventOptions').innerHTML = pe.options.map((o) =>
+      `<button class="btn ${o.id === pe.defaultOption ? '' : 'btn-primary'}" data-event-opt="${o.id}">
+         ${o.label}<span class="event-opt-hint">${o.hint}</span></button>`).join('');
+    eventModal.classList.remove('hidden');
+  }
+  document.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-event-opt]');
+    if (b) { G.resolveEvent(b.dataset.eventOpt); if (window.Sfx) Sfx.play('click'); }
+  });
+  G.on('change', syncEventModal);
+
+  // ---------- resumo offline ----------
+  function showOfflineReport() {
+    const r = G.takeOfflineReport();
+    if (!r) return;
+    const h = Math.floor(r.seconds / 3600), m = Math.floor((r.seconds % 3600) / 60);
+    const dur = h > 0 ? `${h}h ${m}min` : `${m}min`;
+    const rows = [
+      ['⏰ Tempo fora', dur],
+      ['📅 Dias de jogo', `+${r.days}`],
+      ['✅ Apps entregues', `${r.completed}`],
+      r.failed > 0 ? ['⌛ Prazos estourados', `${r.failed}`] : null,
+      ['💵 Saldo do período', `${r.money >= 0 ? '+' : ''}R$ ${G.fmt(r.money)}`],
+      ['⭐ Reputação', `${r.rep >= 0 ? '+' : ''}${r.rep}`],
+    ].filter(Boolean);
+    $('#offlineBody').innerHTML = rows.map(([k, v]) => `<div class="offline-row"><span>${k}</span><b>${v}</b></div>`).join('');
+    $('#offlineModal').classList.remove('hidden');
+    if (window.Sfx) Sfx.play('money');
+  }
+  $('#btnOfflineOk').onclick = () => $('#offlineModal').classList.add('hidden');
 
   // ---------- botões fixos ----------
   $('#btnNewGame').onclick = () => {
     if (G.hasSave() && !confirm('Isso vai sobrescrever o jogo salvo. Continuar?')) return;
-    G.newGame();
+    G.newGame($('#companyInput').value.trim() || undefined);
     showGame();
   };
-  $('#btnContinue').onclick = () => { if (G.load()) showGame(); };
+  $('#btnContinue').onclick = () => { if (G.load()) { showGame(); showOfflineReport(); syncEventModal(G.state); } };
+  $('#btnRename').onclick = () => {
+    const name = $('#renameInput').value.trim();
+    if (name) { G.setCompany(name); $('#renameInput').value = ''; UI.toast('✏️ Agência renomeada!', 'good'); }
+  };
   $('#btnBuyDesk').onclick = () => G.buyDesk();
   $('#btnUpgradeOffice').onclick = () => G.upgradeOffice();
   $('#btnSave').onclick = () => { G.save(); UI.toast('💾 Jogo salvo!', 'good'); };
@@ -87,6 +130,50 @@
 
   // fechar modal clicando fora
   menuModal.addEventListener('click', (e) => { if (e.target === menuModal) menuModal.classList.add('hidden'); });
+
+  // ---------- cartão de personagem (clique na cena) ----------
+  const workerCard = $('#workerCard');
+  function hideWorkerCard() { workerCard.classList.add('hidden'); }
+  window.addEventListener('scenebgclick', hideWorkerCard);
+  window.addEventListener('workerclick', (ev) => {
+    const { kind, idx, sx, sy } = ev.detail;
+    const s = G.state; if (!s) return;
+    let html = '';
+    if (kind === 'emp') {
+      const e = s.employees[idx]; if (!e) return;
+      const role = window.DATA.ROLES.find((r) => r.id === e.role);
+      const en = Math.round(e.energy == null ? 100 : e.energy);
+      const proj = e.assign ? s.active.find((p) => p.uid === e.assign) : null;
+      const task = e.resting ? '☕ Fazendo pausa' : proj ? `${proj.emoji} ${proj.name}` : (s.active.length ? '🔀 Auto (todos os projetos)' : '😴 Sem projeto');
+      const salary = Math.round(role.salary * (e.salaryMult || 1));
+      html = `
+        <button class="wc-close" data-wc-close>✖</button>
+        <h4>${role.emoji} ${e.name}</h4>
+        <div class="wc-sub">${role.name} · R$ ${G.fmt(salary)}/dia</div>
+        <div>🎯 ${task}</div>
+        <div style="margin-top:6px">🔋 Energia: <b>${en}%</b></div>
+        <div class="energy-bar ${en < 30 ? 'low' : ''}"><span style="width:${en}%"></span></div>`;
+    } else {
+      const info = window.IsoOffice.npcInfo(idx); if (!info) return;
+      html = `
+        <button class="wc-close" data-wc-close>✖</button>
+        <h4>💁 ${info.name}</h4>
+        <div class="wc-sub">Secretária · Recepção</div>
+        <div>📞 Atende os clientes e mantém a agência girando.</div>`;
+    }
+    workerCard.innerHTML = html;
+    workerCard.classList.remove('hidden');
+    // posiciona perto do clique (coordenadas de janela), sem sair da tela
+    const cv = document.getElementById('officeCanvas').getBoundingClientRect();
+    const x = Math.min(cv.left + sx + 14, window.innerWidth - 240);
+    const y = Math.max(8, Math.min(cv.top + sy - 10, window.innerHeight - 170));
+    workerCard.style.left = x + 'px';
+    workerCard.style.top = y + 'px';
+    if (window.Sfx) Sfx.play('click');
+  });
+  document.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-wc-close]')) hideWorkerCard();
+  });
 
   // ---------- abas ----------
   document.querySelectorAll('.tab').forEach((tab) => {
@@ -110,6 +197,11 @@
       G.autoSaveTick(dt);
     }
     requestAnimationFrame(loop);
+  }
+
+  // ---------- PWA (só quando servido por http/https) ----------
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
   // ---------- boot ----------

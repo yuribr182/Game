@@ -67,5 +67,66 @@
     return Math.floor(50 * Math.pow(1.55, level - 1));
   }
 
-  window.DATA = { TIERS, ROLES, UPGRADES, CLIENTS, PROJECT_TYPES, xpForLevel };
+  // ---- Nomes de funcionários ----
+  const FIRST_NAMES = ['Ana', 'Bruno', 'Carla', 'Diego', 'Elisa', 'Felipe', 'Gabi', 'Hugo',
+    'Iara', 'João', 'Karen', 'Lucas', 'Marina', 'Nando', 'Olívia', 'Pedro', 'Quésia', 'Rafa',
+    'Sofia', 'Thiago', 'Úrsula', 'Vitor', 'Wesley', 'Yasmin', 'Zeca', 'Bia', 'Caio', 'Duda',
+    'Enzo', 'Flávia', 'Gustavo', 'Helena', 'Igor', 'Júlia', 'Kléber', 'Larissa'];
+
+  // ---- Fases de projeto (design -> código -> testes) ----
+  // até: fração do trabalho onde a fase termina; weights: multiplicador por cargo
+  const PHASES = [
+    { id: 'design', name: 'Design', emoji: '🎨', ate: 0.2,
+      weights: { designer: 3.0, junior: 0.7, pleno: 0.7, senior: 0.7, qa: 0.4, manager: 0.5 } },
+    { id: 'code', name: 'Código', emoji: '⌨️', ate: 0.8,
+      weights: { designer: 0.4, junior: 1.15, pleno: 1.15, senior: 1.15, qa: 0.5, manager: 0.5 } },
+    { id: 'tests', name: 'Testes', emoji: '🧪', ate: 1.0,
+      weights: { designer: 0.3, junior: 0.6, pleno: 0.6, senior: 0.6, qa: 3.0, manager: 0.5 } },
+  ];
+  function phaseFor(frac) {
+    return PHASES.find((f) => frac < f.ate) || PHASES[PHASES.length - 1];
+  }
+
+  // ---- Evolução de carreira (trilha dev) ----
+  // xp em "segundos produzindo"; custo é a taxa de promoção
+  const PROMOTIONS = {
+    junior: { to: 'pleno', xp: 90, cost: 900 },
+    pleno: { to: 'senior', xp: 220, cost: 3300 },
+  };
+
+  // ---- Eventos aleatórios ----
+  // instant: aplica direto; choice: abre modal com opções
+  const EVENTS = [
+    { id: 'vip', kind: 'instant', chance: 1.0,
+      title: '🤩 Cliente VIP!', text: 'Um cliente famoso quer um app com urgência. Contrato premium disponível!' },
+    { id: 'midia', kind: 'instant', chance: 0.8,
+      title: '📰 Saiu na mídia!', text: 'Sua agência foi destaque num portal de tecnologia.' },
+    { id: 'blackout', kind: 'instant', chance: 0.7,
+      title: '🔌 Queda de energia!', text: 'Ficaram sem luz por um tempo. Produção reduzida hoje.' },
+    { id: 'bug', kind: 'choice', chance: 0.9,
+      title: '🐛 Bug em produção!', text: 'Um app entregue apresentou um bug grave. O cliente está furioso.',
+      options: [
+        { id: 'fix', label: '🔧 Corrigir agora', hint: 'Custa dinheiro, preserva a reputação' },
+        { id: 'ignore', label: '🙈 Ignorar', hint: 'Grátis, mas a reputação sofre' },
+      ] },
+    { id: 'raise', kind: 'choice', chance: 0.8,
+      title: '💼 Pedido de aumento', text: 'pede um aumento de 40% no salário.',
+      options: [
+        { id: 'accept', label: '🤝 Dar o aumento', hint: 'Salário sobe, funcionário motivado' },
+        { id: 'deny', label: '❌ Recusar', hint: 'Risco de desmotivação (ou pedir demissão)' },
+      ] },
+    { id: 'investor', kind: 'choice', chance: 0.6,
+      title: '🦈 Proposta de investidor', text: 'Um investidor oferece um aporte em troca de exposição da marca dele nos seus apps.',
+      options: [
+        { id: 'accept', label: '💰 Aceitar o aporte', hint: 'Dinheiro agora, um pouco de reputação depois' },
+        { id: 'deny', label: '🚫 Recusar', hint: 'Independência valoriza sua marca (+reputação)' },
+      ] },
+  ];
+
+  // ---- Produtos próprios (renda passiva) ----
+  const PRODUCT_NAMES = ['TaskZen', 'FitTrack', 'NotaFácil', 'PetCare+', 'Receitou', 'Grana App',
+    'FocusTime', 'MapaAí', 'TreinoPro', 'MeuMercado', 'AgendaLivre', 'FotoMix', 'SomZone', 'VagaCerta'];
+
+  window.DATA = { TIERS, ROLES, UPGRADES, CLIENTS, PROJECT_TYPES, xpForLevel,
+    FIRST_NAMES, PHASES, phaseFor, PROMOTIONS, EVENTS, PRODUCT_NAMES };
 })();

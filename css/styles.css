@@ -235,6 +235,54 @@ body {
 .member .info .name { font-weight: 700; font-size: .9rem; }
 .member .info .sub { color: var(--muted); font-size: .76rem; }
 
+/* input de nome */
+.name-input {
+  width: 100%; box-sizing: border-box;
+  font: inherit; color: var(--text);
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 14px; margin-bottom: 16px;
+  text-align: center;
+}
+.name-input:focus { outline: none; border-color: var(--accent); }
+
+/* modal de evento */
+.event-modal { border: 1px solid var(--gold); }
+.event-text { color: var(--muted); line-height: 1.5; }
+.event-opt-hint { display: block; font-size: .75rem; font-weight: 400; opacity: .75; margin-top: 3px; }
+
+/* resumo offline */
+.offline-body { text-align: left; margin: 14px 0; }
+.offline-row {
+  display: flex; justify-content: space-between; padding: 8px 4px;
+  border-bottom: 1px dashed var(--line); font-size: .95rem;
+}
+.offline-row b { color: var(--green); }
+
+/* barra de energia */
+.energy-bar { height: 6px; background: var(--panel2); border-radius: 8px; overflow: hidden; margin-top: 6px; }
+.energy-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #37d67a, #8fe0a8); transition: width .3s; }
+.energy-bar.low > span { background: linear-gradient(90deg, #ff5c6c, #ff9f45); }
+.xp-note { font-size: .72rem; color: var(--muted); margin-top: 4px; }
+
+/* cartão de personagem (clique na cena) */
+.worker-card {
+  position: fixed; z-index: 60;
+  background: var(--panel); border: 1px solid var(--accent);
+  border-radius: 12px; padding: 12px 14px; min-width: 200px;
+  box-shadow: var(--shadow); font-size: .85rem;
+  animation: pop .15s ease;
+}
+.worker-card h4 { margin: 0 0 4px; font-size: .95rem; }
+.worker-card .wc-sub { color: var(--muted); font-size: .76rem; margin-bottom: 6px; }
+.worker-card .wc-close {
+  position: absolute; top: 6px; right: 8px; cursor: pointer; color: var(--muted);
+  background: none; border: none; font-size: .9rem;
+}
+
+/* badge de fase e VIP */
+.phase-badge { font-size: .72rem; padding: 2px 8px; border-radius: 8px; background: rgba(79,140,255,.15); color: #9cc0ff; }
+.vip-badge { background: linear-gradient(135deg, #ffca4b, #ff9f45); color: #402c00; font-weight: 800; }
+
 /* atribuição de tarefas */
 .assign-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
 .assign-label { font-size: .74rem; color: var(--muted); white-space: nowrap; }

@@ -6,7 +6,9 @@
   <title>App Agency Tycoon — Simulador de Agência de Apps</title>
   <meta name="description" content="Jogo tycoon para empreendedores: construa e faça crescer sua agência de desenvolvimento de aplicativos." />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💻</text></svg>" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#141c2b" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
 </head>
 <body>
   <!-- ===== Tela inicial ===== -->
@@ -14,7 +16,9 @@
     <div class="start-card">
       <div class="start-logo">💻🏢</div>
       <h1>App Agency <span>Tycoon</span></h1>
-      <p class="tagline">Você é um empreendedor. Comece com uma mesa numa garagem e transforme sua agência de apps em um império de tecnologia.</p>
+      <p class="tagline">Você é um empreendedor. Comece com uma sala pequena e transforme sua agência de apps em um império de tecnologia.</p>
+      <input id="companyInput" class="name-input" type="text" maxlength="28"
+             placeholder="Nome da sua agência (ex.: Pixel Labs)" autocomplete="off" />
       <div class="start-actions">
         <button id="btnNewGame" class="btn btn-primary btn-lg">🚀 Novo Jogo</button>
         <button id="btnContinue" class="btn btn-ghost btn-lg" disabled>▶️ Continuar</button>
@@ -111,6 +115,10 @@
         <!-- Loja -->
         <div class="tab-pane" id="tab-shop">
           <div class="pane-section">
+            <h3>💡 Produtos próprios</h3>
+            <div id="productList" class="list"></div>
+          </div>
+          <div class="pane-section">
             <h3>Melhorias</h3>
             <div id="upgradeList" class="list"></div>
           </div>
@@ -126,7 +134,9 @@
   <div id="menuModal" class="overlay hidden">
     <div class="modal">
       <h2>⚙️ Menu</h2>
+      <input id="renameInput" class="name-input" type="text" maxlength="28" placeholder="Renomear agência" autocomplete="off" />
       <div class="modal-actions">
+        <button id="btnRename" class="btn">✏️ Renomear</button>
         <button id="btnResume" class="btn btn-primary">▶️ Voltar ao jogo</button>
         <button id="btnManualSave" class="btn">💾 Salvar</button>
         <button id="btnReset" class="btn btn-danger">🗑️ Reiniciar jogo</button>
@@ -134,6 +144,29 @@
       <p class="modal-hint">Reiniciar apaga o progresso salvo permanentemente.</p>
     </div>
   </div>
+
+  <!-- ===== Modal de evento (escolha) ===== -->
+  <div id="eventModal" class="overlay hidden">
+    <div class="modal event-modal">
+      <h2 id="eventTitle">Evento</h2>
+      <p id="eventText" class="event-text"></p>
+      <div id="eventOptions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- ===== Modal "enquanto você esteve fora" ===== -->
+  <div id="offlineModal" class="overlay hidden">
+    <div class="modal">
+      <h2>🌙 Enquanto você esteve fora...</h2>
+      <div id="offlineBody" class="offline-body"></div>
+      <div class="modal-actions">
+        <button id="btnOfflineOk" class="btn btn-primary">👍 Show!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Painel de personagem (clique na cena) ===== -->
+  <div id="workerCard" class="worker-card hidden"></div>
 
   <script src="js/data.js"></script>
   <script src="js/game.js"></script>
