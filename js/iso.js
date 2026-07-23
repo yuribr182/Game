@@ -447,7 +447,8 @@
   function frame(now) {
     let dt = (now - lastNow) / 1000; lastNow = now;
     if (dt > 0.1) dt = 0.1;
-    if (G.state) { syncEntities(); update(dt); draw(); }
+    const sc = G.timeScale == null ? 1 : G.timeScale;   // cena acompanha ⏸/2x/3x
+    if (G.state) { syncEntities(); update(dt * sc); draw(); }
     requestAnimationFrame(frame);
   }
 
@@ -599,6 +600,17 @@
   }
 
   function drawFloorDecor() {
+    // piso cerâmico quente na cozinha
+    tile(0, 0, layout.KW, layout.KH, 'rgba(196,164,110,.28)');
+    ctx.strokeStyle = 'rgba(0,0,0,.1)'; ctx.lineWidth = 1;
+    for (let gx = 0.55; gx < layout.KW; gx += 0.55) {
+      const a = iso(gx, 0), b = iso(gx, layout.KH);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    for (let gy = 0.55; gy < layout.KH; gy += 0.55) {
+      const a = iso(0, gy), b = iso(layout.KW, gy);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
     // tapetes
     (layout.rugs || []).forEach((r) => {
       tile(r.gx, r.gy, r.w, r.h, r.col);
@@ -798,8 +810,14 @@
     ctx.fillStyle = '#2b3242';
     ctx.fillRect(p.x - 6, baseY - 8, 4, 9 + legSwing);
     ctx.fillRect(p.x + 2, baseY - 8, 4, 9 - legSwing);
-    // corpo
+    // sapatos
+    ctx.fillStyle = '#1b1f28';
+    ctx.fillRect(p.x - 7, baseY - 0.5 + legSwing, 5.5, 2.6);
+    ctx.fillRect(p.x + 1.5, baseY - 0.5 - legSwing, 5.5, 2.6);
+    // corpo (com contorno leve)
     roundRect(p.x - 8, baseY - 24, 16, 17, 4, w.shirt);
+    ctx.strokeStyle = 'rgba(0,0,0,.22)'; ctx.lineWidth = 1;
+    ctx.stroke();
     // braço (digitando quando na mesa)
     if (w.state === 'work') {
       const type = Math.sin(t * 12 + w.phase) * 2;
@@ -811,8 +829,9 @@
       ctx.fillRect(p.x - 10, baseY - 22, 3, 10);
       ctx.fillRect(p.x + 7, baseY - 22, 3, 10);
     }
-    // cabeça
+    // cabeça (com contorno leve)
     ctx.beginPath(); ctx.arc(p.x, baseY - 30, 7, 0, Math.PI * 2); ctx.fillStyle = w.skin; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1; ctx.stroke();
     // cabelo
     ctx.beginPath(); ctx.arc(p.x, baseY - 32, 7, Math.PI, Math.PI * 2); ctx.fillStyle = w.hair; ctx.fill();
     ctx.fillRect(p.x - 7, baseY - 33, 14, 3);
@@ -898,15 +917,31 @@
     ctx.beginPath(); ctx.ellipse(p.x + sway - 4, p.y - 26, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
   }
 
+  // máquina de espresso profissional
   function drawCoffee(o) {
-    shadow(o.gx, o.gy, 10, 5);
-    cuboid(o.gx - 0.15, o.gy - 0.15, 0.32, 0.3, 30, '#c9ccd6', '#9aa0ae', '#7f8593');
+    shadow(o.gx, o.gy, 11, 5);
     const p = iso(o.gx, o.gy);
-    ctx.fillStyle = '#3a3f4c'; ctx.fillRect(p.x - 6, p.y - 22, 12, 8);
-    // vapor
+    // bancadinha/base
+    cuboid(o.gx - 0.17, o.gy - 0.16, 0.36, 0.32, 8, '#3a4150', '#2e3440', '#262b35');
+    // corpo cromado
+    cuboid(o.gx - 0.14, o.gy - 0.13, 0.3, 0.26, 26, '#d7dbe2', '#a7adb8', '#8b919d');
+    // topo escuro com moedor
+    cuboid(o.gx - 0.14, o.gy - 0.13, 0.3, 0.26, 30, '#3a3f4c', '#3a3f4c', '#2e323c');
+    ctx.fillStyle = '#20242c';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y - 32, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
+    // bico e xícara
+    ctx.fillStyle = '#3a3f4c'; ctx.fillRect(p.x - 1.5, p.y - 18, 3, 5);
+    ctx.fillStyle = '#eef1f6'; ctx.fillRect(p.x - 3, p.y - 11, 6, 4.5);
+    ctx.strokeStyle = '#eef1f6'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(p.x + 4, p.y - 9, 1.8, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+    // luzinha e botões
+    ctx.fillStyle = Math.sin(t * 2) > 0 ? '#37d67a' : '#255c3a';
+    ctx.beginPath(); ctx.arc(p.x - 7, p.y - 24, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c94f4f'; ctx.beginPath(); ctx.arc(p.x - 3, p.y - 24, 1.5, 0, Math.PI * 2); ctx.fill();
+    // vapor saindo da xícara
     const s = Math.sin(t * 3) * 2;
-    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(p.x, p.y - 32); ctx.quadraticCurveTo(p.x + s + 3, p.y - 40, p.x, p.y - 48); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y - 13); ctx.quadraticCurveTo(p.x + s + 3, p.y - 22, p.x, p.y - 30); ctx.stroke();
   }
 
   function drawTree(o) {

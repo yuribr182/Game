@@ -12,7 +12,11 @@ movimento contínuo.
 
 ⏱️ **Ritmo estilo The Sims**: 1 dia de jogo = **24 minutos reais**, com relógio
 no topo (Dia X · HHh) e ciclo dia/noite acompanhando o horário — manhã clara,
-noite com janelas acesas.
+noite com janelas acesas. Controle a velocidade com os botões **⏸ / 1x / 2x /
+3x** no topo (atalhos: espaço pausa; teclas 1, 2 e 3).
+
+🏆 A aba **📊 Empresa** traz as estatísticas completas da agência e **15
+conquistas** com recompensas em dinheiro e reputação.
 
 Você já começa com uma **sala montada com cara de escritório**: **3 mesas de
 desenvolvedor**, a **mesa da secretária** na recepção, uma **cozinha em cômodo

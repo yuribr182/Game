@@ -16,6 +16,8 @@
 
   let state = null;
   let offlineMode = false;   // simulando tempo fora: silencia eventos/toasts
+  let timeScale = 1;         // ⏸ 0 · 1x · 2x · 3x (estilo The Sims)
+  let achTimer = 0;          // checagem periódica de conquistas
   const listeners = { change: [], event: [], tick: [] };
 
   // ---------- utilidades ----------
@@ -57,12 +59,13 @@
       active: [],        // projetos em andamento
       available: [],     // contratos ofertados
       upgrades: [],      // ids comprados
+      achievements: [],  // conquistas desbloqueadas
       products: [],      // produtos próprios (renda passiva)
       effects: [],       // efeitos temporários de eventos { id, daysLeft, prod }
       pendingEvent: null,// evento aguardando escolha do jogador
       contractTimer: 0,
       salaryTimer: 0,
-      stats: { completed: 0, earned: 0, failed: 0 },
+      stats: { completed: 0, earned: 0, failed: 0, hires: 0, promotions: 0 },
       muted: false,
       lastSeen: Date.now(),
       createdAt: Date.now(),
@@ -178,6 +181,7 @@
     e.role = pr.to;
     e.exp = 0;
     e.mood = { mult: 1.2, daysLeft: 4 };   // promovido = motivado
+    state.stats.promotions++;
     emit('event', { type: 'upgrade', msg: `🎓 ${e.name} promovido a ${toRole.name}!` });
     changed();
     return true;
@@ -301,6 +305,7 @@
     state.money -= role.hire;
     const e = newEmployee(roleId);
     state.employees.push(e);
+    state.stats.hires++;
     emit('event', { type: 'info', msg: `${role.emoji} ${e.name} contratado como ${role.name}!` });
     changed();
     return true;
@@ -417,6 +422,10 @@
       advanceDay();
     }
 
+    // conquistas: checagem periódica (pega progresso feito pelo tick)
+    achTimer += dt;
+    if (achTimer >= 5 && !offlineMode) { achTimer = 0; checkAchievements(); }
+
     // fluxo de novos contratos: um a cada ~1/3 de dia (marketing acelera)
     state.contractTimer -= dt;
     const flowBonus = upgradeEffect('contractFlow');
@@ -491,6 +500,8 @@
     if (state.pendingEvent && state.day - state.pendingEvent.day >= 3) {
       resolveEvent(state.pendingEvent.defaultOption);
     }
+
+    checkAchievements();
   }
 
   // ---------- eventos aleatórios ----------
@@ -607,9 +618,33 @@
     return true;
   }
 
+  // ---------- conquistas ----------
+  function checkAchievements() {
+    if (!state) return;
+    D.ACHIEVEMENTS.forEach((a) => {
+      if (state.achievements.includes(a.id)) return;
+      let ok = false;
+      try { ok = a.cond(state); } catch (e) {}
+      if (!ok) return;
+      state.achievements.push(a.id);
+      const parts = [];
+      if (a.reward) {
+        if (a.reward.money) { state.money += a.reward.money; parts.push(`+R$ ${fmt(a.reward.money)}`); }
+        if (a.reward.rep) { state.rep += a.reward.rep; parts.push(`+${a.reward.rep} ⭐`); }
+      }
+      emit('event', { type: 'achieve', msg: `🏆 Conquista: ${a.emoji} ${a.name}! ${parts.join(' · ')}` });
+    });
+  }
+
+  // ---------- velocidade do tempo ----------
+  function setTimeScale(x) {
+    timeScale = [0, 1, 2, 3].includes(x) ? x : 1;
+    emit('change', state);
+  }
+
   // ---------- persistência ----------
   let changeQueued = false;
-  function changed() { emit('change', state); save(); }
+  function changed() { checkAchievements(); emit('change', state); save(); }
   function changedThrottled() {
     if (changeQueued) return;
     changeQueued = true;
@@ -631,6 +666,10 @@
   function migrate(s) {
     const base = freshState();
     s = Object.assign(base, s);
+    // campos novos com defaults (independente de versão)
+    s.achievements = s.achievements || [];
+    s.stats.hires = s.stats.hires || 0;
+    s.stats.promotions = s.stats.promotions || 0;
     if (!s.v || s.v < 2) {
       s.employees.forEach((e) => {
         if (!e.name) e.name = pick(D.FIRST_NAMES);
@@ -736,6 +775,8 @@
     tick, autoSaveTick,
     newGame, load, hasSave, reset, save,
     get state() { return state; },
+    get timeScale() { return timeScale; },
+    setTimeScale,
     // getters
     tier, maxDesks, projectSlots, deskCost, production, employeesSeated,
     contractValueMult, repMultiplier, projectRates, assignedCount,

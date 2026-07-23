@@ -194,9 +194,29 @@
 
     // ---- REUNIÃO / TRABALHO ----
     meetingTable(g, gx, gy) {
+      const ctx = g.ctx;
       g.shadow(gx + 0.7, gy + 0.35, 34, 14);
       g.box(gx, gy, 1.4, 0.7, 15, '#c9d0dc', STEEL[1], STEEL[2]);
-      g.box(gx, gy, 1.4, 0.7, 17, '#3a4150', '#3a4150', '#3a4150'); // tampo escuro
+      g.box(gx, gy, 1.4, 0.7, 17, '#3a4150', '#343a48', '#2c313d'); // tampo escuro
+      // laptops abertos (tela + teclado)
+      [[0.3, 0.22], [1.0, 0.45]].forEach(([dx, dy]) => {
+        const l = g.corner(gx + dx, gy + dy, 17);
+        g.roundRect(l.x - 7, l.y - 3, 14, 6, 1.5, '#4a5162');       // base/teclado
+        g.roundRect(l.x - 7, l.y - 13, 14, 10, 1.5, '#20242e');     // tela
+        ctx.fillStyle = 'rgba(120,180,255,.5)';
+        ctx.fillRect(l.x - 5.5, l.y - 11.5, 11, 7);
+      });
+      // papéis e caneta no centro
+      const pp = g.corner(gx + 0.68, gy + 0.3, 17);
+      ctx.save(); ctx.translate(pp.x, pp.y); ctx.scale(1, 0.55); ctx.rotate(-0.15);
+      ctx.fillStyle = '#e6e9f0'; ctx.fillRect(-6, -8, 12, 16);
+      ctx.fillStyle = '#eef1f6'; ctx.fillRect(-5, -9, 12, 16);
+      ctx.restore();
+      ctx.strokeStyle = '#4f8cff'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(pp.x + 6, pp.y + 2); ctx.lineTo(pp.x + 11, pp.y + 4); ctx.stroke();
+      // cafezinho
+      const cf = g.corner(gx + 0.42, gy + 0.52, 17);
+      ctx.fillStyle = '#c94f4f'; ctx.fillRect(cf.x - 2.5, cf.y - 5, 5, 5);
     },
     chair(g, gx, gy, opt) {
       const col = (opt && opt.col) || '#556071';

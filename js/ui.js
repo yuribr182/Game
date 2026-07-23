@@ -13,7 +13,8 @@
   function cache() {
     ['statMoney','statRep','statLevel','statProd','statDay','tierBadge','companyName',
      'officeCap','officeGrid','deskCost','activeCount','activeProjects','availableProjects',
-     'hireList','teamList','teamCount','upgradeList','productList'].forEach((id) => (el[id] = document.getElementById(id)));
+     'hireList','teamList','teamCount','upgradeList','productList',
+     'statsPanel','achList','achCount'].forEach((id) => (el[id] = document.getElementById(id)));
   }
 
   const money = (n) => 'R$ ' + fmt(n);
@@ -290,6 +291,47 @@
     if (btn) btn.onclick = () => G.launchProduct();
   }
 
+  // ---------- Empresa: estatísticas + conquistas ----------
+  function renderCompany(s) {
+    if (!el.statsPanel) return;
+    const passiva = (s.products || []).reduce((sum, p) => sum + p.income, 0);
+    const need = D.xpForLevel(s.level);
+    const xpPct = Math.min(100, (s.xp / need) * 100);
+    const rows = [
+      ['📅 Dias de empresa', s.day],
+      ['✅ Apps entregues', s.stats.completed],
+      ['⌛ Prazos estourados', s.stats.failed],
+      ['💵 Total faturado', 'R$ ' + fmt(s.stats.earned)],
+      ['👥 Funcionários (contratações)', `${s.employees.length} (${s.stats.hires || 0})`],
+      ['🎓 Promoções concedidas', s.stats.promotions || 0],
+      ['📱 Produtos no mercado', (s.products || []).length],
+      passiva > 0 ? ['🪙 Renda passiva', 'R$ ' + fmt(passiva) + '/dia'] : null,
+      ['🏢 Escritório', `${G.tier().icon} ${G.tier().name} · ${s.desks} mesas`],
+    ].filter(Boolean);
+    el.statsPanel.innerHTML =
+      rows.map(([k, v]) => `<div class="stat-row"><span>${k}</span><b>${v}</b></div>`).join('') +
+      `<div class="stat-row"><span>🎯 Nível ${s.level}</span><b>${Math.floor(xpPct)}% p/ Nv ${s.level + 1}</b></div>
+       <div class="bar"><span style="width:${xpPct}%"></span></div>`;
+
+    const unlocked = s.achievements || [];
+    el.achCount.textContent = `${unlocked.length}/${D.ACHIEVEMENTS.length}`;
+    el.achList.innerHTML = D.ACHIEVEMENTS.map((a) => {
+      const has = unlocked.includes(a.id);
+      const rw = a.reward
+        ? [a.reward.money ? `+R$ ${fmt(a.reward.money)}` : '', a.reward.rep ? `+${a.reward.rep} ⭐` : '']
+            .filter(Boolean).join(' · ')
+        : '';
+      return `<div class="card ach-card ${has ? '' : 'locked'}">
+        <div class="ach-emoji">${has ? a.emoji : '🔒'}</div>
+        <div class="info">
+          <div class="card-title">${a.name} ${has ? '<span style="color:var(--green)">✔</span>' : ''}</div>
+          <div class="card-sub">${a.desc}</div>
+          ${rw ? `<div class="ach-reward">🎁 ${rw}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
   // ---------- render completo (mudanças estruturais) ----------
   function renderAll(s) {
     if (!s) return;
@@ -300,6 +342,7 @@
     renderTeam(s);
     renderShop(s);
     renderProducts(s);
+    renderCompany(s);
   }
 
   // ---------- render leve (a cada frame) ----------
@@ -318,7 +361,7 @@
       }
     });
     // quando o dia vira, prazos e contratos mudam -> render completo
-    if (s.day !== lastDay) { lastDay = s.day; renderAvailableProjects(s); renderOffice(s); renderProducts(s); }
+    if (s.day !== lastDay) { lastDay = s.day; renderAvailableProjects(s); renderOffice(s); renderProducts(s); renderCompany(s); }
     // quando a quantidade de projetos ativos muda, atualiza disponíveis (vagas)
     const sig = s.active.length + '/' + s.available.length;
     if (sig !== lastActiveSig) { lastActiveSig = sig; renderAvailableProjects(s); renderOffice(s); }

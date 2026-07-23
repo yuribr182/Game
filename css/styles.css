@@ -235,6 +235,31 @@ body {
 .member .info .name { font-weight: 700; font-size: .9rem; }
 .member .info .sub { color: var(--muted); font-size: .76rem; }
 
+/* controle de velocidade */
+.speed-group {
+  display: flex; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; overflow: hidden;
+}
+.speed-btn {
+  font: inherit; font-size: .8rem; font-weight: 700; color: var(--muted);
+  background: transparent; border: none; padding: 8px 10px; cursor: pointer;
+}
+.speed-btn:hover { color: var(--text); background: rgba(255,255,255,.05); }
+.speed-btn.active { color: #fff; background: var(--accent); }
+.speed-btn[data-speed="0"].active { background: var(--red); }
+
+/* estatísticas e conquistas */
+.stat-row {
+  display: flex; justify-content: space-between; padding: 7px 2px;
+  border-bottom: 1px dashed var(--line); font-size: .86rem;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-row b { color: var(--text); }
+.ach-card { display: flex; gap: 11px; align-items: center; }
+.ach-card .ach-emoji { font-size: 1.6rem; }
+.ach-card.locked { opacity: .45; filter: grayscale(.6); }
+.ach-reward { font-size: .74rem; color: var(--gold); margin-top: 2px; }
+
 /* input de nome */
 .name-input {
   width: 100%; box-sizing: border-box;

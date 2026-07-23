@@ -32,8 +32,8 @@
   }
 
   // ---------- eventos do jogo -> toasts ----------
-  const kindMap = { complete: 'good', level: 'gold', upgrade: 'gold', fail: 'bad', error: 'bad', warn: 'bad', info: '' };
-  const sfxMap = { complete: 'complete', level: 'level', upgrade: 'upgrade', fail: 'fail', warn: 'fail', error: 'error', info: 'hire' };
+  const kindMap = { complete: 'good', level: 'gold', upgrade: 'gold', achieve: 'gold', fail: 'bad', error: 'bad', warn: 'bad', info: '' };
+  const sfxMap = { complete: 'complete', level: 'level', upgrade: 'upgrade', achieve: 'level', fail: 'fail', warn: 'fail', error: 'error', info: 'hire' };
   G.on('event', (e) => {
     UI.toast(e.msg, kindMap[e.type] || '');
     if (window.Sfx && sfxMap[e.type]) Sfx.play(sfxMap[e.type]);
@@ -131,6 +131,25 @@
   // fechar modal clicando fora
   menuModal.addEventListener('click', (e) => { if (e.target === menuModal) menuModal.classList.add('hidden'); });
 
+  // ---------- velocidade do tempo (⏸/1x/2x/3x) ----------
+  function setSpeed(x) {
+    G.setTimeScale(x);
+    document.querySelectorAll('.speed-btn').forEach((b) =>
+      b.classList.toggle('active', Number(b.dataset.speed) === x));
+    if (window.Sfx) Sfx.play('click');
+  }
+  document.querySelectorAll('.speed-btn').forEach((b) => {
+    b.onclick = () => setSpeed(Number(b.dataset.speed));
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.target.matches('input, select, textarea')) return;
+    if (!G.state) return;
+    if (ev.code === 'Space') { ev.preventDefault(); setSpeed(G.timeScale === 0 ? 1 : 0); }
+    else if (ev.key === '1') setSpeed(1);
+    else if (ev.key === '2') setSpeed(2);
+    else if (ev.key === '3') setSpeed(3);
+  });
+
   // ---------- cartão de personagem (clique na cena) ----------
   const workerCard = $('#workerCard');
   function hideWorkerCard() { workerCard.classList.add('hidden'); }
@@ -193,7 +212,7 @@
     last = now;
     if (dt > 0.5) dt = 0.5; // evita saltos ao voltar de aba inativa
     if (G.state) {
-      G.tick(dt);
+      G.tick(dt * G.timeScale);   // ⏸ pausa · 2x/3x aceleram
       G.autoSaveTick(dt);
     }
     requestAnimationFrame(loop);

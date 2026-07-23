@@ -127,6 +127,26 @@
   const PRODUCT_NAMES = ['TaskZen', 'FitTrack', 'NotaFácil', 'PetCare+', 'Receitou', 'Grana App',
     'FocusTime', 'MapaAí', 'TreinoPro', 'MeuMercado', 'AgendaLivre', 'FotoMix', 'SomZone', 'VagaCerta'];
 
+  // ---- Conquistas ----
+  // cond recebe o estado e devolve true quando desbloqueia
+  const ACHIEVEMENTS = [
+    { id: 'first_project', emoji: '🚀', name: 'Primeira entrega', desc: 'Complete seu primeiro projeto.', reward: { money: 500 }, cond: (s) => s.stats.completed >= 1 },
+    { id: 'ten_projects', emoji: '📦', name: 'Linha de produção', desc: 'Complete 10 projetos.', reward: { money: 3000 }, cond: (s) => s.stats.completed >= 10 },
+    { id: 'fifty_projects', emoji: '🏭', name: 'Fábrica de apps', desc: 'Complete 50 projetos.', reward: { money: 20000 }, cond: (s) => s.stats.completed >= 50 },
+    { id: 'first_hire', emoji: '🤝', name: 'Primeiro contratado', desc: 'Contrate um funcionário.', reward: { rep: 5 }, cond: (s) => (s.stats.hires || 0) >= 1 },
+    { id: 'team_five', emoji: '👥', name: 'Squad completo', desc: 'Tenha 5 funcionários ao mesmo tempo.', reward: { money: 2000 }, cond: (s) => s.employees.length >= 5 },
+    { id: 'team_ten', emoji: '🏟️', name: 'Agência de verdade', desc: 'Tenha 10 funcionários ao mesmo tempo.', reward: { money: 8000 }, cond: (s) => s.employees.length >= 10 },
+    { id: 'first_promo', emoji: '🎓', name: 'Plano de carreira', desc: 'Promova um funcionário.', reward: { rep: 8 }, cond: (s) => (s.stats.promotions || 0) >= 1 },
+    { id: 'first_product', emoji: '💡', name: 'Empreendedor nato', desc: 'Lance um produto próprio.', reward: { rep: 10 }, cond: (s) => (s.products || []).length >= 1 },
+    { id: 'three_products', emoji: '🧪', name: 'Portfólio diversificado', desc: 'Tenha 3 produtos no mercado.', reward: { money: 15000 }, cond: (s) => (s.products || []).length >= 3 },
+    { id: 'rep_100', emoji: '⭐', name: 'Conhecidos na cidade', desc: 'Alcance 100 de reputação.', reward: { money: 5000 }, cond: (s) => s.rep >= 100 },
+    { id: 'rep_500', emoji: '🌟', name: 'Referência nacional', desc: 'Alcance 500 de reputação.', reward: { money: 30000 }, cond: (s) => s.rep >= 500 },
+    { id: 'earned_100k', emoji: '💰', name: 'Primeiros 100 mil', desc: 'Fature R$ 100.000 acumulados.', reward: { rep: 20 }, cond: (s) => s.stats.earned >= 100000 },
+    { id: 'tier_2', emoji: '🏢', name: 'Subindo na vida', desc: 'Expanda até o Andar próprio.', reward: { money: 5000 }, cond: (s) => s.tier >= 2 },
+    { id: 'tier_5', emoji: '🌆', name: 'Campus Tech', desc: 'Alcance o maior escritório do jogo.', reward: { rep: 100 }, cond: (s) => s.tier >= 5 },
+    { id: 'level_5', emoji: '🎯', name: 'Empresa nível 5', desc: 'Alcance o nível 5 da empresa.', reward: { money: 4000 }, cond: (s) => s.level >= 5 },
+  ];
+
   window.DATA = { TIERS, ROLES, UPGRADES, CLIENTS, PROJECT_TYPES, xpForLevel,
-    FIRST_NAMES, PHASES, phaseFor, PROMOTIONS, EVENTS, PRODUCT_NAMES };
+    FIRST_NAMES, PHASES, phaseFor, PROMOTIONS, EVENTS, PRODUCT_NAMES, ACHIEVEMENTS };
 })();
