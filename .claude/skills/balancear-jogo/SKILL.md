@@ -1,4 +1,4 @@
----
+﻿---
 name: balancear-jogo
 description: Ajustar o balanceamento do App Agency Tycoon (economia, ritmo, dificuldade). Use quando o pedido envolver deixar o jogo mais fácil/difícil/rápido/lento, ajustar salários, preços, recompensas, energia, eventos ou prazos.
 ---
@@ -10,7 +10,7 @@ antes/depois.
 
 ## Onde ficam os números
 
-- `js/data.js`
+- `src/core/data.ts`
   - `TIERS`: mesas, slots de projeto, custo e reputação para expandir
   - `ROLES`: velocidade (**pts/DIA**), custo de contratação, salário/dia
   - `UPGRADES`: preços e efeitos (`prodMult`, `repMult`, `contractValue`, `contractFlow`)

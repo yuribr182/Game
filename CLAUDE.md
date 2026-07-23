@@ -22,7 +22,7 @@ Código legado (IIFEs em `window.*`, carregados em ordem por `src/main.ts`):
 
 | Arquivo | Papel | Destino no PRD |
 |---|---|---|
-| `js/data.js` | **Todo o balanceamento**: tiers, cargos (pts/DIA), upgrades, contratos, fases, eventos, produtos, conquistas, rivais | `src/core/data.ts` (F1) |
+| `src/core/data.ts` | **Todo o balanceamento**: tiers, cargos (pts/DIA), upgrades, contratos, fases, eventos, produtos, conquistas, rivais (✔ portado, tipado; exposto como `window.DATA` via `src/data-shim.ts`) | concluído (F1) |
 | `js/game.js` | Motor puro (sem DOM): estado, tick, economia, energia, eventos, offline, save v3 + migração | `src/core/` (F1) |
 | `js/audio.js` | SFX e ambiente por WebAudio (sem arquivos de áudio) | `src/audio/` (F5) |
 | `js/props.js` | Arte procedural: móveis isométricos (`Props.draw.*`) | `src/render/sprites/` (F2/F4) |
@@ -66,7 +66,7 @@ mais preciso bump de cache). Estáticos ficam em `public/`.
 ## Onde mexer para tarefas comuns
 
 - Continuar a migração (fases F1–F5) → **`docs/PRD.md`** (roadmap + prompt executável).
-- Balancear economia/ritmo → `js/data.js` (até F1 mover para `src/core/data.ts`).
+- Balancear economia/ritmo → `src/core/data.ts` (tipado; valores em pts/DIA).
 - Novo móvel/decoração → skill `novo-movel` (`.claude/skills/novo-movel/`).
 - Novo evento aleatório → `EVENTS` em `data` + `triggerRandomEvent`/`resolveEvent`.
 - Nova conquista → `ACHIEVEMENTS` em `data` (só isso; o motor checa sozinho).

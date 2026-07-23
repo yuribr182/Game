@@ -212,7 +212,7 @@ descritivo e atualize a tabela de status do roadmap no PRD (marque a fase).
 
 ### Status do roadmap
 - [x] F0 — Fundação (concluída em 2026-07-23: Vite+TS+ESLint+Prettier+Vitest, PWA via vite-plugin-pwa, CI buildando e publicando `dist/`, 9 testes do motor, bug de migração de save v1 corrigido)
-- [ ] F1 — Core tipado
+- [ ] F1 — Core tipado (em andamento: `core/data.ts` portado e tipado, `js/data.js` removido; falta portar `game.js` para `core/`)
 - [ ] F2 — Cena Pixi (paridade)
 - [ ] F3 — Personagens 2.0
 - [ ] F4 — Texturas & FX

@@ -1,4 +1,4 @@
----
+﻿---
 name: novo-movel
 description: Adicionar um novo móvel, objeto ou decoração à cena isométrica do App Agency Tycoon. Use quando o pedido for criar/melhorar mobília, itens do escritório ou decorações compráveis na loja.
 ---
@@ -20,7 +20,7 @@ arte que desenha com o toolkit `g`.
    `F.push({ type: 'meuItem', gx, gy })` na zona certa (cozinha, lounge,
    recepção, reunião). Cuidado para não sobrepor mesas (zona de trabalho começa
    em `WX0/WY0`) nem o cômodo da cozinha (`KW × KH`).
-3. **Se for decoração comprável**: adicione em `UPGRADES` (`js/data.js`) com
+3. **Se for decoração comprável**: adicione em `UPGRADES` (`src/core/data.ts`) com
    `decor: true` e um efeito pequeno (ex.: `prodMult: 0.06`), e condicione o
    `F.push` a `upg.includes('id')` como pufes/fliperama/sinuca.
 4. **Testar**: screenshot headless com zoom no objeto (padrão do projeto) e

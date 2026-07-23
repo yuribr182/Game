@@ -4,12 +4,12 @@
    IIFEs que se comunicam por window.* — a ORDEM dos imports
    abaixo reproduz a ordem antiga das tags <script>.
    Conforme as fases avançam, cada import vira módulo TS:
-     data.js  -> core/data.ts      (F1)
+     data.js  -> core/data.ts      (F1 ✔ — via data-shim.ts)
      game.js  -> core/engine.ts    (F1)
      iso.js/props.js -> render/ (Pixi)  (F2-F4)
      ui.js/main.js/audio.js -> ui/, audio/ (F5)
    =========================================================== */
-import '../js/data.js';
+import './data-shim'; // core/data.ts tipado -> window.DATA (antes do game.js!)
 import '../js/game.js';
 import '../js/audio.js';
 import '../js/props.js';

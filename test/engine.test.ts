@@ -21,9 +21,9 @@ beforeAll(async () => {
     removeItem: (k: string) => void store.delete(k),
   };
   g.requestAnimationFrame = (fn: () => void) => setTimeout(fn, 0);
-  await import('../js/data.js');
+  DATA = (await import('../src/core/data')).DATA;
+  g.DATA = DATA; // shim: game.js legado lê window.DATA
   await import('../js/game.js');
-  DATA = g.DATA;
   G = g.Game;
 });
 
