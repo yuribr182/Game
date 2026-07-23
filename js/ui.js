@@ -52,10 +52,13 @@
     if (s.active.length === 0) {
       el.activeProjects.innerHTML = `<div class="empty-msg">Nenhum projeto em andamento.<br>Aceite um contrato abaixo 👇</div>`;
     } else {
+      const rates = G.projectRates();
       el.activeProjects.innerHTML = s.active.map((p) => {
         const pct = Math.min(100, (p.done / p.work) * 100);
         const dpct = (p.daysLeft / p.deadline) * 100;
         const warn = p.daysLeft <= 3;
+        const rate = rates[p.uid] || 0;
+        const pinned = G.assignedCount(p.uid);
         return `<div class="card">
           <div class="card-top">
             <div>
@@ -67,6 +70,8 @@
           <div class="bar ${warn ? 'warn' : ''}"><span style="width:${pct}%"></span></div>
           <div class="card-meta">
             <span>${Math.floor(p.done)}/${p.work} pts</span>
+            <span>⚡ ${(Math.round(rate * 10) / 10)}/s</span>
+            <span>👥 ${pinned > 0 ? pinned + ' fixo' + (pinned > 1 ? 's' : '') : 'auto'}</span>
             <span class="reward">R$ ${fmt(p.reward)}</span>
             <span class="rep">+${p.rep} ⭐</span>
           </div>
@@ -153,6 +158,8 @@
       el.teamList.innerHTML = s.employees.map((e, i) => {
         const role = D.ROLES.find((r) => r.id === e.role);
         const seated = i < s.desks;
+        const opts = s.active.map((p) =>
+          `<option value="${p.uid}" ${e.assign === p.uid ? 'selected' : ''}>${p.emoji} ${p.name} — ${p.client}</option>`).join('');
         return `<div class="card">
           <div class="member">
             <div class="avatar">${role.emoji}</div>
@@ -161,6 +168,13 @@
               <div class="sub">⚡ ${role.speed}/s · R$ ${fmt(role.salary)}/dia</div>
             </div>
             <button class="btn btn-danger btn-mini" data-fire="${e.uid}">Demitir</button>
+          </div>
+          <div class="assign-row">
+            <span class="assign-label">🎯 Tarefa</span>
+            <select class="assign-select" data-assign="${e.uid}">
+              <option value="">Auto (divide entre projetos)</option>
+              ${opts}
+            </select>
           </div>
         </div>`;
       }).join('');

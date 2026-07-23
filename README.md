@@ -10,9 +10,30 @@ brilhando, um robô aspirador patrulha, entregas de apps deslizam até a porta,
 carros passam na rua e o letreiro neon exibe o nome da empresa — tudo em
 movimento contínuo.
 
-Você já começa com uma **sala montada com cara de escritório**: cozinha (geladeira,
-fogão, bancada, microondas, mesa), lounge com sofá e TV, sala de reunião, uma
-**recepção com atendente** e **1 programador** trabalhando.
+Você já começa com uma **sala montada com cara de escritório**: **3 mesas de
+desenvolvedor**, a **mesa da secretária** na recepção, uma **cozinha em cômodo
+separado** (geladeira, fogão, pia, microondas, mesa de jantar e máquina de café),
+lounge com sofá e TV e sala de reunião. Funcionários **desocupados vão até a
+cozinha tomar café** — atravessando a porta, pegando a caneca e voltando.
+
+### Direcionamento de tarefas
+
+Na aba **Equipe**, cada funcionário tem um seletor **🎯 Tarefa**: deixe em
+*Auto* (a produção é dividida entre os projetos) ou **fixe-o num projeto
+específico** para priorizar uma entrega. Os cartões de projeto mostram a
+velocidade efetiva (⚡ pts/s) e quantos estão fixados.
+
+### Câmera
+
+- **Roda do mouse**: zoom (centrado no cursor)
+- **Arrastar**: mover a câmera
+- **Duplo clique**: reenquadrar
+
+### Cargos com visual próprio
+
+Júnior usa **boné**, sênior usa **óculos**, designer usa **boina**, QA usa
+**fones**, gerente usa **terno e gravata** e a secretária usa **headset** — dá
+para reconhecer a equipe só de olhar a cena.
 
 ### Pacote de arte
 
@@ -62,9 +83,10 @@ O progresso é **salvo automaticamente** no navegador (localStorage).
 index.html        # marcação e telas
 css/styles.css    # visual (tema escuro)
 js/data.js        # dados e balanceamento (tiers, cargos, upgrades, contratos)
-js/game.js        # motor: estado, regras, economia e loop
+js/game.js        # motor: estado, regras, economia, tarefas e loop
+js/audio.js       # efeitos sonoros gerados por WebAudio (sem arquivos)
 js/props.js       # pacote de arte: móveis/objetos isométricos (Canvas 2D)
-js/iso.js         # cena isométrica animada do escritório (Canvas 2D)
+js/iso.js         # cena isométrica animada (cozinha, rotas, câmera, cargos)
 js/ui.js          # renderização dos painéis (projetos, equipe, loja)
 js/main.js        # inicialização, eventos e game loop
 ```

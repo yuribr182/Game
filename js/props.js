@@ -153,6 +153,37 @@
         g.ctx.fillRect(c.x - 2, c.y + 6 + i * 6, 3, 3);
       }
     },
+    // ---- DECORAÇÕES DESBLOQUEÁVEIS ----
+    arcade(g, gx, gy) {
+      g.shadow(gx, gy, 11, 5);
+      g.box(gx - 0.18, gy - 0.16, 0.36, 0.32, 40, '#c94f8f', '#a03a72', '#822e5c');
+      const c = g.corner(gx, gy, 40);
+      // tela piscando
+      const fl = 0.5 + 0.4 * Math.abs(Math.sin(g.t * 5));
+      g.ctx.fillStyle = `rgba(120,220,255,${fl})`;
+      g.ctx.fillRect(c.x - 8, c.y + 6, 14, 10);
+      // botões
+      g.ctx.fillStyle = '#ffca4b'; g.ctx.beginPath(); g.ctx.arc(c.x - 4, c.y + 22, 2, 0, Math.PI * 2); g.ctx.fill();
+      g.ctx.fillStyle = '#37d67a'; g.ctx.beginPath(); g.ctx.arc(c.x + 2, c.y + 23, 2, 0, Math.PI * 2); g.ctx.fill();
+    },
+    poolTable(g, gx, gy) {
+      g.shadow(gx + 0.35, gy + 0.25, 22, 10);
+      g.box(gx, gy, 0.7, 0.5, 14, '#2e8b48', '#6f472e', '#5a3a25');
+      const c = g.corner(gx + 0.35, gy + 0.25, 14);
+      // bolas
+      [['#fff', -5, -2], ['#c94f4f', 3, 1], ['#ffca4b', -1, 3]].forEach(([col, dx, dy]) => {
+        g.ctx.fillStyle = col; g.ctx.beginPath(); g.ctx.arc(c.x + dx, c.y + dy, 2.2, 0, Math.PI * 2); g.ctx.fill();
+      });
+    },
+    pufe(g, gx, gy, opt) {
+      const col = (opt && opt.col) || '#ff9f45';
+      g.shadow(gx, gy, 9, 4);
+      const c = g.corner(gx, gy, 0);
+      g.ctx.fillStyle = g.shade(col, -0.18);
+      g.ctx.beginPath(); g.ctx.ellipse(c.x, c.y - 4, 11, 7, 0, 0, Math.PI * 2); g.ctx.fill();
+      g.ctx.fillStyle = col;
+      g.ctx.beginPath(); g.ctx.ellipse(c.x, c.y - 8, 10, 6, 0, 0, Math.PI * 2); g.ctx.fill();
+    },
     bookshelf(g, gx, gy) {
       g.shadow(gx, gy, 11, 5);
       g.box(gx - 0.16, gy - 0.12, 0.32, 0.22, 40, WOOD[0], WOOD[1], WOOD[2]);

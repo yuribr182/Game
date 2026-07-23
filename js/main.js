@@ -33,12 +33,20 @@
 
   // ---------- eventos do jogo -> toasts ----------
   const kindMap = { complete: 'good', level: 'gold', upgrade: 'gold', fail: 'bad', error: 'bad', warn: 'bad', info: '' };
+  const sfxMap = { complete: 'complete', level: 'level', upgrade: 'upgrade', fail: 'fail', warn: 'fail', error: 'error', info: 'hire' };
   G.on('event', (e) => {
     UI.toast(e.msg, kindMap[e.type] || '');
+    if (window.Sfx && sfxMap[e.type]) Sfx.play(sfxMap[e.type]);
     if (e.type === 'complete' && e.gain) window.IsoOffice.popMoney('+R$ ' + G.fmt(e.gain));
   });
   G.on('change', (s) => UI.renderAll(s));
   G.on('tick', (s) => UI.renderTick(s));
+
+  // ---------- direcionamento de tarefas (selects da equipe) ----------
+  document.addEventListener('change', (ev) => {
+    const sel = ev.target.closest('[data-assign]');
+    if (sel) { G.assignEmployee(sel.dataset.assign, sel.value || null); if (window.Sfx) Sfx.play('click'); }
+  });
 
   // ---------- delegação de cliques ----------
   document.addEventListener('click', (ev) => {

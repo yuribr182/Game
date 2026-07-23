@@ -14,6 +14,8 @@
 
   let canvas, ctx, dpr = 1;
   let cam = { scale: 1, ox: 0, oy: 0 };
+  let fit = { scale: 1, ox: 0, oy: 0 };   // enquadramento automático (referência p/ zoom)
+  let dragging = null;                     // estado do arrastar da câmera
   let layout = null;         // { W, H, desks:[{gx,gy}] , perRow }
   let workers = [];          // personagens (funcionários)
   let npcs = [];             // NPCs decorativos (atendente, cliente)
@@ -22,12 +24,22 @@
   let cars = [];             // carros na rua
   let robot = null;          // robô patrulheiro
   let particles = [];        // fumacinha / faíscas
-  let lastTier = -1, lastDesks = -1, lastEmp = -1;
+  let lastTier = -1, lastDesks = -1, lastEmp = -1, lastDecorSig = '';
   let t = 0, lastNow = 0;
   let running = false;
   let plusPad = null;        // posição do pad "+" clicável (raw screen)
 
   const SHIRTS = ['#4f8cff', '#37d67a', '#ffca4b', '#ff5c6c', '#7c5cff', '#ff9f45', '#28c0d6', '#e05fb0'];
+  // visual por cargo: cor da camisa + acessório
+  const ROLE_STYLE = {
+    junior:   { shirt: '#4f8cff', acc: 'cap' },
+    pleno:    { shirt: '#37d67a', acc: null },
+    senior:   { shirt: '#ffca4b', acc: 'glasses' },
+    designer: { shirt: '#e05fb0', acc: 'beret' },
+    qa:       { shirt: '#28c0d6', acc: 'phones' },
+    manager:  { shirt: '#2f3a4d', acc: 'tie' },
+    atendente:{ shirt: '#7c5cff', acc: 'headset' },
+  };
   const SKINS = ['#f2c49b', '#e0a878', '#c68642', '#8d5524', '#ffd9b3'];
   const HAIRS = ['#2b2118', '#4a342a', '#111', '#6b4a2b', '#d9c27a', '#7a3b2b'];
 
@@ -64,7 +76,13 @@
     ctx = canvas.getContext('2d');
     buildTK();
     window.addEventListener('resize', resize);
-    canvas.addEventListener('click', onClick);
+    // câmera: zoom (roda), arrastar (mouse/touch), duplo clique = enquadrar
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', () => (dragging = null));
+    canvas.addEventListener('dblclick', () => { cam.scale = fit.scale; cam.ox = fit.ox; cam.oy = fit.oy; });
     resize();
     if (!running) { running = true; lastNow = performance.now(); requestAnimationFrame(frame); }
   }
@@ -85,9 +103,9 @@
     const perRow = Math.min(5, Math.max(2, Math.ceil(Math.sqrt(max))));
     const rows = Math.ceil(max / perRow);
     const DX = 1.45, DY = 1.7;
-    // zona de trabalho deslocada: margem esquerda p/ cozinha+lounge,
-    // margem direita/frente p/ recepção+reunião
-    const WX0 = 2.4, WY0 = 2.1;
+    // zona de trabalho deslocada: cozinha (cômodo) + lounge à esquerda,
+    // recepção+reunião à direita/frente
+    const WX0 = 3.0, WY0 = 2.1;
     const desks = [];
     for (let i = 0; i < max; i++) {
       const gx = WX0 + (i % perRow) * DX;
@@ -99,23 +117,45 @@
     layout = { W, H, desks, perRow, max };
 
     layout.door = { gx: W - 0.9, gy: H - 0.1 };
-    layout.coffee = { gx: 1.5, gy: 0.55 };          // na cozinha
+
+    // ---- COZINHA: cômodo separado no canto noroeste ----
+    const KW = 2.35, KH = 2.65;               // dimensões do cômodo
+    layout.KW = KW; layout.KH = KH;
+    layout.doorIn = { gx: KW - 0.4, gy: 1.85 };  // waypoint dentro da porta
+    layout.doorOut = { gx: KW + 0.45, gy: 1.85 }; // waypoint fora da porta
+    layout.coffee = { gx: 1.85, gy: 0.5 };        // máquina de café na cozinha
+    // paredes internas (meia-altura), com vão de porta na parede leste
+    const seg = (gx, gy, sx, sy) => ({ gx, gy, sx, sy });
+    layout.kwalls = [
+      seg(KW, 0, 0.1, 0.8), seg(KW, 0.8, 0.1, 0.65),      // leste, acima da porta
+      seg(KW, 2.25, 0.1, KH - 2.25 + 0.1),                 // leste, abaixo da porta
+      seg(0, KH, 0.85, 0.1), seg(0.85, KH, 0.8, 0.1), seg(1.65, KH, KW - 1.65 + 0.1, 0.1), // sul
+    ];
 
     // ---- MÓVEIS (o pacote de arte) por zona ----
     const F = [];
-    // COZINHA (fundo-esquerda / norte-oeste)
+    // COZINHA (dentro do cômodo)
     F.push({ type: 'fridge', gx: 0.25, gy: 0.3 });
     F.push({ type: 'stove', gx: 0.3, gy: 1.05 });
     F.push({ type: 'sink', gx: 0.3, gy: 1.7 });
-    F.push({ type: 'microwave', gx: 1.15, gy: 0.35 });
-    F.push({ type: 'diningTable', gx: 1.5, gy: 1.35 });
-    F.push({ type: 'stool', gx: 1.35, gy: 1.15, col: '#e0a54b' });
-    F.push({ type: 'stool', gx: 2.15, gy: 1.75, col: '#c94f4f' });
+    F.push({ type: 'microwave', gx: 1.1, gy: 0.35 });
+    F.push({ type: 'diningTable', gx: 1.3, gy: 1.5 });
+    F.push({ type: 'stool', gx: 1.15, gy: 1.3, col: '#e0a54b' });
+    F.push({ type: 'stool', gx: 1.95, gy: 1.95, col: '#c94f4f' });
     // LOUNGE (frente-esquerda / sul-oeste)
     F.push({ type: 'sofa', gx: 0.4, gy: H - 1.6, col: '#3f6fd6' });
     F.push({ type: 'coffeeTable', gx: 0.55, gy: H - 0.95 });
     F.push({ type: 'tv', gx: 0.25, gy: H - 2.4 });
     F.push({ type: 'plantBig', gx: 1.5, gy: H - 0.5 });
+    // decorações desbloqueáveis (loja)
+    const upg = s.upgrades || [];
+    if (upg.includes('pufes')) {
+      F.push({ type: 'pufe', gx: 1.85, gy: H - 1.15, col: '#ff9f45' });
+      F.push({ type: 'pufe', gx: 2.15, gy: H - 0.8, col: '#37d67a' });
+      F.push({ type: 'pufe', gx: 1.7, gy: H - 0.65, col: '#4f8cff' });
+    }
+    if (upg.includes('arcade')) F.push({ type: 'arcade', gx: 0.35, gy: H - 3.1 });
+    if (upg.includes('sinuca')) F.push({ type: 'poolTable', gx: 2.7, gy: H - 1.5 });
     // RECEPÇÃO (frente-direita, perto da porta)
     layout.reception = { gx: W - 2.2, gy: H - 1.7 };
     F.push({ type: 'reception', gx: W - 2.2, gy: H - 1.7 });
@@ -129,7 +169,7 @@
     // EQUIPAMENTOS
     F.push({ type: 'serverRack', gx: 0.35, gy: H * 0.5 });
     F.push({ type: 'waterCooler', gx: W - 0.5, gy: H * 0.5 });
-    F.push({ type: 'printer', gx: WX0 - 0.7, gy: WY0 + 0.4 });
+    F.push({ type: 'printer', gx: WX0 - 0.55, gy: WY0 + 1.9 });
     F.push({ type: 'bookshelf', gx: W - 0.4, gy: 2.4 });
     layout.furniture = F;
 
@@ -167,25 +207,27 @@
     pts.forEach((p) => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); });
     minY -= 78;  // altura das paredes
     maxY += 34;  // personagens
-    const cw = canvas.width, ch = canvas.height;
+    const cw = canvas.width / dpr, ch = canvas.height / dpr;
     const contentW = (maxX - minX), contentH = (maxY - minY);
     const scale = Math.min(cw / contentW, ch / contentH) * 0.96;
-    cam.scale = scale;
-    cam.ox = (cw - contentW * scale) / 2 - minX * scale;
-    cam.oy = (ch - contentH * scale) / 2 - minY * scale;
+    fit.scale = scale;
+    fit.ox = (cw - contentW * scale) / 2 - minX * scale;
+    fit.oy = (ch - contentH * scale) / 2 - minY * scale;
+    cam.scale = fit.scale; cam.ox = fit.ox; cam.oy = fit.oy;
   }
 
   // ---------- sincroniza entidades com o estado ----------
   function syncEntities() {
     const s = G.state;
-    if (!layout || s.tier !== lastTier) { lastTier = s.tier; buildLayout(); workers = []; npcs = []; }
+    const decorSig = (s.upgrades || []).join(',');
+    if (!layout || s.tier !== lastTier) { lastTier = s.tier; lastDecorSig = decorSig; buildLayout(); workers = []; npcs = []; }
+    else if (decorSig !== lastDecorSig) { lastDecorSig = decorSig; buildLayout(); }
     const emp = Math.min(s.employees.length, s.desks);
 
     // NPCs decorativos: atendente (recepção) + cliente ocasional
     if (npcs.length === 0 && layout) {
       const r = layout.reception;
-      const att = makeWorker(-1, { gx: r.gx + 0.35, gy: r.gy - 0.25 });
-      att.shirt = '#7c5cff'; att.role = 'atendente';
+      const att = makeWorker(-1, { gx: r.gx + 0.35, gy: r.gy - 0.25 }, 'atendente');
       att.home = { gx: r.gx + 0.35, gy: r.gy - 0.25 };
       att.hx = att.home.gx; att.hy = att.home.gy; att.gx = att.hx; att.gy = att.hy;
       att.state = 'work'; att.desk = { gx: att.home.gx, gy: att.home.gy - 0.55 };
@@ -196,11 +238,20 @@
     while (workers.length < emp) {
       const i = workers.length;
       const d = layout.desks[i];
-      workers.push(makeWorker(i, d));
+      workers.push(makeWorker(i, d, s.employees[i].role));
     }
     while (workers.length > emp) workers.pop();
-    // reatribui mesa (caso layout mudou)
-    workers.forEach((w, i) => { w.desk = layout.desks[i]; if (w.state === 'work') { w.hx = w.desk.gx; w.hy = w.desk.gy + 0.55; } });
+    // reatribui mesa e cargo (caso layout ou equipe mudou)
+    workers.forEach((w, i) => {
+      w.desk = layout.desks[i];
+      const roleId = s.employees[i].role;
+      if (w.role !== roleId) {
+        w.role = roleId;
+        const st = ROLE_STYLE[roleId];
+        if (st) { w.shirt = st.shirt; w.acc = st.acc; }
+      }
+      if (w.state === 'work') { w.hx = w.desk.gx; w.hy = w.desk.gy + 0.55; w.path = []; }
+    });
 
     lastDesks = s.desks; lastEmp = emp;
 
@@ -215,16 +266,31 @@
     }
   }
 
-  function makeWorker(i, d) {
+  function makeWorker(i, d, roleId) {
+    const style = ROLE_STYLE[roleId] || { shirt: pick(SHIRTS), acc: null };
     return {
-      i, desk: d,
+      i, desk: d, role: roleId || null,
       gx: d.gx, gy: d.gy + 0.55,
-      hx: d.gx, hy: d.gy + 0.55,          // alvo atual
+      hx: d.gx, hy: d.gy + 0.55,          // waypoint atual
+      path: [],                            // waypoints restantes
       state: 'work', timer: rand(3, 10),
       phase: rand(0, Math.PI * 2),
-      shirt: pick(SHIRTS), skin: pick(SKINS), hair: pick(HAIRS),
+      shirt: style.shirt, acc: style.acc, skin: pick(SKINS), hair: pick(HAIRS),
       moving: false, dir: 1, sp: rand(1.1, 1.7),
+      mug: 0,                              // segurando caneca de café (segundos)
     };
+  }
+
+  // ---- roteamento: entra/sai da cozinha pela porta ----
+  function inKitchen(gx, gy) { return gx < layout.KW && gy < layout.KH; }
+  function routeTo(w, tx, ty) {
+    const from = inKitchen(w.gx, w.gy), to = inKitchen(tx, ty);
+    let pts;
+    if (from && !to) pts = [layout.doorIn, layout.doorOut, { gx: tx, gy: ty }];
+    else if (!from && to) pts = [layout.doorOut, layout.doorIn, { gx: tx, gy: ty }];
+    else pts = [{ gx: tx, gy: ty }];
+    w.path = pts.slice(1);
+    w.hx = pts[0].gx; w.hy = pts[0].gy;
   }
 
   // ---------- atualização ----------
@@ -233,28 +299,45 @@
     t += dt;
     const producing = s.active.length > 0 && G.production() > 0;
 
-    // trabalhadores
+    // trabalhadores (desocupados = sem projeto ativo -> vão à cozinha tomar café)
+    const idle = s.active.length === 0;
     workers.forEach((w) => {
       w.timer -= dt;
+      if (w.mug > 0) w.mug -= dt;
       if (w.state === 'work') {
-        // fica na mesa; de vez em quando levanta e passeia
+        // na mesa; desocupado levanta logo, ocupado só de vez em quando
         if (w.timer <= 0) {
-          const dest = pickDest();
-          w.hx = dest.gx; w.hy = dest.gy; w.state = 'walk'; w.timer = rand(2, 5);
-          w.errand = dest.errand;
+          const dest = pickDest(idle);
+          routeTo(w, dest.gx, dest.gy);
+          w.state = 'walk'; w.errand = dest.errand;
         }
       } else if (w.state === 'walk') {
         if (reached(w)) {
-          w.state = 'pause'; w.timer = rand(0.6, 2.2);
-          if (w.errand === 'coffee' && Math.random() < 0.6) w.timer += 1.2;
+          w.state = 'pause';
+          if (w.errand === 'coffee') {
+            w.mug = rand(6, 11);                       // pegou café: leva a caneca
+            w.timer = idle ? rand(3, 7) : rand(1.2, 2.6);
+          } else {
+            w.timer = idle ? rand(2.5, 6) : rand(0.6, 2.2);
+          }
         }
-      } else { // pause
+      } else if (w.state === 'pause') {
         if (w.timer <= 0) {
-          // volta pra mesa
-          w.hx = w.desk.gx; w.hy = w.desk.gy + 0.55; w.state = 'return'; w.timer = 6;
+          if (idle && Math.random() < 0.55) {
+            // continua vagando (cozinha/lounge) enquanto não há trabalho
+            const dest = pickDest(true);
+            routeTo(w, dest.gx, dest.gy);
+            w.state = 'walk'; w.errand = dest.errand;
+          } else {
+            routeTo(w, w.desk.gx, w.desk.gy + 0.55);
+            w.state = 'return';
+          }
         }
       }
-      if (w.state === 'return' && reached(w)) { w.state = 'work'; w.timer = rand(5, 13); }
+      if (w.state === 'return' && reached(w)) {
+        w.state = 'work';
+        w.timer = idle ? rand(1.5, 4) : rand(6, 14);
+      }
       stepToward(w, dt);
     });
 
@@ -262,12 +345,12 @@
     npcs.forEach((n) => {
       n.timer -= dt;
       if (n.state === 'work' && n.timer <= 0) {
-        n.hx = n.home.gx + rand(-0.6, 0.6); n.hy = n.home.gy + rand(-0.3, 0.6);
+        routeTo(n, n.home.gx + rand(-0.6, 0.6), n.home.gy + rand(-0.3, 0.6));
         n.state = 'walk'; n.timer = 3;
       } else if (n.state === 'walk' && reached(n)) {
         n.state = 'pause'; n.timer = rand(0.8, 2.5);
       } else if (n.state === 'pause' && n.timer <= 0) {
-        n.hx = n.home.gx; n.hy = n.home.gy; n.state = 'return'; n.timer = 4;
+        routeTo(n, n.home.gx, n.home.gy); n.state = 'return'; n.timer = 4;
       } else if (n.state === 'return' && reached(n)) {
         n.state = 'work'; n.timer = rand(4, 9);
       }
@@ -319,18 +402,29 @@
   }
   let spawnAcc = 0;
 
-  function pickDest() {
+  function pickDest(idle) {
     const r = Math.random();
-    if (r < 0.4) return { gx: layout.coffee.gx, gy: layout.coffee.gy + 0.5, errand: 'coffee' };
-    if (r < 0.7 && workers.length > 1) { const d = pick(layout.desks); return { gx: d.gx - 0.6, gy: d.gy + 0.5, errand: 'chat' }; }
-    return { gx: rand(0.6, layout.W - 0.6), gy: rand(0.8, layout.H - 0.8), errand: 'walk' };
+    if (idle) {
+      // desocupado: prioridade é a cozinha — café e mesa de jantar
+      if (r < 0.5) return { gx: layout.coffee.gx + rand(-0.15, 0.15), gy: layout.coffee.gy + rand(0.35, 0.6), errand: 'coffee' };
+      if (r < 0.78) return { gx: rand(0.9, 2.0), gy: rand(1.2, 2.2), errand: 'kitchen' };  // perto da mesa de jantar
+      return { gx: rand(0.5, 2.2), gy: layout.H - rand(0.7, 1.7), errand: 'lounge' };       // sofá/lounge
+    }
+    if (r < 0.35) return { gx: layout.coffee.gx, gy: layout.coffee.gy + 0.5, errand: 'coffee' };
+    if (r < 0.65 && workers.length > 1) { const d = pick(layout.desks); return { gx: d.gx - 0.6, gy: d.gy + 0.5, errand: 'chat' }; }
+    return { gx: rand(layout.KW + 0.5, layout.W - 0.6), gy: rand(0.8, layout.H - 0.8), errand: 'walk' };
   }
-  function reached(w) { return Math.hypot(w.hx - w.gx, w.hy - w.gy) < 0.06; }
+  // chegou ao destino final (sem waypoints pendentes)
+  function reached(w) { return w.path.length === 0 && Math.hypot(w.hx - w.gx, w.hy - w.gy) < 0.06; }
   function stepToward(w, dt) {
     const dx = w.hx - w.gx, dy = w.hy - w.gy, d = Math.hypot(dx, dy);
-    if (d < 0.02) { w.moving = false; return; }
+    if (d < 0.02) {
+      if (w.path.length) { const n = w.path.shift(); w.hx = n.gx; w.hy = n.gy; }
+      else w.moving = false;
+      return;
+    }
     const sp = w.sp * dt;
-    if (sp >= d) { w.gx = w.hx; w.gy = w.hy; w.moving = false; return; }
+    if (sp >= d) { w.gx = w.hx; w.gy = w.hy; return; }
     w.gx += (dx / d) * sp; w.gy += (dy / d) * sp; w.moving = true;
     w.dir = (dx - dy) >= 0 ? 1 : -1;
   }
@@ -397,6 +491,7 @@
     const ents = [];
     layout.desks.forEach((d, i) => ents.push({ d: d.gx + d.gy, kind: 'desk', o: d, idx: i }));
     layout.furniture.forEach((f) => ents.push({ d: f.gx + f.gy, kind: 'furn', o: f }));
+    layout.kwalls.forEach((wl) => ents.push({ d: wl.gx + wl.sx / 2 + wl.gy + wl.sy / 2, kind: 'wall', o: wl }));
     ents.push({ d: layout.coffee.gx + layout.coffee.gy, kind: 'coffee', o: layout.coffee });
     layout.trees.forEach((tr) => ents.push({ d: tr.gx + tr.gy, kind: 'tree', o: tr }));
     workers.forEach((w) => ents.push({ d: w.gx + w.gy + 0.01, kind: 'worker', o: w }));
@@ -410,6 +505,7 @@
     ents.forEach((e) => {
       if (e.kind === 'desk') drawDesk(e.o, e.idx);
       else if (e.kind === 'furn') prop(e.o.type, e.o.gx, e.o.gy, e.o);
+      else if (e.kind === 'wall') drawInnerWall(e.o);
       else if (e.kind === 'worker') drawWorker(e.o);
       else if (e.kind === 'coffee') drawCoffee(e.o);
       else if (e.kind === 'tree') drawTree(e.o);
@@ -568,6 +664,15 @@
     ctx.restore();
   }
 
+  // parede interna de meia altura (divisória da cozinha)
+  function drawInnerWall(wl) {
+    cuboid(wl.gx, wl.gy, wl.sx, wl.sy, 30, '#8a93a8', '#5d667c', '#4c5468');
+    // filete claro no topo
+    const a = iso(wl.gx, wl.gy), b = iso(wl.gx + wl.sx, wl.gy), c = iso(wl.gx + wl.sx, wl.gy + wl.sy), d2 = iso(wl.gx, wl.gy + wl.sy);
+    ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y - 30); ctx.lineTo(b.x, b.y - 30); ctx.lineTo(c.x, c.y - 30); ctx.lineTo(d2.x, d2.y - 30); ctx.closePath(); ctx.stroke();
+  }
+
   function shadow(gx, gy, rx, ry) {
     const p = iso(gx, gy);
     ctx.beginPath(); ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
@@ -620,6 +725,51 @@
     // cabelo
     ctx.beginPath(); ctx.arc(p.x, baseY - 32, 7, Math.PI, Math.PI * 2); ctx.fillStyle = w.hair; ctx.fill();
     ctx.fillRect(p.x - 7, baseY - 33, 14, 3);
+
+    // ---- acessório por cargo ----
+    const hy = baseY - 32;
+    if (w.acc === 'cap') {              // júnior: boné
+      ctx.fillStyle = '#e04f4f';
+      ctx.beginPath(); ctx.arc(p.x, hy, 7.4, Math.PI, Math.PI * 2); ctx.fill();
+      ctx.fillRect(p.x - 1, hy - 2, 10, 3);   // aba
+    } else if (w.acc === 'glasses') {   // sênior: óculos
+      ctx.strokeStyle = '#20242e'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(p.x - 3.4, baseY - 30, 2.6, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x + 3.4, baseY - 30, 2.6, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x - 1, baseY - 30); ctx.lineTo(p.x + 1, baseY - 30); ctx.stroke();
+    } else if (w.acc === 'beret') {     // designer: boina
+      ctx.fillStyle = '#8a4dbf';
+      ctx.beginPath(); ctx.ellipse(p.x - 2, hy - 2, 8, 4, -0.25, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x - 2, hy - 6, 1.6, 0, Math.PI * 2); ctx.fill();
+    } else if (w.acc === 'phones') {    // QA: fones
+      ctx.strokeStyle = '#20242e'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, hy + 1, 8, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+      ctx.fillStyle = '#20242e';
+      ctx.fillRect(p.x - 9.5, baseY - 32, 3.4, 5); ctx.fillRect(p.x + 6.1, baseY - 32, 3.4, 5);
+    } else if (w.acc === 'tie') {       // gerente: gravata
+      ctx.fillStyle = '#c94f4f';
+      ctx.beginPath(); ctx.moveTo(p.x, baseY - 24); ctx.lineTo(p.x + 2.4, baseY - 20);
+      ctx.lineTo(p.x, baseY - 12); ctx.lineTo(p.x - 2.4, baseY - 20); ctx.closePath(); ctx.fill();
+    } else if (w.acc === 'headset') {   // atendente: headset com microfone
+      ctx.strokeStyle = '#20242e'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, hy + 1, 8, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+      ctx.fillStyle = '#20242e'; ctx.fillRect(p.x + 6.1, baseY - 32, 3.2, 4.6);
+      ctx.beginPath(); ctx.moveTo(p.x + 7.5, baseY - 28); ctx.quadraticCurveTo(p.x + 6, baseY - 24, p.x + 2.5, baseY - 25); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x + 2.2, baseY - 25, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // ---- caneca de café (depois do intervalo) ----
+    if (w.mug > 0) {
+      const mx = p.x + (w.dir >= 0 ? 10 : -13), my = baseY - 16;
+      ctx.fillStyle = '#e8eef7'; ctx.fillRect(mx, my, 5.5, 6);
+      ctx.strokeStyle = '#e8eef7'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(mx + (w.dir >= 0 ? 6 : 0), my + 3, 2.2, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+      ctx.fillStyle = '#6f472e'; ctx.fillRect(mx + 1, my + 1, 3.5, 1.6);
+      // fumacinha
+      const sw = Math.sin(t * 4 + w.phase) * 1.5;
+      ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(mx + 3, my - 2); ctx.quadraticCurveTo(mx + 3 + sw, my - 6, mx + 3, my - 10); ctx.stroke();
+    }
   }
 
   function roundRect(x, y, w, h, r, fill) {
@@ -747,14 +897,41 @@
     return `rgb(${r},${g},${b})`;
   }
 
-  // ---------- clique: comprar mesa no pad "+" ----------
-  function onClick(ev) {
-    if (!plusPad) return;
+  // ---------- input da câmera + clique no pad "+" ----------
+  function localXY(ev) {
     const r = canvas.getBoundingClientRect();
-    const mx = (ev.clientX - r.left) * dpr, my = (ev.clientY - r.top) * dpr;
-    // converte para espaço "mundo cru" desfazendo a câmera
-    const wx = (mx - cam.ox * dpr) / (cam.scale * dpr);
-    const wy = (my - cam.oy * dpr) / (cam.scale * dpr);
+    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  }
+  function onWheel(ev) {
+    ev.preventDefault();
+    const m = localXY(ev);
+    const factor = Math.pow(1.0015, -ev.deltaY);
+    const ns = Math.max(fit.scale * 0.5, Math.min(fit.scale * 3.2, cam.scale * factor));
+    // mantém o ponto sob o cursor fixo
+    cam.ox = m.x - (m.x - cam.ox) * (ns / cam.scale);
+    cam.oy = m.y - (m.y - cam.oy) * (ns / cam.scale);
+    cam.scale = ns;
+  }
+  function onPointerDown(ev) {
+    const m = localXY(ev);
+    dragging = { sx: m.x, sy: m.y, ox: cam.ox, oy: cam.oy, moved: false };
+    canvas.setPointerCapture(ev.pointerId);
+  }
+  function onPointerMove(ev) {
+    if (!dragging) return;
+    const m = localXY(ev);
+    const dx = m.x - dragging.sx, dy = m.y - dragging.sy;
+    if (Math.hypot(dx, dy) > 5) dragging.moved = true;
+    if (dragging.moved) { cam.ox = dragging.ox + dx; cam.oy = dragging.oy + dy; }
+  }
+  function onPointerUp(ev) {
+    const wasDrag = dragging && dragging.moved;
+    dragging = null;
+    if (wasDrag) return;               // arrastou: não é clique
+    if (!plusPad) return;
+    const m = localXY(ev);
+    const wx = (m.x - cam.ox) / cam.scale;
+    const wy = (m.y - cam.oy) / cam.scale;
     const tx = plusPad.x + HW * 0.35, ty = plusPad.y + HH * 0.35;
     if (Math.hypot(wx - tx, wy - ty) < 34) G.buyDesk();
   }

@@ -37,8 +37,8 @@
       day: 1,
       dayProgress: 0,
       tier: 0,
-      desks: 3,          // já começa com um escritório montado
-      employees: [{ uid: nextId(), role: 'junior' }], // 1 programador de largada
+      desks: 3,          // 3 mesas de desenvolvedor (a secretária tem mesa própria)
+      employees: [{ uid: nextId(), role: 'junior', assign: null }], // 1 programador de largada
       active: [],        // projetos em andamento
       available: [],     // contratos ofertados
       upgrades: [],      // ids comprados
@@ -85,6 +85,42 @@
   }
 
   function production() { return baseProduction() * prodMultiplier(); }
+
+  // ---- direcionamento de tarefas ----
+  // Cada funcionário pode ser fixado num projeto (emp.assign = uid) ou ficar
+  // em "auto" (null): o pool auto é dividido igualmente entre os projetos.
+  function assignEmployee(empUid, projectUid) {
+    const emp = state.employees.find((e) => e.uid === empUid);
+    if (!emp) return false;
+    emp.assign = projectUid || null;
+    changed();
+    return true;
+  }
+
+  // produção efetiva de cada projeto ativo (pts/s), respeitando atribuições
+  function projectRates() {
+    const rates = {};
+    if (!state.active.length) return rates;
+    state.active.forEach((p) => (rates[p.uid] = 0));
+    const mult = prodMultiplier();
+    const capacity = Math.min(state.employees.length, state.desks);
+    let autoPool = 0;
+    for (let i = 0; i < capacity; i++) {
+      const e = state.employees[i];
+      const role = D.ROLES.find((r) => r.id === e.role);
+      if (!role) continue;
+      if (e.assign && rates[e.assign] !== undefined) rates[e.assign] += role.speed * mult;
+      else autoPool += role.speed * mult;
+    }
+    const share = autoPool / state.active.length;
+    state.active.forEach((p) => (rates[p.uid] += share));
+    return rates;
+  }
+
+  // conta funcionários fixados num projeto (para a UI)
+  function assignedCount(projectUid) {
+    return state.employees.filter((e) => e.assign === projectUid).length;
+  }
 
   function repMultiplier() {
     let m = 1 + upgradeEffect('repMult');
@@ -173,6 +209,10 @@
     emit('event', { type: 'complete', msg: `✅ ${p.name} entregue! +R$ ${fmt(gain)} · +${repGain} ⭐`, gain });
   }
 
+  function clearAssignments(projectUid) {
+    state.employees.forEach((e) => { if (e.assign === projectUid) e.assign = null; });
+  }
+
   function failProject(p) {
     const penalty = Math.max(1, Math.round(p.rep * 0.5));
     state.rep = Math.max(0, state.rep - penalty);
@@ -197,7 +237,7 @@
       return false;
     }
     state.money -= role.hire;
-    state.employees.push({ uid: nextId(), role: roleId });
+    state.employees.push({ uid: nextId(), role: roleId, assign: null });
     emit('event', { type: 'info', msg: `${role.emoji} ${role.name} contratado!` });
     changed();
     return true;
@@ -272,16 +312,16 @@
   function tick(dt) {
     if (!state) return;
 
-    // produção distribuída entre projetos ativos
-    const prod = production();
-    if (state.active.length > 0 && prod > 0) {
-      const share = (prod * dt) / state.active.length;
+    // produção por projeto (respeita o direcionamento de tarefas)
+    if (state.active.length > 0) {
+      const rates = projectRates();
       for (let i = state.active.length - 1; i >= 0; i--) {
         const p = state.active[i];
-        p.done += share;
+        p.done += (rates[p.uid] || 0) * dt;
         if (p.done >= p.work) {
           completeProject(p);
           state.active.splice(i, 1);
+          clearAssignments(p.uid);
         }
       }
     }
@@ -313,6 +353,7 @@
       if (p.daysLeft <= 0 && p.done < p.work) {
         failProject(p);
         state.active.splice(i, 1);
+        clearAssignments(p.uid);
       }
     }
     // prazos dos contratos disponíveis expiram lentamente
@@ -393,9 +434,10 @@
     get state() { return state; },
     // getters
     tier, maxDesks, projectSlots, deskCost, production, employeesSeated,
-    contractValueMult, repMultiplier,
+    contractValueMult, repMultiplier, projectRates, assignedCount,
     // ações
     acceptProject, declineProject, hire, fire, buyDesk, upgradeOffice, buyUpgrade,
+    assignEmployee,
     // helpers
     fmt,
     DAY_LENGTH,

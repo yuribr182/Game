@@ -37,6 +37,10 @@
     { id: 'brand', name: 'Marca reconhecida',   emoji: '🌟', cost: 22000,  effect: { repMult: 0.30, contractValue: 0.20 }, desc: '+30% reputação e +20% de valor.' },
     { id: 'ai',    name: 'Copilot de IA',       emoji: '🤖', cost: 45000,  effect: { prodMult: 0.40 }, desc: '+40% de produção. O futuro é agora.' },
     { id: 'cloud', name: 'Infra em nuvem',       emoji: '☁️', cost: 80000,  effect: { prodMult: 0.35, contractValue: 0.25 }, desc: '+35% produção e contratos maiores.' },
+    // decorações: aparecem na cena e dão bônus de "moral"
+    { id: 'pufes',  name: 'Pufes coloridos',     emoji: '🛋️', cost: 4000,   decor: true, effect: { prodMult: 0.06 }, desc: 'Decora o lounge. +6% de produção (moral).' },
+    { id: 'arcade', name: 'Fliperama retrô',     emoji: '🕹️', cost: 12000,  decor: true, effect: { prodMult: 0.10 }, desc: 'Fliperama no lounge. +10% de produção.' },
+    { id: 'sinuca', name: 'Mesa de sinuca',      emoji: '🎱', cost: 30000,  decor: true, effect: { prodMult: 0.12, repMult: 0.05 }, desc: 'Sinuca no lounge. +12% produção, +5% reputação.' },
   ];
 
   // ---- Geração de contratos ----

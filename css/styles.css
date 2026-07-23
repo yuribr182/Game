@@ -145,7 +145,8 @@ body {
   position: relative;
   background: radial-gradient(900px 500px at 50% -10%, #22304a 0%, #0d1420 75%);
 }
-#officeCanvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+#officeCanvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+#officeCanvas:active { cursor: grabbing; }
 .office-grid {
   display: grid;
   gap: 14px;
@@ -233,6 +234,16 @@ body {
 .member .info { flex: 1; }
 .member .info .name { font-weight: 700; font-size: .9rem; }
 .member .info .sub { color: var(--muted); font-size: .76rem; }
+
+/* atribuição de tarefas */
+.assign-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+.assign-label { font-size: .74rem; color: var(--muted); white-space: nowrap; }
+.assign-select {
+  flex: 1; font: inherit; font-size: .8rem; color: var(--text);
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 8px; cursor: pointer; min-width: 0;
+}
+.assign-select:focus { outline: none; border-color: var(--accent); }
 
 /* ---------- Toasts ---------- */
 .toasts {
