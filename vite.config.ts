@@ -17,6 +17,8 @@ export default defineConfig({
         // assume o lugar do service worker manual antigo imediatamente
         skipWaiting: true,
         clientsClaim: true,
+        // apaga os caches 'agency-tycoon-*' do SW manual antigo
+        importScripts: ['sw-limpeza.js'],
       },
     }),
   ],
