@@ -17,14 +17,14 @@
   ];
 
   // ---- Tipos de funcionário ----
-  // speed: pontos de trabalho por segundo; salary: custo por dia; hire: custo único
+  // speed: pontos de trabalho por DIA de jogo; salary: custo por dia; hire: custo único
   const ROLES = [
-    { id: 'junior',   name: 'Dev Júnior',   emoji: '🧑‍💻', speed: 1.0,  hire: 300,    salary: 40,   repReq: 0,   quality: 0.9, desc: 'Barato e disposto. Produção modesta.' },
-    { id: 'pleno',    name: 'Dev Pleno',    emoji: '👨‍💻', speed: 2.4,  hire: 1200,   salary: 130,  repReq: 25,  quality: 1.0, desc: 'Bom equilíbrio entre custo e produção.' },
-    { id: 'senior',   name: 'Dev Sênior',   emoji: '👩‍💻', speed: 5.0,  hire: 4500,   salary: 380,  repReq: 90,  quality: 1.15, desc: 'Produção alta e código de qualidade.' },
-    { id: 'designer', name: 'Designer UX',  emoji: '🎨', speed: 1.8,  hire: 2000,   salary: 180,  repReq: 60,  quality: 1.3,  boost: { quality: 0.06 }, desc: 'Melhora a qualidade e reputação de tudo.' },
-    { id: 'qa',       name: 'QA / Tester',  emoji: '🕵️', speed: 1.5,  hire: 1800,   salary: 150,  repReq: 70,  quality: 1.2,  boost: { rep: 0.08 }, desc: 'Reduz bugs e aumenta a reputação ganha.' },
-    { id: 'manager',  name: 'Gerente',      emoji: '🧑‍💼', speed: 0.5,  hire: 8000,   salary: 600,  repReq: 200, quality: 1.0, boost: { team: 0.10 }, desc: 'Aumenta a produção de toda a equipe em 10%.' },
+    { id: 'junior',   name: 'Dev Júnior',   emoji: '🧑‍💻', speed: 8,   hire: 300,    salary: 40,   repReq: 0,   quality: 0.9, desc: 'Barato e disposto. Produção modesta.' },
+    { id: 'pleno',    name: 'Dev Pleno',    emoji: '👨‍💻', speed: 20,  hire: 1200,   salary: 130,  repReq: 25,  quality: 1.0, desc: 'Bom equilíbrio entre custo e produção.' },
+    { id: 'senior',   name: 'Dev Sênior',   emoji: '👩‍💻', speed: 42,  hire: 4500,   salary: 380,  repReq: 90,  quality: 1.15, desc: 'Produção alta e código de qualidade.' },
+    { id: 'designer', name: 'Designer UX',  emoji: '🎨', speed: 15,  hire: 2000,   salary: 180,  repReq: 60,  quality: 1.3,  boost: { quality: 0.06 }, desc: 'Melhora a qualidade e reputação de tudo.' },
+    { id: 'qa',       name: 'QA / Tester',  emoji: '🕵️', speed: 13,  hire: 1800,   salary: 150,  repReq: 70,  quality: 1.2,  boost: { rep: 0.08 }, desc: 'Reduz bugs e aumenta a reputação ganha.' },
+    { id: 'manager',  name: 'Gerente',      emoji: '🧑‍💼', speed: 4,   hire: 8000,   salary: 600,  repReq: 200, quality: 1.0, boost: { team: 0.10 }, desc: 'Aumenta a produção de toda a equipe em 10%.' },
   ];
 
   // ---- Upgrades permanentes ----
@@ -88,10 +88,10 @@
   }
 
   // ---- Evolução de carreira (trilha dev) ----
-  // xp em "segundos produzindo"; custo é a taxa de promoção
+  // xp em DIAS de jogo trabalhando; custo é a taxa de promoção
   const PROMOTIONS = {
-    junior: { to: 'pleno', xp: 90, cost: 900 },
-    pleno: { to: 'senior', xp: 220, cost: 3300 },
+    junior: { to: 'pleno', xp: 8, cost: 900 },
+    pleno: { to: 'senior', xp: 20, cost: 3300 },
   };
 
   // ---- Eventos aleatórios ----
@@ -101,21 +101,21 @@
       title: '🤩 Cliente VIP!', text: 'Um cliente famoso quer um app com urgência. Contrato premium disponível!' },
     { id: 'midia', kind: 'instant', chance: 0.8,
       title: '📰 Saiu na mídia!', text: 'Sua agência foi destaque num portal de tecnologia.' },
-    { id: 'blackout', kind: 'instant', chance: 0.7,
+    { id: 'blackout', kind: 'instant', chance: 0.5,
       title: '🔌 Queda de energia!', text: 'Ficaram sem luz por um tempo. Produção reduzida hoje.' },
-    { id: 'bug', kind: 'choice', chance: 0.9,
+    { id: 'bug', kind: 'choice', chance: 0.7,
       title: '🐛 Bug em produção!', text: 'Um app entregue apresentou um bug grave. O cliente está furioso.',
       options: [
         { id: 'fix', label: '🔧 Corrigir agora', hint: 'Custa dinheiro, preserva a reputação' },
         { id: 'ignore', label: '🙈 Ignorar', hint: 'Grátis, mas a reputação sofre' },
       ] },
-    { id: 'raise', kind: 'choice', chance: 0.8,
-      title: '💼 Pedido de aumento', text: 'pede um aumento de 40% no salário.',
+    { id: 'raise', kind: 'choice', chance: 0.35,
+      title: '💼 Pedido de aumento', text: 'pede um aumento de 20% no salário.',
       options: [
         { id: 'accept', label: '🤝 Dar o aumento', hint: 'Salário sobe, funcionário motivado' },
         { id: 'deny', label: '❌ Recusar', hint: 'Risco de desmotivação (ou pedir demissão)' },
       ] },
-    { id: 'investor', kind: 'choice', chance: 0.6,
+    { id: 'investor', kind: 'choice', chance: 0.5,
       title: '🦈 Proposta de investidor', text: 'Um investidor oferece um aporte em troca de exposição da marca dele nos seus apps.',
       options: [
         { id: 'accept', label: '💰 Aceitar o aporte', hint: 'Dinheiro agora, um pouco de reputação depois' },

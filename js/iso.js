@@ -22,7 +22,6 @@
   let packages = [];         // entregas em movimento
   let pops = [];             // popups flutuantes (+R$)
   let cars = [];             // carros na rua
-  let robot = null;          // robô patrulheiro
   let particles = [];        // fumacinha / faíscas
   let lastTier = -1, lastDesks = -1, lastEmp = -1, lastDecorSig = '';
   let t = 0, lastNow = 0;
@@ -257,10 +256,6 @@
 
     lastDesks = s.desks; lastEmp = emp;
 
-    // robô patrulheiro (surge quando há equipe)
-    if (emp > 0 && !robot) robot = { gx: 0.5, gy: layout.H - 0.6, seg: 0, tp: 0, spin: 0 };
-    if (emp === 0) robot = null;
-
     // carros na rua (2 fixos)
     if (cars.length === 0 && layout) {
       cars.push({ gx: -2, gy: layout.H + 1.4, sp: 0.9, col: pick(SHIRTS) });
@@ -370,7 +365,7 @@
 
     // fluxo de entregas (pacotes) proporcional à produção -> movimento constante
     if (producing && layout && workers.length) {
-      spawnAcc += dt * (0.4 + Math.min(3, G.production() * 0.05));
+      spawnAcc += dt * (0.25 + Math.min(2, G.production() * G.DAY_LENGTH * 0.01));
       while (spawnAcc >= 1) {
         spawnAcc -= 1;
         const w = pick(workers);
@@ -384,9 +379,6 @@
       if (d < 0.08) { spawnPuff(p.gx, p.gy); packages.splice(i, 1); continue; }
       p.gx += (dx / d) * p.sp * dt; p.gy += (dy / d) * p.sp * dt;
     }
-
-    // robô patrulha o perímetro
-    if (robot && layout) updateRobot(dt);
 
     // carros loop
     cars.forEach((c) => {
@@ -440,19 +432,6 @@
     w.dir = (dx - dy) >= 0 ? 1 : -1;
   }
 
-  function updateRobot(dt) {
-    const path = [
-      { gx: 0.5, gy: layout.H - 0.6 }, { gx: layout.W - 0.6, gy: layout.H - 0.6 },
-      { gx: layout.W - 0.6, gy: 0.6 }, { gx: 0.5, gy: 0.6 },
-    ];
-    const a = path[robot.seg], b = path[(robot.seg + 1) % path.length];
-    robot.tp += dt * 0.35;
-    if (robot.tp >= 1) { robot.tp = 0; robot.seg = (robot.seg + 1) % path.length; }
-    robot.gx = lerp(a.gx, b.gx, robot.tp);
-    robot.gy = lerp(a.gy, b.gy, robot.tp);
-    robot.spin += dt * 6;
-  }
-
   function spawnPuff(gx, gy) { for (let k = 0; k < 4; k++) particles.push({ gx: gx + rand(-0.1, 0.1), gy, z: rand(6, 12), life: rand(0.4, 0.7), r: rand(3, 6) }); }
   function spawnSmoke(gx, gy) { particles.push({ gx, gy, z: 30, life: 0.6, r: 4 }); }
 
@@ -473,11 +452,11 @@
     requestAnimationFrame(frame);
   }
 
-  // 0 = dia claro, 1 = noite fechada (ciclo de 6 dias de jogo)
+  // 0 = dia claro, 1 = noite — segue o relógio do dia (0h escuro, 12h claro)
   function nightFactor() {
     const s = G.state;
-    const cyc = ((s.day % 6) + s.dayProgress / G.DAY_LENGTH) / 6;
-    return 0.5 - 0.5 * Math.cos(cyc * Math.PI * 2);
+    const cyc = s.dayProgress / G.DAY_LENGTH;   // 0..1 dentro do dia
+    return 1 - Math.sin(cyc * Math.PI);
   }
   const mix = (a, b, k) => Math.round(a + (b - a) * k);
   function mixColor(c1, c2, k) {
@@ -514,7 +493,11 @@
 
     // coleta de entidades para z-sort
     const ents = [];
-    layout.desks.forEach((d, i) => ents.push({ d: d.gx + d.gy, kind: 'desk', o: d, idx: i }));
+    layout.desks.forEach((d, i) => {
+      if (i >= G.state.desks) return;   // só desenha mesas compradas (o "+" marca o próximo slot)
+      ents.push({ d: d.gx + d.gy, kind: 'desk', o: d, idx: i });
+      ents.push({ d: d.gx + d.gy + 0.7, kind: 'chair', o: d });  // encosto na frente do personagem
+    });
     layout.furniture.forEach((f) => ents.push({ d: f.gx + f.gy, kind: 'furn', o: f }));
     layout.kwalls.forEach((wl) => ents.push({ d: wl.gx + wl.sx / 2 + wl.gy + wl.sy / 2, kind: 'wall', o: wl }));
     ents.push({ d: layout.coffee.gx + layout.coffee.gy, kind: 'coffee', o: layout.coffee });
@@ -522,7 +505,6 @@
     workers.forEach((w) => ents.push({ d: w.gx + w.gy + 0.01, kind: 'worker', o: w }));
     npcs.forEach((n) => ents.push({ d: n.gx + n.gy + 0.01, kind: 'worker', o: n }));
     packages.forEach((p) => ents.push({ d: p.gx + p.gy + 0.02, kind: 'pkg', o: p }));
-    if (robot) ents.push({ d: robot.gx + robot.gy + 0.01, kind: 'robot', o: robot });
     cars.forEach((c) => ents.push({ d: c.gx + c.gy, kind: 'car', o: c }));
     particles.forEach((p) => ents.push({ d: p.gx + p.gy + 0.5, kind: 'part', o: p }));
 
@@ -535,8 +517,8 @@
       else if (e.kind === 'coffee') drawCoffee(e.o);
       else if (e.kind === 'tree') drawTree(e.o);
       else if (e.kind === 'pkg') drawPackage(e.o);
-      else if (e.kind === 'robot') drawRobot(e.o);
       else if (e.kind === 'car') drawCar(e.o);
+      else if (e.kind === 'chair') drawChair(e.o);
       else if (e.kind === 'part') drawParticle(e.o);
     });
 
@@ -634,7 +616,7 @@
     });
   }
 
-  // cuboide isométrico
+  // cuboide isométrico com contorno leve (acabamento de sprite)
   function cuboid(gx, gy, sx, sy, h, top, left, right) {
     const A = iso(gx, gy), B = iso(gx + sx, gy), C = iso(gx + sx, gy + sy), D = iso(gx, gy + sy);
     // face esquerda (D-C)
@@ -645,6 +627,10 @@
     ctx.beginPath();
     ctx.moveTo(A.x, A.y - h); ctx.lineTo(B.x, B.y - h); ctx.lineTo(C.x, C.y - h); ctx.lineTo(D.x, D.y - h); ctx.closePath();
     ctx.fillStyle = top; ctx.fill();
+    // contorno do topo + aresta frontal
+    ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(C.x, C.y - h); ctx.lineTo(C.x, C.y); ctx.stroke();
   }
   function quad(x1, y1, x2, y2, x3, y3, x4, y4, fill) {
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4); ctx.closePath();
@@ -720,17 +706,84 @@
 
   function drawDesk(d, idx) {
     const s = G.state;
-    const busy = idx < s.employees.length && s.active.length > 0;
-    shadow(d.gx + 0.35, d.gy + 0.35, 26, 12);
-    // tampo da mesa
-    cuboid(d.gx, d.gy, 0.7, 0.55, 14, '#5b6172', '#3f4454', '#333846');
-    // monitor
-    const mx = d.gx + 0.12, my = d.gy + 0.06;
-    cuboid(mx, my, 0.32, 0.06, 26, '#20242e', '#171a22', '#12141a'); // base/tela traseira
-    // face da tela (brilhando quando produzindo)
-    const flick = busy ? (0.55 + 0.45 * Math.abs(Math.sin(t * 6 + idx))) : 0.12;
-    const p0 = iso(mx, my + 0.06), p1 = iso(mx + 0.32, my + 0.06);
-    quad(p0.x, p0.y - 8, p1.x, p1.y - 8, p1.x, p1.y - 24, p0.x, p0.y - 24, `rgba(90,160,255,${flick})`);
+    const busy = idx < Math.min(s.employees.length, s.desks) && s.active.length > 0;
+    shadow(d.gx + 0.35, d.gy + 0.32, 27, 13);
+
+    // pernas de metal
+    [[0.04, 0.05], [0.6, 0.05], [0.04, 0.44], [0.6, 0.44]].forEach(([lx, ly]) =>
+      cuboid(d.gx + lx, d.gy + ly, 0.06, 0.06, 11, '#5a6272', '#464d5c', '#3a404d'));
+    // tampo de madeira
+    cuboid(d.gx, d.gy, 0.7, 0.55, 14, '#a97a4e', '#7e5a39', '#6a4b2f');
+    // veios da madeira
+    ctx.strokeStyle = 'rgba(90,58,32,.3)'; ctx.lineWidth = 1;
+    for (let k = 0; k < 3; k++) {
+      const a = iso(d.gx + 0.07, d.gy + 0.12 + k * 0.15), b = iso(d.gx + 0.63, d.gy + 0.12 + k * 0.15);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y - 14); ctx.lineTo(b.x, b.y - 14); ctx.stroke();
+    }
+
+    // monitor (base + haste + tela virada para o personagem/câmera)
+    const m = iso(d.gx + 0.32, d.gy + 0.13);
+    const topY = m.y - 14;                       // altura do tampo
+    ctx.fillStyle = '#2a2e38';
+    ctx.beginPath(); ctx.ellipse(m.x, topY, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(m.x - 1.5, topY - 9, 3, 9);     // haste
+    roundRect(m.x - 14, topY - 28, 28, 20, 3, '#1a1d24');   // moldura
+    ctx.fillStyle = busy ? '#0e1622' : '#0a0d12';
+    ctx.fillRect(m.x - 12, topY - 26, 24, 16);   // display
+    if (busy) {
+      // linhas de código coloridas "digitando"
+      const cols = ['#4f8cff', '#37d67a', '#ffca4b', '#e05fb0', '#28c0d6'];
+      for (let li = 0; li < 5; li++) {
+        const wd = 5 + (Math.sin(t * 2 + idx * 1.7 + li * 0.9) * 0.5 + 0.5) * 15;
+        ctx.fillStyle = cols[(li + idx) % cols.length];
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(m.x - 10, topY - 23.5 + li * 2.8, wd, 1.7);
+      }
+      ctx.globalAlpha = 1;
+      // brilho da tela sobre a mesa
+      ctx.fillStyle = 'rgba(120,170,255,.07)';
+      ctx.beginPath(); ctx.ellipse(m.x, topY + 3, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = 'rgba(140,160,190,.35)';
+      ctx.font = '8px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('· · ·', m.x, topY - 17);
+      ctx.textAlign = 'left';
+    }
+
+    // teclado com teclas
+    const kb = iso(d.gx + 0.36, d.gy + 0.35);
+    const ky = kb.y - 14;
+    roundRect(kb.x - 9, ky - 4, 18, 8, 2, '#3a4150');
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 6; c++)
+      ctx.fillRect(kb.x - 7 + c * 2.5, ky - 2.4 + r * 2.6, 1.7, 1.7);
+    // mouse
+    const mo = iso(d.gx + 0.58, d.gy + 0.32);
+    ctx.fillStyle = '#c7ccd6';
+    ctx.beginPath(); ctx.ellipse(mo.x, mo.y - 15, 2.6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    // caneca na mesa
+    const mg = iso(d.gx + 0.1, d.gy + 0.42);
+    const mgy = mg.y - 14;
+    ctx.fillStyle = '#c94f4f'; ctx.fillRect(mg.x - 3, mgy - 6, 6, 6);
+    ctx.strokeStyle = '#c94f4f'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(mg.x + 4, mgy - 3, 2.2, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+  }
+
+  // cadeira de escritório (encosto fica na frente do personagem = sentado)
+  function drawChair(d) {
+    const p = iso(d.gx + 0.32, d.gy + 0.66);
+    // base com rodinhas
+    ctx.fillStyle = 'rgba(0,0,0,.22)';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 10, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#2c3140'; ctx.lineWidth = 2;
+    [[-8, 1], [8, 1], [-5, 4], [5, 4]].forEach(([dx2, dy2]) => {
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x + dx2, p.y + dy2); ctx.stroke();
+      ctx.fillStyle = '#2c3140'; ctx.beginPath(); ctx.arc(p.x + dx2, p.y + dy2, 1.6, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.fillStyle = '#2c3140'; ctx.fillRect(p.x - 1.5, p.y - 12, 3, 7);  // coluna central
+    // encosto
+    roundRect(p.x - 8.5, p.y - 30, 17, 19, 4, '#454f68');
+    roundRect(p.x - 6.5, p.y - 28, 13, 15, 3, '#525d7a');
   }
 
   // personagem billboard
@@ -892,18 +945,6 @@
     // face direita
     ctx.beginPath(); ctx.moveTo(cx + hw, cy - h); ctx.lineTo(cx, cy - h + d / 2); ctx.lineTo(cx, cy + d / 2); ctx.lineTo(cx + hw, cy); ctx.closePath();
     ctx.fillStyle = right; ctx.fill();
-  }
-
-  function drawRobot(o) {
-    const p = iso(o.gx, o.gy);
-    const bob = Math.sin(t * 5) * 2;
-    ctx.beginPath(); ctx.ellipse(p.x, p.y + 1, 10, 5, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fill();
-    // corpo disco
-    ctx.beginPath(); ctx.ellipse(p.x, p.y - 6 + bob, 12, 7, 0, 0, Math.PI * 2); ctx.fillStyle = '#8a93a6'; ctx.fill();
-    ctx.beginPath(); ctx.ellipse(p.x, p.y - 9 + bob, 12, 6, 0, 0, Math.PI * 2); ctx.fillStyle = '#c7cedb'; ctx.fill();
-    // luz giratória
-    const lx = p.x + Math.cos(o.spin) * 6;
-    ctx.beginPath(); ctx.arc(lx, p.y - 12 + bob, 2.5, 0, Math.PI * 2); ctx.fillStyle = '#4f8cff'; ctx.fill();
   }
 
   function drawCar(o) {

@@ -30,8 +30,9 @@
     lastMoney = s.money;
     el.statRep.textContent = fmt(s.rep);
     el.statLevel.textContent = 'Nv ' + s.level;
-    el.statProd.textContent = (Math.round(G.production() * 10) / 10) + '/s';
-    el.statDay.textContent = 'Dia ' + s.day;
+    el.statProd.textContent = fmt(G.production() * G.DAY_LENGTH) + '/dia';
+    const hour = Math.floor((s.dayProgress / G.DAY_LENGTH) * 24);
+    el.statDay.textContent = `Dia ${s.day} · ${String(hour).padStart(2, '0')}h`;
     const t = G.tier();
     el.tierBadge.textContent = t.icon + ' ' + t.name;
     el.companyName.textContent = s.company;
@@ -74,7 +75,7 @@
           <div class="bar ${warn ? 'warn' : ''}"><span style="width:${pct}%"></span></div>
           <div class="card-meta">
             <span>${Math.floor(p.done)}/${p.work} pts</span>
-            <span>⚡ ${(Math.round(rate * 10) / 10)}/s</span>
+            <span>⚡ ${fmt(rate * G.DAY_LENGTH)}/dia</span>
             <span>👥 ${pinned > 0 ? pinned + ' fixo' + (pinned > 1 ? 's' : '') : 'auto'}</span>
             <span class="reward">R$ ${fmt(p.reward)}</span>
             <span class="rep">+${p.rep} ⭐</span>
@@ -141,7 +142,7 @@
           </div>
         </div>
         <div class="card-meta">
-          <span>⚡ <b>${role.speed}</b>/s</span>
+          <span>⚡ <b>${role.speed}</b> pts/dia</span>
           <span>💵 salário <b>R$ ${fmt(role.salary)}</b>/dia</span>
         </div>
         <div class="card-actions">
@@ -183,7 +184,7 @@
             <div class="avatar">${role.emoji}</div>
             <div class="info">
               <div class="name">${e.name || role.name}${mood} ${e.resting ? '☕' : ''} ${seated ? '' : '<span style="color:var(--red)">(sem mesa)</span>'}</div>
-              <div class="sub">${role.name} · ⚡ ${role.speed}/s · R$ ${fmt(salary)}/dia</div>
+              <div class="sub">${role.name} · ⚡ ${role.speed} pts/dia · R$ ${fmt(salary)}/dia</div>
             </div>
             <button class="btn btn-danger btn-mini" data-fire="${e.uid}">Demitir</button>
           </div>

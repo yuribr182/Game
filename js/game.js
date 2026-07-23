@@ -7,12 +7,12 @@
   const D = window.DATA;
   const SAVE_KEY = 'appAgencyTycoon.save.v1';
 
-  // segundos reais por "dia" do jogo
-  const DAY_LENGTH = 8;
+  // segundos reais por "dia" do jogo — estilo The Sims: 1 dia = 24 minutos
+  const DAY_LENGTH = 1440;
   // pontos de trabalho -> XP
   const XP_PER_WORK = 0.35;
 
-  const SAVE_VERSION = 2;
+  const SAVE_VERSION = 3;
 
   let state = null;
   let offlineMode = false;   // simulando tempo fora: silencia eventos/toasts
@@ -50,7 +50,7 @@
       level: 1,
       xp: 0,
       day: 1,
-      dayProgress: 0,
+      dayProgress: DAY_LENGTH * 0.375,   // começa às 9h da manhã
       tier: 0,
       desks: 3,          // 3 mesas de desenvolvedor (a secretária tem mesa própria)
       employees: [newEmployee('junior')], // 1 programador de largada
@@ -94,12 +94,13 @@
     return m;
   }
 
-  // velocidade efetiva de um funcionário (energia, humor e fase do projeto)
+  // velocidade efetiva de um funcionário em pts/SEGUNDO
+  // (role.speed é pts/dia; considera energia, humor e fase do projeto)
   function empSpeed(e, project) {
     if (e.resting) return 0;
     const role = D.ROLES.find((r) => r.id === e.role);
     if (!role) return 0;
-    let s = role.speed;
+    let s = role.speed / DAY_LENGTH;
     const en = e.energy == null ? 100 : e.energy;
     s *= 0.5 + 0.6 * (en / 100);                 // 50%..110% conforme a energia
     if (e.mood && e.mood.daysLeft > 0) s *= e.mood.mult;
@@ -210,7 +211,8 @@
     const work = Math.round(type.workBase * variance);
     const reward = Math.round(type.rewardBase * variance * contractValueMult());
     const rep = Math.max(1, Math.round(type.repBase * variance));
-    const deadline = Math.max(4, Math.round(work / 6 + rand(3, 9)));
+    // prazo em dias, dimensionado para equipes de ~8-40 pts/dia
+    const deadline = Math.max(3, Math.round(work / 15 + rand(2, 6)));
     return {
       uid: nextId(),
       typeId: type.id,
@@ -389,38 +391,38 @@
     }
 
     // energia e experiência individual (não drena na simulação offline)
+    // trabalhando: esgota em ~0,7 dia; descansando: recupera em ~0,15 dia
     if (!offlineMode) {
       const capacity = Math.min(state.employees.length, state.desks);
       const coffeeBoost = 1 + upgradeEffect('prodMult') * 0.3;  // escritório melhor = pausa melhor
+      const drain = 140 / DAY_LENGTH, recover = 500 / DAY_LENGTH;
       state.employees.forEach((e, i) => {
         if (e.energy == null) e.energy = 100;
         const seated = i < capacity;
         if (seated && working && !e.resting) {
-          e.energy = Math.max(0, e.energy - 2.2 * dt);
-          e.exp = (e.exp || 0) + dt;
-          if (e.energy <= 15) { e.resting = true; emit('event', { type: 'info', msg: `☕ ${e.name || 'Alguém'} foi tomar um café...` }); }
+          e.energy = Math.max(0, e.energy - drain * dt);
+          e.exp = (e.exp || 0) + dt / DAY_LENGTH;   // experiência em dias trabalhados
+          if (e.energy <= 15) e.resting = true;     // pausa silenciosa (sem toast)
         } else {
-          e.energy = Math.min(100, e.energy + 12 * coffeeBoost * dt);
+          e.energy = Math.min(100, e.energy + recover * coffeeBoost * dt);
           if (e.resting && e.energy >= 85) e.resting = false;
         }
       });
     }
 
-    // passagem do tempo (dias) — offline os dias passam bem mais devagar,
-    // senão horas fora virariam centenas de dias de salário/renda
-    const dayLen = offlineMode ? 300 : DAY_LENGTH;
+    // passagem do tempo (dias)
     state.dayProgress += dt;
-    while (state.dayProgress >= dayLen) {
-      state.dayProgress -= dayLen;
+    while (state.dayProgress >= DAY_LENGTH) {
+      state.dayProgress -= DAY_LENGTH;
       advanceDay();
     }
 
-    // fluxo de novos contratos
+    // fluxo de novos contratos: um a cada ~1/3 de dia (marketing acelera)
     state.contractTimer -= dt;
     const flowBonus = upgradeEffect('contractFlow');
     if (state.contractTimer <= 0) {
       if (state.available.length < 6) state.available.push(generateContract());
-      state.contractTimer = Math.max(3, 9 - flowBonus * 4);
+      state.contractTimer = Math.max(0.12, 0.34 - flowBonus * 0.1) * DAY_LENGTH;
     }
 
     emit('tick', state);
@@ -482,7 +484,7 @@
     if (productIncome > 0) state.money += Math.round(productIncome);
 
     // evento aleatório do dia (não durante a simulação offline)
-    if (!offlineMode && !state.pendingEvent && state.day >= 3 && Math.random() < 0.3) {
+    if (!offlineMode && !state.pendingEvent && state.day >= 2 && Math.random() < 0.25) {
       triggerRandomEvent();
     }
     // evento com escolha ignorado por 3 dias resolve sozinho (opção padrão)
@@ -558,9 +560,9 @@
       const emp = state.employees.find((e) => e.uid === pe.data.empUid);
       if (emp) {
         if (optionId === 'accept') {
-          emp.salaryMult = (emp.salaryMult || 1) * 1.4;
-          emp.mood = { mult: 1.3, daysLeft: 6 };
-          emit('event', { type: 'info', msg: `🤝 ${emp.name} está motivado! (+30% produção por 6 dias)` });
+          emp.salaryMult = (emp.salaryMult || 1) * 1.2;
+          emp.mood = { mult: 1.25, daysLeft: 6 };
+          emit('event', { type: 'info', msg: `🤝 ${emp.name} está motivado! (+25% produção por 6 dias)` });
         } else if (Math.random() < 0.25) {
           state.employees = state.employees.filter((e) => e.uid !== emp.uid);
           emit('event', { type: 'fail', msg: `😞 ${emp.name} pediu demissão...` });
@@ -643,6 +645,13 @@
       s.effects = s.effects || [];
       s.pendingEvent = s.pendingEvent || null;
       s.v = 2;
+    }
+    if (s.v < 3) {
+      // v3: dia passou de 8s para 1440s; exp era em segundos (dia de 8s) -> dias
+      s.employees.forEach((e) => { e.exp = (e.exp || 0) / 8; });
+      s.dayProgress = DAY_LENGTH * 0.375;
+      s.contractTimer = 0;
+      s.v = 3;
     }
     return s;
   }

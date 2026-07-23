@@ -5,10 +5,14 @@ desenvolvimento de aplicativos: começa com **uma mesa numa garagem** e faz a
 empresa crescer até virar um campus de tecnologia.
 
 O escritório é uma **cena isométrica 3D animada** (renderizada em Canvas, sem
-imagens externas): trabalhadores andam pelo ambiente, digitam nas mesas com telas
-brilhando, um robô aspirador patrulha, entregas de apps deslizam até a porta,
+imagens externas): trabalhadores andam pelo ambiente e digitam em mesas de
+madeira com monitores mostrando código, entregas de apps deslizam até a porta,
 carros passam na rua e o letreiro neon exibe o nome da empresa — tudo em
 movimento contínuo.
+
+⏱️ **Ritmo estilo The Sims**: 1 dia de jogo = **24 minutos reais**, com relógio
+no topo (Dia X · HHh) e ciclo dia/noite acompanhando o horário — manhã clara,
+noite com janelas acesas.
 
 Você já começa com uma **sala montada com cara de escritório**: **3 mesas de
 desenvolvedor**, a **mesa da secretária** na recepção, uma **cozinha em cômodo
