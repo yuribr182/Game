@@ -188,9 +188,41 @@ O repo nunca fica quebrado; cada fase termina com o jogo rodando e screenshot de
 
 ---
 
-## 6. Prompt executável (para as próximas sessões)
+## 6. Como retomar o trabalho
 
-> Cole o prompt abaixo numa sessão futura do Claude Code para continuar de onde parou:
+**Para continuar, basta dizer numa sessão nova: "continue a migração do PRD".**
+O CLAUDE.md aponta para este arquivo e a seção 6.1 abaixo registra o ponto
+exato de parada. O prompt em 6.2 é opcional — só um atalho com as regras
+resumidas, útil se o CLAUDE.md um dia não estiver disponível.
+
+### 6.1 Ponto exato de parada (atualizado a cada sessão)
+
+**Última sessão: 2026-07-23.** Publicado e validado no ar (save real preservado).
+
+Estado por arquivo:
+- ✔ `src/core/data.ts` — balanceamento completo, tipado (`js/data.js` foi REMOVIDO).
+- ✔ `src/data-shim.ts` — expõe `window.DATA` para os legados; importado em
+  `src/main.ts` ANTES de `js/game.js` (ordem importa: imports são içados).
+- ✔ Infra: `vite.config.ts` (base `/Game/`, PWA com `sw-limpeza.js`),
+  `tsconfig.json`, `eslint.config.js`, `test/engine.test.ts` (9 testes),
+  workflow `deploy-pages.yml` buildando `dist/`. Origem do Pages já está em
+  "GitHub Actions" (virada manual feita em 2026-07-23 — não reverter).
+- ⏳ Ainda legados (IIFEs em `window.*`): `js/game.js`, `js/audio.js`,
+  `js/props.js`, `js/iso.js`, `js/ui.js`, `js/main.js`.
+
+**PRÓXIMA TAREFA (terminar F1):** portar `js/game.js` (~800 linhas) para
+`src/core/` nos módulos do §4.2 (`state.ts`, `save.ts`, `economy.ts`,
+`events.ts`, `engine.ts`, `bus.ts`), mantendo um shim `window.Game` (num
+`src/game-shim.ts`, mesmo padrão do `data-shim.ts`) para `iso.js`/`ui.js`/
+`main.js`. Atenção: `core/` não pode tocar `localStorage` diretamente
+(lint barra `window`/`localStorage` — injete a persistência pelo shim).
+Ao terminar: `npm run check`, testar no navegador com screenshot, commitar,
+e atualizar esta seção + o checklist abaixo.
+
+Depois de F1: F2 (cena Pixi com paridade visual — começar por
+`src/render/app.ts` + `iso.ts` + port dos props com `RenderTexture`).
+
+### 6.2 Prompt de atalho (opcional)
 
 ```
 Leia docs/PRD.md e continue a implementação do App Agency Tycoon 2.0 pela
