@@ -72,18 +72,32 @@
 
     // ---- LOUNGE ----
     sofa(g, gx, gy, opt) {
+      const ctx = g.ctx;
       const col = (opt && opt.col) || '#3f6fd6';
-      g.shadow(gx + 0.35, gy + 0.3, 24, 10);
-      // assento
-      g.box(gx, gy, 0.9, 0.5, 12, g.shade(col, 0.05), g.shade(col, -0.12), g.shade(col, -0.24));
-      // encosto (fundo)
-      g.box(gx, gy, 0.9, 0.14, 26, g.shade(col, 0.08), g.shade(col, -0.1), g.shade(col, -0.2));
+      g.shadow(gx + 0.48, gy + 0.3, 28, 12);
+      // pés de madeira
+      [[0.05, 0.1], [0.88, 0.1], [0.05, 0.42], [0.88, 0.42]].forEach(([dx, dy]) =>
+        g.box(gx + dx, gy + dy, 0.05, 0.05, 5, '#6b4a2b', '#553a22', '#44301c'));
+      // base
+      g.box(gx, gy, 0.98, 0.5, 11, g.shade(col, -0.04), g.shade(col, -0.2), g.shade(col, -0.32));
+      // almofadas do assento (2 peças com vinco)
+      g.box(gx + 0.13, gy + 0.05, 0.37, 0.42, 16, g.shade(col, 0.12), g.shade(col, -0.06), g.shade(col, -0.18));
+      g.box(gx + 0.51, gy + 0.05, 0.37, 0.42, 16, g.shade(col, 0.12), g.shade(col, -0.06), g.shade(col, -0.18));
+      // encosto
+      g.box(gx + 0.1, gy, 0.8, 0.13, 30, g.shade(col, 0.05), g.shade(col, -0.12), g.shade(col, -0.24));
+      // vinco entre as almofadas do encosto
+      const v0 = g.corner(gx + 0.5, gy, 30), v1 = g.corner(gx + 0.5, gy + 0.13, 30);
+      ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(v0.x, v0.y); ctx.lineTo(v1.x, v1.y); ctx.stroke();
       // braços
-      g.box(gx, gy, 0.12, 0.5, 20, g.shade(col, 0.02), g.shade(col, -0.15), g.shade(col, -0.28));
-      g.box(gx + 0.78, gy, 0.12, 0.5, 20, g.shade(col, 0.02), g.shade(col, -0.15), g.shade(col, -0.28));
-      // almofadas
-      const c = g.corner(gx + 0.3, gy + 0.32, 12);
-      g.roundRect(c.x - 10, c.y - 8, 16, 12, 3, g.shade(col, 0.14));
+      g.box(gx, gy + 0.06, 0.13, 0.44, 22, g.shade(col, 0.06), g.shade(col, -0.16), g.shade(col, -0.28));
+      g.box(gx + 0.85, gy + 0.06, 0.13, 0.44, 22, g.shade(col, 0.06), g.shade(col, -0.16), g.shade(col, -0.28));
+      // almofadas decorativas encostadas no encosto
+      const pw1 = g.corner(gx + 0.24, gy + 0.16, 20), pw2 = g.corner(gx + 0.76, gy + 0.16, 20);
+      ctx.save(); ctx.translate(pw1.x, pw1.y); ctx.rotate(0.46);
+      g.roundRect(-5, -5, 10, 10, 3, '#ffca4b'); ctx.restore();
+      ctx.save(); ctx.translate(pw2.x, pw2.y); ctx.rotate(0.46);
+      g.roundRect(-5, -5, 10, 10, 3, '#ff9f45'); ctx.restore();
     },
     coffeeTable(g, gx, gy) {
       g.shadow(gx + 0.22, gy + 0.18, 13, 6);
@@ -98,15 +112,73 @@
 
     // ---- RECEPÇÃO ----
     reception(g, gx, gy) {
-      g.shadow(gx + 0.5, gy + 0.3, 28, 12);
-      // balcão em L
-      g.box(gx, gy, 0.9, 0.4, 26, '#6a4a8f', '#513873', '#3f2c5a'); // frente
-      g.box(gx + 0.78, gy, 0.32, 0.9, 26, '#6a4a8f', '#513873', '#3f2c5a'); // lateral
-      // tampo claro
-      g.box(gx, gy, 0.9, 0.4, 28, '#d9dbe4', '#d9dbe4', '#d9dbe4');
-      g.box(gx + 0.78, gy, 0.32, 0.9, 28, '#d9dbe4', '#d9dbe4', '#d9dbe4');
-      // monitorzinho
-      g.box(gx + 0.15, gy + 0.12, 0.2, 0.05, 40, '#20242e', '#171a22', '#12141a');
+      const ctx = g.ctx;
+      g.shadow(gx + 0.5, gy + 0.3, 30, 13);
+
+      // tampo saliente (3 faces desenhadas "flutuando" sobre o corpo)
+      const slab = (x, y, sx, sy, hTop, th, top, left, right) => {
+        const A = g.corner(x, y, hTop), B = g.corner(x + sx, y, hTop),
+              C = g.corner(x + sx, y + sy, hTop), D = g.corner(x, y + sy, hTop);
+        const C2 = g.corner(x + sx, y + sy, hTop - th), D2 = g.corner(x, y + sy, hTop - th),
+              B2 = g.corner(x + sx, y, hTop - th);
+        g.quad(D.x, D.y, C.x, C.y, C2.x, C2.y, D2.x, D2.y, left);
+        g.quad(B.x, B.y, C.x, C.y, C2.x, C2.y, B2.x, B2.y, right);
+        ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.lineTo(C.x, C.y); ctx.lineTo(D.x, D.y);
+        ctx.closePath(); ctx.fillStyle = top; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.lineWidth = 1; ctx.stroke();
+      };
+
+      // corpo do balcão em L (madeira escura)
+      g.box(gx, gy, 0.95, 0.4, 22, '#6b4f35', '#523b27', '#42301f');
+      g.box(gx + 0.82, gy, 0.32, 0.95, 22, '#6b4f35', '#523b27', '#42301f');
+      // friso de LED roxo na base frontal
+      const p0 = g.xy(gx, gy + 0.4), p1 = g.xy(gx + 0.95, gy + 0.4);
+      g.quad(p0.x, p0.y - 7, p1.x, p1.y - 7, p1.x, p1.y - 10, p0.x, p0.y - 10, 'rgba(124,92,255,.85)');
+      const s0 = g.xy(gx + 1.14, gy), s1 = g.xy(gx + 1.14, gy + 0.95);
+      g.quad(s0.x, s0.y - 7, s1.x, s1.y - 7, s1.x, s1.y - 10, s0.x, s0.y - 10, 'rgba(124,92,255,.85)');
+      // tampos claros salientes
+      slab(gx - 0.04, gy - 0.04, 1.03, 0.48, 27, 5, '#e8e4da', '#cfcabe', '#b8b3a6');
+      slab(gx + 0.79, gy - 0.04, 0.39, 1.03, 27, 5, '#e8e4da', '#cfcabe', '#b8b3a6');
+
+      // monitor da secretária (de costas para a câmera)
+      const m = g.corner(gx + 0.3, gy + 0.12, 27);
+      ctx.fillStyle = '#2a2e38';
+      ctx.beginPath(); ctx.ellipse(m.x, m.y, 5, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(m.x - 1.2, m.y - 8, 2.4, 8);
+      g.roundRect(m.x - 10, m.y - 23, 20, 15, 2, '#20242e');
+      ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(m.x - 8, m.y - 21, 16, 11);
+
+      // telefone de mesa
+      const ph = g.corner(gx + 0.62, gy + 0.18, 27);
+      g.roundRect(ph.x - 5, ph.y - 6, 11, 7, 2, '#333947');
+      g.roundRect(ph.x - 6.5, ph.y - 10, 13, 4, 2, '#454c5e');   // fone no gancho
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++)
+        ctx.fillRect(ph.x - 2 + c * 2.4, ph.y - 4.5 + r * 2.4, 1.5, 1.5);
+
+      // sininho dourado de balcão
+      const bell = g.corner(gx + 0.13, gy + 0.22, 27);
+      ctx.fillStyle = '#e0a832'; ctx.fillRect(bell.x - 4.2, bell.y - 2.6, 8.4, 1.8);
+      ctx.fillStyle = '#ffca4b';
+      ctx.beginPath(); ctx.arc(bell.x, bell.y - 2.6, 3.4, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.arc(bell.x, bell.y - 6.4, 1.1, 0, Math.PI * 2); ctx.fill();
+
+      // vasinho de flores no canto do L
+      const fl = g.corner(gx + 0.97, gy + 0.2, 27);
+      ctx.fillStyle = '#b5651d'; ctx.fillRect(fl.x - 3, fl.y - 6, 6, 6);
+      ['#ff5c6c', '#ffca4b', '#e05fb0'].forEach((c2, i2) => {
+        ctx.strokeStyle = '#2fa85a'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(fl.x, fl.y - 6); ctx.lineTo(fl.x - 3 + i2 * 3, fl.y - 12); ctx.stroke();
+        ctx.fillStyle = c2;
+        ctx.beginPath(); ctx.arc(fl.x - 3 + i2 * 3, fl.y - 13, 1.9, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // pilha de papéis na lateral
+      const pp = g.corner(gx + 0.95, gy + 0.62, 27);
+      ctx.save(); ctx.translate(pp.x, pp.y); ctx.scale(1, 0.55); ctx.rotate(0.18);
+      ctx.fillStyle = '#dfe3ea'; ctx.fillRect(-6, -7, 12, 14);
+      ctx.fillStyle = '#eef1f6'; ctx.fillRect(-5, -8, 12, 14);
+      ctx.restore();
     },
     plantBig(g, gx, gy) {
       g.shadow(gx, gy, 11, 5);
@@ -126,7 +198,17 @@
       g.box(gx, gy, 1.4, 0.7, 15, '#c9d0dc', STEEL[1], STEEL[2]);
       g.box(gx, gy, 1.4, 0.7, 17, '#3a4150', '#3a4150', '#3a4150'); // tampo escuro
     },
-    chair(g, gx, gy, opt) { seat(g, gx, gy, (opt && opt.col) || '#556071'); },
+    chair(g, gx, gy, opt) {
+      const col = (opt && opt.col) || '#556071';
+      g.shadow(gx, gy, 8, 4);
+      // pés de metal
+      [[-0.11, -0.11], [0.075, -0.11], [-0.11, 0.075], [0.075, 0.075]].forEach(([dx, dy]) =>
+        g.box(gx + dx, gy + dy, 0.035, 0.035, 6, '#3a3f4a', '#2e323c', '#262a32'));
+      // assento
+      g.box(gx - 0.13, gy - 0.13, 0.26, 0.26, 10, g.shade(col, 0.08), g.shade(col, -0.1), g.shade(col, -0.22));
+      // encosto
+      g.box(gx - 0.13, gy - 0.13, 0.26, 0.055, 21, g.shade(col, 0.02), g.shade(col, -0.14), g.shade(col, -0.26));
+    },
     waterCooler(g, gx, gy) {
       g.shadow(gx, gy, 9, 4);
       g.box(gx - 0.13, gy - 0.13, 0.26, 0.26, 24, WHITE[0], WHITE[1], WHITE[2]);
@@ -183,16 +265,6 @@
       g.ctx.beginPath(); g.ctx.ellipse(c.x, c.y - 4, 11, 7, 0, 0, Math.PI * 2); g.ctx.fill();
       g.ctx.fillStyle = col;
       g.ctx.beginPath(); g.ctx.ellipse(c.x, c.y - 8, 10, 6, 0, 0, Math.PI * 2); g.ctx.fill();
-    },
-    bookshelf(g, gx, gy) {
-      g.shadow(gx, gy, 11, 5);
-      g.box(gx - 0.16, gy - 0.12, 0.32, 0.22, 40, WOOD[0], WOOD[1], WOOD[2]);
-      const c = g.corner(gx - 0.16, gy + 0.1, 40);
-      const cols = ['#c94f4f', '#4f8cff', '#37d67a', '#ffca4b', '#7c5cff'];
-      for (let s = 0; s < 3; s++) for (let b = 0; b < 5; b++) {
-        g.ctx.fillStyle = cols[(s + b) % cols.length];
-        g.ctx.fillRect(c.x + 3 + b * 4, c.y - 6 - s * 11, 3, 9);
-      }
     },
   };
 

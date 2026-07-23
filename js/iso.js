@@ -142,10 +142,9 @@
     F.push({ type: 'stool', gx: 1.15, gy: 1.3, col: '#e0a54b' });
     F.push({ type: 'stool', gx: 1.95, gy: 1.95, col: '#c94f4f' });
     // LOUNGE (frente-esquerda / sul-oeste)
-    F.push({ type: 'sofa', gx: 0.4, gy: H - 1.6, col: '#3f6fd6' });
-    F.push({ type: 'coffeeTable', gx: 0.55, gy: H - 0.95 });
-    F.push({ type: 'tv', gx: 0.25, gy: H - 2.4 });
-    F.push({ type: 'plantBig', gx: 1.5, gy: H - 0.5 });
+    F.push({ type: 'sofa', gx: 0.45, gy: H - 1.75, col: '#3f6fd6' });
+    F.push({ type: 'coffeeTable', gx: 0.62, gy: H - 1.0 });
+    F.push({ type: 'tv', gx: 0.25, gy: H - 2.55 });
     // decorações desbloqueáveis (loja)
     const upg = s.upgrades || [];
     if (upg.includes('pufes')) {
@@ -169,7 +168,7 @@
     F.push({ type: 'serverRack', gx: 0.35, gy: H * 0.5 });
     F.push({ type: 'waterCooler', gx: W - 0.5, gy: H * 0.5 });
     F.push({ type: 'printer', gx: WX0 - 0.55, gy: WY0 + 1.9 });
-    F.push({ type: 'bookshelf', gx: W - 0.4, gy: 2.4 });
+    F.push({ type: 'plantBig', gx: W - 0.4, gy: 2.4 });
     layout.furniture = F;
 
     // tapetes e luminárias (decoração de piso)
@@ -226,9 +225,9 @@
     // NPCs decorativos: atendente (recepção) + cliente ocasional
     if (npcs.length === 0 && layout) {
       const r = layout.reception;
-      const att = makeWorker(-1, { gx: r.gx + 0.35, gy: r.gy - 0.25 }, 'atendente');
+      const att = makeWorker(-1, { gx: r.gx + 0.35, gy: r.gy - 0.5 }, 'atendente');
       att.pname = window.DATA && window.DATA.FIRST_NAMES ? pick(window.DATA.FIRST_NAMES) : 'Recepção';
-      att.home = { gx: r.gx + 0.35, gy: r.gy - 0.25 };
+      att.home = { gx: r.gx + 0.35, gy: r.gy - 0.5 };
       att.hx = att.home.gx; att.hy = att.home.gy; att.gx = att.hx; att.gy = att.hy;
       att.state = 'work'; att.desk = { gx: att.home.gx, gy: att.home.gy - 0.55 };
       npcs.push(att);
@@ -256,10 +255,10 @@
 
     lastDesks = s.desks; lastEmp = emp;
 
-    // carros na rua (2 fixos)
+    // carros na rua (2 fixos, um em cada sentido)
     if (cars.length === 0 && layout) {
-      cars.push({ gx: -2, gy: layout.H + 1.4, sp: 0.9, col: pick(SHIRTS) });
-      cars.push({ gx: layout.W + 2, gy: layout.H + 1.9, sp: -0.7, col: pick(SHIRTS) });
+      cars.push({ gx: -2, gy: layout.H + 1.38, sp: 0.9, col: pick(SHIRTS) });
+      cars.push({ gx: layout.W + 2, gy: layout.H + 1.82, sp: -0.7, col: pick(SHIRTS) });
     }
   }
 
@@ -947,13 +946,42 @@
     ctx.fillStyle = right; ctx.fill();
   }
 
+  // sedan isométrico alinhado à rua
   function drawCar(o) {
-    const p = iso(o.gx, o.gy);
-    ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 16, 6, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fill();
-    cuboidAt(p.x, p.y, 30, 16, 12, o.col, shade(o.col, -0.2), shade(o.col, -0.4));
-    cuboidAt(p.x, p.y - 12, 18, 10, 9, shade(o.col, 0.1), shade(o.col, -0.1), shade(o.col, -0.3));
-    // faróis
-    ctx.fillStyle = '#fff6c8'; ctx.fillRect(p.x + (o.sp > 0 ? 12 : -15), p.y - 4, 3, 3);
+    const L = 0.95, Wd = 0.4, dir = o.sp >= 0 ? 1 : -1;
+    const gx = o.gx - L / 2, gy = o.gy - Wd / 2;
+    const c = o.col;
+    const pc = iso(o.gx, o.gy);
+    // sombra
+    ctx.beginPath(); ctx.ellipse(pc.x, pc.y + 2, 26, 9, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fill();
+    // carroceria
+    cuboid(gx, gy, L, Wd, 10, shade(c, 0.05), shade(c, -0.18), shade(c, -0.3));
+    // capô e porta-malas (faixas mais claras no topo)
+    tile(gx + (dir > 0 ? L - 0.24 : 0.02), gy + 0.03, 0.22, Wd - 0.06, shade(c, 0.16));
+    tile(gx + (dir > 0 ? 0.02 : L - 0.24), gy + 0.03, 0.22, Wd - 0.06, shade(c, 0.1));
+    // cabine com vidros
+    const cb = gx + (dir > 0 ? 0.26 : 0.28);
+    cuboid(cb, gy + 0.04, 0.42, Wd - 0.08, 19, shade(c, 0.18), 'rgba(150,200,235,.92)', 'rgba(115,165,205,.92)');
+    // reflexo no vidro
+    const gl = iso(cb + 0.36, gy + 0.04 + (Wd - 0.08) / 2);
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(gl.x - 3, gl.y - 10); ctx.lineTo(gl.x + 3, gl.y - 16); ctx.stroke();
+    // rodas do lado visível, com calota
+    [gx + 0.2, gx + L - 0.2].forEach((wx) => {
+      const wp = iso(wx, gy + Wd);
+      ctx.fillStyle = '#14171d';
+      ctx.beginPath(); ctx.ellipse(wp.x, wp.y - 4, 5.2, 6.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#9aa1ad';
+      ctx.beginPath(); ctx.ellipse(wp.x, wp.y - 4, 2.2, 2.7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a404d';
+      ctx.beginPath(); ctx.ellipse(wp.x, wp.y - 4, 1, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    // faróis (frente) e lanternas (trás)
+    const f = iso(dir > 0 ? gx + L : gx, gy + Wd * 0.62);
+    ctx.fillStyle = '#fff2b8'; ctx.fillRect(f.x - 2, f.y - 9, 4, 3.2);
+    const r2 = iso(dir > 0 ? gx : gx + L, gy + Wd * 0.62);
+    ctx.fillStyle = '#ff5c6c'; ctx.fillRect(r2.x - 2, r2.y - 9, 4, 3.2);
   }
 
   function drawParticle(o) {
