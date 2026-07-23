@@ -1,51 +1,60 @@
 # App Agency Tycoon — guia para o Claude
 
 Jogo web tycoon (pt-BR) de agência de desenvolvimento de apps, estilo The Sims /
-idle tycoon. **HTML/CSS/JS puro, sem dependências, sem build** — abrir o
-`index.html` já roda o jogo. Publicado via GitHub Pages em
-https://yuribr182.github.io/Game/ (deploy automático a cada push).
+idle tycoon. **Em migração para Vite + TypeScript + Pixi.js** — o plano completo
+e o status por fase estão em **`docs/PRD.md`** (leia antes de mexer em
+arquitetura ou gráficos). Publicado via GitHub Pages em
+https://yuribr182.github.io/Game/ (o workflow builda e publica a cada push).
 
 ## Como rodar e testar
 
-- Rodar: abrir `index.html` no navegador (ou `python3 -m http.server` para
-  testar o PWA/service worker).
-- Testar mudanças: use Playwright headless (Chromium pré-instalado no ambiente
-  remoto). Padrão usado no projeto: abrir `file:///.../index.html`, clicar em
-  `#btnNewGame`, manipular `Game.state` via `page.evaluate` para montar
-  cenários, tirar screenshot do `#officeCanvas` e checar erros de console.
-  Sempre verifique `node --check js/*.js` antes.
+- Instalar: `npm install` (Node 20+).
+- Rodar: `npm run dev` (Vite; abre em http://localhost:5173/Game/).
+- Qualidade: `npm run check` = typecheck + lint + testes (Vitest) + build.
+  Rode antes de todo push; o CI executa o mesmo e bloqueia o deploy se falhar.
+- Teste funcional: abrir o dev server no navegador, clicar em `#btnNewGame`,
+  manipular `Game.state` via console/evaluate para montar cenários.
 - **Toda mudança visual deve ser confirmada com screenshot** antes do push.
 
-## Arquitetura (ordem de carga importa)
+## Arquitetura (migração em curso — PRD F0 concluída)
 
-| Arquivo | Papel |
-|---|---|
-| `js/data.js` | **Todo o balanceamento**: tiers, cargos (pts/DIA), upgrades, tipos de contrato, fases, promoções, eventos, produtos, conquistas, rivais |
-| `js/game.js` | Motor puro (sem DOM): estado, tick, economia, energia, tarefas, eventos, offline, save v3 + migração |
-| `js/audio.js` | SFX e ambiente por WebAudio (sem arquivos de áudio) |
-| `js/props.js` | Pacote de arte: móveis isométricos desenhados por código (`Props.draw.*`) |
-| `js/iso.js` | Cena isométrica em Canvas 2D: layout do escritório, personagens/rotas, câmera (zoom/pan/pinça), dia/noite, clientes NPC |
-| `js/ui.js` | Painéis DOM (projetos, equipe, loja, empresa) |
-| `js/main.js` | Cola tudo: eventos → toasts/sons, modais, velocidade, game loop |
+Código legado (IIFEs em `window.*`, carregados em ordem por `src/main.ts`):
+
+| Arquivo | Papel | Destino no PRD |
+|---|---|---|
+| `js/data.js` | **Todo o balanceamento**: tiers, cargos (pts/DIA), upgrades, contratos, fases, eventos, produtos, conquistas, rivais | `src/core/data.ts` (F1) |
+| `js/game.js` | Motor puro (sem DOM): estado, tick, economia, energia, eventos, offline, save v3 + migração | `src/core/` (F1) |
+| `js/audio.js` | SFX e ambiente por WebAudio (sem arquivos de áudio) | `src/audio/` (F5) |
+| `js/props.js` | Arte procedural: móveis isométricos (`Props.draw.*`) | `src/render/sprites/` (F2/F4) |
+| `js/iso.js` | Cena isométrica Canvas 2D: layout, personagens/rotas, câmera, dia/noite | `src/render/` em Pixi (F2/F3) |
+| `js/ui.js` | Painéis DOM (projetos, equipe, loja, empresa) | `src/ui/` (F5) |
+| `js/main.js` | Cola tudo: eventos → toasts/sons, modais, velocidade, game loop | `src/ui/` (F5) |
 
 Comunicação: `Game.on('event'|'change'|'tick', fn)`. O canvas lê `Game.state`
 diretamente a cada frame; o DOM re-renderiza no `change` (ações) e `tick`
 (barras/HUD).
 
+Ferramentas: Vite (`vite.config.ts`, base `/Game/`), TS estrito
+(`tsconfig.json`), ESLint + Prettier, Vitest (`test/`), PWA via
+`vite-plugin-pwa` (gera o `sw.js` — o antigo manual foi removido; **não** é
+mais preciso bump de cache). Estáticos ficam em `public/`.
+
 ## Regras do projeto
 
 - **Idioma**: todo texto de UI, comentários e commits em **pt-BR**.
-- **Sem dependências/build**: nada de npm no jogo em si; assets externos são
-  bloqueados pela política (arte é 100% procedural).
+- **Arte e áudio 100% procedurais**: nenhum asset binário (PNG/MP3) no repo;
+  texturas são geradas por código (no Pixi: `RenderTexture` em runtime).
 - **Tempo**: 1 dia de jogo = `DAY_LENGTH` (1440s = 24 min). Velocidades de
-  produção são **pontos por DIA** em `data.js`; `empSpeed()` converte p/ segundo.
+  produção são **pontos por DIA** em `data`; `empSpeed()` converte p/ segundo.
   Qualquer nova mecânica temporal deve escalar por `DAY_LENGTH`.
-- **Save**: mudanças no formato exigem bump de `SAVE_VERSION` em `game.js` +
-  bloco em `migrate()`. Nunca quebre saves antigos.
-- **Service worker**: ao mudar qualquer arquivo do jogo, bump do `CACHE` em
-  `sw.js` (senão o PWA serve versão velha).
-- **Cena**: entidades novas entram no z-sort de `draw()` com profundidade
-  `gx+gy`; personagens usam `routeTo()` (respeita a porta da cozinha).
+- **Save é sagrado**: chave `appAgencyTycoon.save.v1`; mudanças de formato
+  exigem bump de `SAVE_VERSION` + bloco em `migrate()` + teste com fixture em
+  `test/`. Nunca quebre saves antigos.
+- **Gameplay/balanceamento**: a migração técnica não altera números — qualquer
+  ajuste de balanceamento é mudança separada e explícita.
+- **Fronteira do core**: `src/core/` não importa DOM/Pixi/áudio (lint bloqueia).
+- **Cena**: entidades novas entram no z-sort com profundidade `gx+gy`;
+  personagens usam `routeTo()` (respeita a porta da cozinha).
 - Commits descritivos em pt-BR; push na branch de trabalho publica o site.
 
 ## Skills do projeto (`.claude/skills/`)
@@ -56,9 +65,8 @@ diretamente a cada frame; o DOM re-renderiza no `change` (ações) e `tick`
 
 ## Onde mexer para tarefas comuns
 
-- Balancear economia/ritmo → `js/data.js` (quase tudo) e constantes no topo de
-  `js/game.js` (energia, fluxo de contratos, chances de evento).
+- Continuar a migração (fases F1–F5) → **`docs/PRD.md`** (roadmap + prompt executável).
+- Balancear economia/ritmo → `js/data.js` (até F1 mover para `src/core/data.ts`).
 - Novo móvel/decoração → skill `novo-movel` (`.claude/skills/novo-movel/`).
-- Novo evento aleatório → `EVENTS` em `data.js` + `triggerRandomEvent`/
-  `resolveEvent` em `game.js` (instant vs choice).
-- Nova conquista → `ACHIEVEMENTS` em `data.js` (só isso; o motor checa sozinho).
+- Novo evento aleatório → `EVENTS` em `data` + `triggerRandomEvent`/`resolveEvent`.
+- Nova conquista → `ACHIEVEMENTS` em `data` (só isso; o motor checa sozinho).

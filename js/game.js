@@ -681,8 +681,12 @@
 
   // migra saves de versões anteriores para o formato atual
   function migrate(s) {
+    // guarda a versão ANTES do merge: freshState() traz v atual e mascararia
+    // saves antigos sem o campo v (que devem passar por todas as migrações)
+    const version = s.v || 1;
     const base = freshState();
     s = Object.assign(base, s);
+    s.v = version;
     // campos novos com defaults (independente de versão)
     s.achievements = s.achievements || [];
     s.stats.hires = s.stats.hires || 0;

@@ -26,15 +26,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Qualidade (types + lint + testes)
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run test
+
+      - name: Build (Vite)
+        run: npm run build
+
       - name: Configurar Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
 
-      - name: Empacotar site (jogo estático na raiz)
+      - name: Empacotar site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
       - name: Publicar
         id: deployment
