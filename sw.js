@@ -1,5 +1,5 @@
 /* Service worker: cache-first para jogar offline quando servido por HTTP(S) */
-const CACHE = 'agency-tycoon-v4';
+const CACHE = 'agency-tycoon-v5';
 const FILES = [
   '.', 'index.html', 'manifest.json', 'assets/icon.svg',
   'css/styles.css',

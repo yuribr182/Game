@@ -18,7 +18,9 @@
   let dragging = null;                     // estado do arrastar da câmera
   let layout = null;         // { W, H, desks:[{gx,gy}] , perRow }
   let workers = [];          // personagens (funcionários)
-  let npcs = [];             // NPCs decorativos (atendente, cliente)
+  let npcs = [];             // NPCs fixos (atendente)
+  let clients = [];          // clientes visitando a recepção
+  let clientTimer = 45;      // próximo visitante aleatório (s, escalado pela velocidade)
   let packages = [];         // entregas em movimento
   let pops = [];             // popups flutuantes (+R$)
   let cars = [];             // carros na rua
@@ -80,7 +82,7 @@
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('pointercancel', () => (dragging = null));
+    canvas.addEventListener('pointercancel', (ev) => { pointers.delete(ev.pointerId); pinch = null; dragging = null; });
     canvas.addEventListener('dblclick', () => { cam.scale = fit.scale; cam.ox = fit.ox; cam.oy = fit.oy; });
     resize();
     if (!running) { running = true; lastNow = performance.now(); requestAnimationFrame(frame); }
@@ -346,6 +348,26 @@
       stepToward(w, dt);
     });
 
+    // clientes visitantes: entram pela porta, falam com a secretária e saem
+    clientTimer -= dt;
+    if (clientTimer <= 0) { clientTimer = rand(50, 120); spawnClient(); }
+    for (let i = clients.length - 1; i >= 0; i--) {
+      const c = clients[i];
+      c.timer -= dt;
+      if (c.bubble && (c.bubble.life -= dt) <= 0) c.bubble = null;
+      if (c.state === 'in' && reached(c)) {
+        c.state = 'talk'; c.timer = rand(5, 9);
+        c.bubble = { emoji: pick(['💼', '📱', '💬', '🤝']), life: 3 };
+        // a secretária responde
+        if (npcs[0]) npcs[0].bubble = { emoji: '💬', life: 2.5 };
+      } else if (c.state === 'talk' && c.timer <= 0) {
+        routeTo(c, c.exit.gx, c.exit.gy); c.state = 'out';
+      } else if (c.state === 'out' && reached(c)) {
+        clients.splice(i, 1); continue;
+      }
+      stepToward(c, dt);
+    }
+
     // NPCs (atendente): fica na recepção e dá voltinhas curtas por perto
     npcs.forEach((n) => {
       n.timer -= dt;
@@ -431,6 +453,21 @@
     w.dir = (dx - dy) >= 0 ? 1 : -1;
   }
 
+  // cliente entra pela porta e vai até a frente do balcão da recepção
+  function spawnClient() {
+    if (!layout || clients.length >= 2) return;
+    const start = { gx: layout.door.gx, gy: layout.H + 0.9 };
+    const c = makeWorker(-1, start, null);
+    c.shirt = pick(SHIRTS); c.acc = null;
+    c.briefcase = true;
+    c.sp = rand(1.0, 1.4);
+    c.exit = start;
+    const r = layout.reception;
+    routeTo(c, r.gx + 0.5, r.gy + 0.75);   // frente do balcão
+    c.state = 'in'; c.timer = 30;
+    clients.push(c);
+  }
+
   function spawnPuff(gx, gy) { for (let k = 0; k < 4; k++) particles.push({ gx: gx + rand(-0.1, 0.1), gy, z: rand(6, 12), life: rand(0.4, 0.7), r: rand(3, 6) }); }
   function spawnSmoke(gx, gy) { particles.push({ gx, gy, z: 30, life: 0.6, r: 4 }); }
 
@@ -504,6 +541,7 @@
     layout.trees.forEach((tr) => ents.push({ d: tr.gx + tr.gy, kind: 'tree', o: tr }));
     workers.forEach((w) => ents.push({ d: w.gx + w.gy + 0.01, kind: 'worker', o: w }));
     npcs.forEach((n) => ents.push({ d: n.gx + n.gy + 0.01, kind: 'worker', o: n }));
+    clients.forEach((c) => ents.push({ d: c.gx + c.gy + 0.01, kind: 'worker', o: c }));
     packages.forEach((p) => ents.push({ d: p.gx + p.gy + 0.02, kind: 'pkg', o: p }));
     cars.forEach((c) => ents.push({ d: c.gx + c.gy, kind: 'car', o: c }));
     particles.forEach((p) => ents.push({ d: p.gx + p.gy + 0.5, kind: 'part', o: p }));
@@ -882,6 +920,14 @@
       ctx.globalAlpha = 1;
     }
 
+    // ---- maleta do cliente ----
+    if (w.briefcase) {
+      const bx = p.x + (w.dir >= 0 ? 9 : -14), by = baseY - 12;
+      roundRect(bx, by, 6.5, 5.5, 1.5, '#6b4a2b');
+      ctx.strokeStyle = '#553a22'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(bx + 3.2, by, 2, Math.PI, 0); ctx.stroke();
+    }
+
     // ---- caneca de café (depois do intervalo) ----
     if (w.mug > 0) {
       const mx = p.x + (w.dir >= 0 ? 10 : -13), my = baseY - 16;
@@ -1069,12 +1115,40 @@
     cam.oy = m.y - (m.y - cam.oy) * (ns / cam.scale);
     cam.scale = ns;
   }
+  // suporte a múltiplos ponteiros: 1 dedo arrasta, 2 dedos = pinça (zoom)
+  const pointers = new Map();
+  let pinch = null;
+  function pinchInfo() {
+    const [a, b] = [...pointers.values()];
+    return {
+      d: Math.hypot(a.x - b.x, a.y - b.y),
+      cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2,
+    };
+  }
   function onPointerDown(ev) {
     const m = localXY(ev);
-    dragging = { sx: m.x, sy: m.y, ox: cam.ox, oy: cam.oy, moved: false };
+    pointers.set(ev.pointerId, m);
     canvas.setPointerCapture(ev.pointerId);
+    if (pointers.size === 2) {
+      dragging = null;
+      const pi = pinchInfo();
+      pinch = { d0: pi.d, cx0: pi.cx, cy0: pi.cy, scale0: cam.scale, ox0: cam.ox, oy0: cam.oy };
+    } else if (pointers.size === 1) {
+      dragging = { sx: m.x, sy: m.y, ox: cam.ox, oy: cam.oy, moved: false };
+    }
   }
   function onPointerMove(ev) {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, localXY(ev));
+    if (pointers.size === 2 && pinch) {
+      const pi = pinchInfo();
+      const ns = Math.max(fit.scale * 0.5, Math.min(fit.scale * 3.2, pinch.scale0 * (pi.d / Math.max(20, pinch.d0))));
+      // mantém o ponto entre os dedos ancorado e acompanha o deslocamento deles
+      cam.ox = pi.cx - (pinch.cx0 - pinch.ox0) * (ns / pinch.scale0);
+      cam.oy = pi.cy - (pinch.cy0 - pinch.oy0) * (ns / pinch.scale0);
+      cam.scale = ns;
+      return;
+    }
     if (!dragging) return;
     const m = localXY(ev);
     const dx = m.x - dragging.sx, dy = m.y - dragging.sy;
@@ -1082,6 +1156,8 @@
     if (dragging.moved) { cam.ox = dragging.ox + dx; cam.oy = dragging.oy + dy; }
   }
   function onPointerUp(ev) {
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) pinch = null;
     const wasDrag = dragging && dragging.moved;
     dragging = null;
     if (wasDrag) return;               // arrastou: não é clique
@@ -1122,5 +1198,5 @@
     return { x: p.x * cam.scale + cam.ox, y: (p.y - 18) * cam.scale + cam.oy };
   }
 
-  window.IsoOffice = { init, resize, popMoney, npcInfo, workerScreenPos };
+  window.IsoOffice = { init, resize, popMoney, npcInfo, workerScreenPos, spawnClient };
 })();

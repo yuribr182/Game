@@ -32,12 +32,13 @@
   }
 
   // ---------- eventos do jogo -> toasts ----------
-  const kindMap = { complete: 'good', level: 'gold', upgrade: 'gold', achieve: 'gold', fail: 'bad', error: 'bad', warn: 'bad', info: '' };
-  const sfxMap = { complete: 'complete', level: 'level', upgrade: 'upgrade', achieve: 'level', fail: 'fail', warn: 'fail', error: 'error', info: 'hire' };
+  const kindMap = { complete: 'good', level: 'gold', upgrade: 'gold', achieve: 'gold', accept: '', fail: 'bad', error: 'bad', warn: 'bad', info: '' };
+  const sfxMap = { complete: 'complete', level: 'level', upgrade: 'upgrade', achieve: 'level', accept: 'buy', fail: 'fail', warn: 'fail', error: 'error', info: 'hire' };
   G.on('event', (e) => {
     UI.toast(e.msg, kindMap[e.type] || '');
     if (window.Sfx && sfxMap[e.type]) Sfx.play(sfxMap[e.type]);
     if (e.type === 'complete' && e.gain) window.IsoOffice.popMoney('+R$ ' + G.fmt(e.gain));
+    if (e.type === 'accept') window.IsoOffice.spawnClient();   // o cliente vem fechar negócio
   });
   G.on('change', (s) => UI.renderAll(s));
   G.on('tick', (s) => UI.renderTick(s));
@@ -214,9 +215,23 @@
     if (G.state) {
       G.tick(dt * G.timeScale);   // ⏸ pausa · 2x/3x aceleram
       G.autoSaveTick(dt);
+      // ambiente sonoro (teclado digitando, rua)
+      if (window.Sfx && Sfx.ambientTick) {
+        Sfx.ambientTick(dt, {
+          working: G.state.active.length > 0,
+          workers: G.employeesSeated(),
+          paused: G.timeScale === 0,
+        });
+      }
     }
     requestAnimationFrame(loop);
   }
+
+  // ---------- áudio: destrava no primeiro toque/clique ----------
+  document.addEventListener('pointerdown', function unlockOnce() {
+    if (window.Sfx) Sfx.unlock();
+    document.removeEventListener('pointerdown', unlockOnce);
+  });
 
   // ---------- PWA (só quando servido por http/https) ----------
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

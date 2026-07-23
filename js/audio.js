@@ -49,5 +49,60 @@
     if (bank[name]) { try { bank[name](); } catch (e) {} }
   }
 
-  window.Sfx = { play };
+  // ---------- sons ambientes (teclado digitando, carros na rua) ----------
+  let noiseBuf = null;
+  function noise() {
+    const a = ctx(); if (!a) return null;
+    if (!noiseBuf) {
+      noiseBuf = a.createBuffer(1, a.sampleRate * 0.5, a.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return noiseBuf;
+  }
+  // clique curto de tecla (ruído filtrado)
+  function keyClick() {
+    const a = ctx(); if (!a) return;
+    const src = a.createBufferSource(); src.buffer = noise();
+    const bp = a.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.value = 1800 + Math.random() * 2600; bp.Q.value = 2.5;
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.02 + Math.random() * 0.02, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.045);
+    src.connect(bp); bp.connect(g); g.connect(a.destination);
+    src.start(); src.stop(a.currentTime + 0.06);
+  }
+  // whoosh grave de carro passando
+  function carWhoosh() {
+    const a = ctx(); if (!a) return;
+    const src = a.createBufferSource(); src.buffer = noise(); src.loop = true;
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420;
+    const g = a.createGain();
+    const t0 = a.currentTime;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.022, t0 + 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
+    src.connect(lp); lp.connect(g); g.connect(a.destination);
+    src.start(); src.stop(t0 + 1.2);
+  }
+
+  let typeAcc = 0, carAcc = 0, nextCar = 12;
+  // chamado a cada frame pelo main; info = { working, workers, paused }
+  function ambientTick(dt, info) {
+    const s = window.Game && window.Game.state;
+    if (!s || s.muted || !info || info.paused || !ac) return;  // só toca após 1º gesto (ac criado)
+    // digitação: alguns cliques por segundo, proporcional à equipe produzindo
+    if (info.working && info.workers > 0) {
+      typeAcc += dt * Math.min(9, 1.5 + info.workers * 1.6);
+      while (typeAcc >= 1) { typeAcc -= 1; if (Math.random() < 0.85) keyClick(); }
+    }
+    // carro passando de vez em quando
+    carAcc += dt;
+    if (carAcc >= nextCar) { carAcc = 0; nextCar = 9 + Math.random() * 16; carWhoosh(); }
+  }
+
+  // cria o AudioContext no primeiro gesto do usuário (exigência dos navegadores)
+  function unlock() { ctx(); }
+
+  window.Sfx = { play, ambientTick, unlock };
 })();

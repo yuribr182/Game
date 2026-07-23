@@ -60,6 +60,8 @@
       available: [],     // contratos ofertados
       upgrades: [],      // ids comprados
       achievements: [],  // conquistas desbloqueadas
+      rivals: D.RIVALS.map((r) => ({ id: r.id, name: r.name, rep: r.rep, growth: r.growth })),
+      rankPos: null,     // posição atual no ranking (para toast de subida)
       products: [],      // produtos próprios (renda passiva)
       effects: [],       // efeitos temporários de eventos { id, daysLeft, prod }
       pendingEvent: null,// evento aguardando escolha do jogador
@@ -254,7 +256,7 @@
     }
     state.available.splice(idx, 1);
     state.active.push(p);
-    emit('event', { type: 'info', msg: `Contrato aceito: ${p.name}` });
+    emit('event', { type: 'accept', msg: `🤝 Contrato aceito: ${p.name} (${p.client})` });
     changed();
     return true;
   }
@@ -501,7 +503,22 @@
       resolveEvent(state.pendingEvent.defaultOption);
     }
 
+    // concorrência: rivais crescem um pouco todo dia
+    (state.rivals || []).forEach((r) => {
+      r.rep += r.growth * rand(0.5, 1.4);
+    });
+    const pos = rankPosition();
+    if (state.rankPos != null && pos < state.rankPos) {
+      emit('event', { type: 'upgrade', msg: `📈 Sua agência subiu para ${pos}º lugar no ranking!` });
+    }
+    state.rankPos = pos;
+
     checkAchievements();
+  }
+
+  // posição do jogador no ranking (1 = líder)
+  function rankPosition() {
+    return 1 + (state.rivals || []).filter((r) => r.rep > state.rep).length;
   }
 
   // ---------- eventos aleatórios ----------
@@ -781,7 +798,7 @@
     tier, maxDesks, projectSlots, deskCost, production, employeesSeated,
     contractValueMult, repMultiplier, projectRates, assignedCount,
     promotionFor, canPromote, productCost, productsUnlocked, empSpeed,
-    takeOfflineReport,
+    takeOfflineReport, rankPosition,
     // ações
     acceptProject, declineProject, hire, fire, buyDesk, upgradeOffice, buyUpgrade,
     assignEmployee, promote, resolveEvent, launchProduct, setCompany,

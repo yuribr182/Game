@@ -255,6 +255,12 @@ body {
 }
 .stat-row:last-child { border-bottom: none; }
 .stat-row b { color: var(--text); }
+.rank-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
+.rank-pos { width: 30px; text-align: center; font-weight: 800; }
+.rank-name { flex: 1; font-size: .9rem; }
+.rank-rep { color: var(--accent); font-weight: 700; font-size: .86rem; }
+.rank-me { border-color: var(--accent); background: rgba(79,140,255,.08); }
+
 .ach-card { display: flex; gap: 11px; align-items: center; }
 .ach-card .ach-emoji { font-size: 1.6rem; }
 .ach-card.locked { opacity: .45; filter: grayscale(.6); }
@@ -346,10 +352,19 @@ body {
 *::-webkit-scrollbar-thumb { background: var(--line); border-radius: 20px; }
 *::-webkit-scrollbar-track { background: transparent; }
 
-/* ---------- Responsivo ---------- */
+/* ---------- Responsivo / toque ---------- */
+* { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 900px) {
   body { overflow: auto; }
   .game { grid-template-columns: 1fr; height: auto; }
+  .office-viewport { min-height: 46vh; }
   .side-panel { min-height: 60vh; }
   .hud-stats { order: 3; width: 100%; justify-content: center; }
+  /* alvos de toque maiores */
+  .btn-mini { padding: 10px 12px; font-size: .92rem; }
+  .tab { padding: 15px 6px; font-size: .95rem; }
+  .speed-btn { padding: 11px 13px; font-size: .9rem; }
+  .assign-select { padding: 10px 10px; font-size: .9rem; }
+  .btn-icon { padding: 11px 13px; }
+  .stat { padding: 7px 10px; font-size: .92rem; }
 }

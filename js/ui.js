@@ -14,7 +14,7 @@
     ['statMoney','statRep','statLevel','statProd','statDay','tierBadge','companyName',
      'officeCap','officeGrid','deskCost','activeCount','activeProjects','availableProjects',
      'hireList','teamList','teamCount','upgradeList','productList',
-     'statsPanel','achList','achCount'].forEach((id) => (el[id] = document.getElementById(id)));
+     'statsPanel','achList','achCount','rankList'].forEach((id) => (el[id] = document.getElementById(id)));
   }
 
   const money = (n) => 'R$ ' + fmt(n);
@@ -291,9 +291,24 @@
     if (btn) btn.onclick = () => G.launchProduct();
   }
 
-  // ---------- Empresa: estatísticas + conquistas ----------
+  // ---------- Empresa: ranking + estatísticas + conquistas ----------
   function renderCompany(s) {
     if (!el.statsPanel) return;
+
+    // ranking de agências (rivais + jogador, por reputação)
+    if (el.rankList) {
+      const all = [
+        ...(s.rivals || []).map((r) => ({ name: r.name, rep: r.rep, me: false })),
+        { name: s.company, rep: s.rep, me: true },
+      ].sort((a, b) => b.rep - a.rep);
+      const medals = ['🥇', '🥈', '🥉'];
+      el.rankList.innerHTML = all.map((r, i) => `
+        <div class="card rank-row ${r.me ? 'rank-me' : ''}">
+          <span class="rank-pos">${medals[i] || (i + 1) + 'º'}</span>
+          <span class="rank-name">${r.name}${r.me ? ' <b>(você)</b>' : ''}</span>
+          <span class="rank-rep">${fmt(r.rep)} ⭐</span>
+        </div>`).join('');
+    }
     const passiva = (s.products || []).reduce((sum, p) => sum + p.income, 0);
     const need = D.xpForLevel(s.level);
     const xpPct = Math.min(100, (s.xp / need) * 100);

@@ -127,6 +127,16 @@
   const PRODUCT_NAMES = ['TaskZen', 'FitTrack', 'NotaFácil', 'PetCare+', 'Receitou', 'Grana App',
     'FocusTime', 'MapaAí', 'TreinoPro', 'MeuMercado', 'AgendaLivre', 'FotoMix', 'SomZone', 'VagaCerta'];
 
+  // ---- Agências rivais (ranking) ----
+  // rep inicial e crescimento diário; o jogador sobe o ranking entregando apps
+  const RIVALS = [
+    { id: 'bytejr',   name: 'ByteJunior',      rep: 12,  growth: 0.7 },
+    { id: 'codecat',  name: 'CodeCat Studio',  rep: 45,  growth: 1.1 },
+    { id: 'devhouse', name: 'DevHouse',        rep: 110, growth: 1.7 },
+    { id: 'pixelpro', name: 'PixelPro Apps',   rep: 240, growth: 2.4 },
+    { id: 'technova', name: 'TechNova Group',  rep: 480, growth: 3.2 },
+  ];
+
   // ---- Conquistas ----
   // cond recebe o estado e devolve true quando desbloqueia
   const ACHIEVEMENTS = [
@@ -145,8 +155,9 @@
     { id: 'tier_2', emoji: '🏢', name: 'Subindo na vida', desc: 'Expanda até o Andar próprio.', reward: { money: 5000 }, cond: (s) => s.tier >= 2 },
     { id: 'tier_5', emoji: '🌆', name: 'Campus Tech', desc: 'Alcance o maior escritório do jogo.', reward: { rep: 100 }, cond: (s) => s.tier >= 5 },
     { id: 'level_5', emoji: '🎯', name: 'Empresa nível 5', desc: 'Alcance o nível 5 da empresa.', reward: { money: 4000 }, cond: (s) => s.level >= 5 },
+    { id: 'rank_first', emoji: '🥇', name: 'Líder de mercado', desc: 'Seja a agência nº 1 do ranking.', reward: { money: 25000 }, cond: (s) => s.day > 3 && (s.rivals || []).length > 0 && s.rivals.every((r) => r.rep < s.rep) },
   ];
 
   window.DATA = { TIERS, ROLES, UPGRADES, CLIENTS, PROJECT_TYPES, xpForLevel,
-    FIRST_NAMES, PHASES, phaseFor, PROMOTIONS, EVENTS, PRODUCT_NAMES, ACHIEVEMENTS };
+    FIRST_NAMES, PHASES, phaseFor, PROMOTIONS, EVENTS, PRODUCT_NAMES, ACHIEVEMENTS, RIVALS };
 })();
