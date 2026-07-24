@@ -198,7 +198,8 @@ resumidas, útil se o CLAUDE.md um dia não estiver disponível.
 ### 6.1 Ponto exato de parada (atualizado a cada sessão)
 
 **Última sessão: 2026-07-24.** F1 concluída (motor tipado, 55 testes, cobertura
-do core 94%). **F2 iniciada — marco 1a (ambiente) no ar.** `npm run check` verde.
+do core 94%). **F2 em andamento — marcos 1a (ambiente) e 1b (mobília) no ar;
+falta 1c/2 (personagens, FX, dia/noite animado, cliques).** `npm run check` verde.
 
 **F2 em andamento (renderer Pixi em paralelo, ativado por `?renderer=pixi`):**
 - ✔ 1a — `src/render/`: `iso.ts` (projeção), `layout.ts` (buildLayout portado),
@@ -208,9 +209,11 @@ do core 94%). **F2 iniciada — marco 1a (ambiente) no ar.** `npm run check` ver
   `pixi-shim.ts` (flag → sobrescreve `window.IsoOffice`; import dinâmico do Pixi
   → bundle inicial ~30 KB gzip). Validado: ambiente renderiza em WebGL com
   paridade. O renderer Canvas legado (`js/iso.js`) segue como PADRÃO.
-- ⏳ 1b — assar `js/props.js` + mesas/cadeiras em texturas cacheadas e compor
-  como sprites `zIndex = gx+gy` sob a câmera (`render/sprites/props.ts`,
-  `render/scene.ts`). Reusar o `Painter.toolkit()` já pronto.
+- ✔ 1b — `render/sprites/props.ts` (`PropBaker`: assa cada objeto num canvas e
+  cacheia como Texture por assinatura) + `render/scene.ts` (compõe mesas/
+  cadeiras/móveis/paredes da cozinha/café/árvores como sprites `zIndex = gx+gy`).
+  `draw2d.ts` ganhou desk/chair/innerWall/coffee (portados do `js/iso.js`).
+  Validado: cena mobiliada renderiza com paridade e z-sort corretos.
 - ⏳ 2 — personagens (billboard de paridade; boneco articulado é F3), pacotes/
   clientes/carros, partículas/popups, dia/noite animado (véu de tela),
   clique em trabalhador/pad "+". Só então trocar o renderer padrão para Pixi.
