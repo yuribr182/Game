@@ -16,9 +16,6 @@
     "format": "prettier --write src test docs",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
-  "dependencies": {
-    "pixi.js": "^8.19.0"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^4.1.10",

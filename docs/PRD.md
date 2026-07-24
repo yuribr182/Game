@@ -198,28 +198,26 @@ resumidas, útil se o CLAUDE.md um dia não estiver disponível.
 ### 6.1 Ponto exato de parada (atualizado a cada sessão)
 
 **Última sessão: 2026-07-24.** F1 concluída (motor tipado, 55 testes, cobertura
-do core 94%). **F2 em andamento — marcos 1a (ambiente) e 1b (mobília) no ar;
-falta 1c/2 (personagens, FX, dia/noite animado, cliques).** `npm run check` verde.
+do core 94%). **MUDANÇA DE RUMO (decisão do dono): a migração para Pixi (F2–F5)
+foi CANCELADA.** A arte passou a ser por **imagem real (PNG)** em vez de
+procedural — e, com imagens, o renderer **Canvas 2D** (`js/iso.js`) ficou
+melhor que o Pixi: **nítido** (Pixi assava a cena numa textura e escalava,
+borrando), simples, e mantém todas as funções (pad "+", cliques, animações,
+dia/noite). O renderer Pixi e a dependência `pixi.js` foram **removidos**
+(ficam no histórico do git). `npm run check` verde (55 testes).
 
-**F2 em andamento (renderer Pixi em paralelo, ativado por `?renderer=pixi`):**
-- ✔ 1a — `src/render/`: `iso.ts` (projeção), `layout.ts` (buildLayout portado),
-  `draw2d.ts` (primitivas Canvas + ambiente + toolkit p/ `window.Props`),
-  `camera.ts` (zoom/pan/pinça/dblclick), `renderer.ts` (Pixi v8: assa o ambiente
-  numa textura WebGL, céu, resize, re-bake por tier/decor/empresa),
-  `pixi-shim.ts` (flag → sobrescreve `window.IsoOffice`; import dinâmico do Pixi
-  → bundle inicial ~30 KB gzip). Validado: ambiente renderiza em WebGL com
-  paridade. O renderer Canvas legado (`js/iso.js`) segue como PADRÃO.
-- ✔ 1b — `render/sprites/props.ts` (`PropBaker`: assa cada objeto num canvas e
-  cacheia como Texture por assinatura) + `render/scene.ts` (compõe mesas/
-  cadeiras/móveis/paredes da cozinha/café/árvores como sprites `zIndex = gx+gy`).
-  `draw2d.ts` ganhou desk/chair/innerWall/coffee (portados do `js/iso.js`).
-  Validado: cena mobiliada renderiza com paridade e z-sort corretos.
-- ⏳ 2 — personagens (billboard de paridade; boneco articulado é F3), pacotes/
-  clientes/carros, partículas/popups, dia/noite animado (véu de tela),
-  clique em trabalhador/pad "+". Só então trocar o renderer padrão para Pixi.
-
-Trechos de referência no legado: `js/iso.js` (draw* em ~589-1091, entidades/FSM
-em ~267-471, input em ~1104-1186), `js/props.js` (toolkit `g` = Painter).
+**Direção atual — Canvas 2D + assets de imagem:**
+- ✔ Arte real integrada no `js/iso.js` via `drawImage` (downscale nítido de PNG
+  de alta resolução). Assets em `public/assets/props/` (guia `LEIA-ME.md`,
+  prompts `PROMPTS-IA.md`). Config de âncora/tamanho/posição por item no
+  `ASSET_CFG` do `js/iso.js`; onde não há asset, cai no procedural (fallback).
+  Já reais: `desk.png`, `sofa.png`, `coffee-machine.png`.
+- ⏳ Enviar o resto dos assets (móveis, personagens, ambiente) e plotar cada um.
+- ⏳ Backlog pedido pelo dono: (a) monitor animado sobre a mesa (código rolando/
+  tela preta por estado), (b) bônus de foco de equipe (+12% por colega no mesmo
+  projeto, teto +60%) + botão "focar todos", (c) mover "comprar mesa"/"expandir"
+  pra Loja, (d) jogo em tela cheia + painel direito retrátil (gaveta sobreposta).
+- ⏳ (opcional) portar `js/iso.js`/`ui.js`/`main.js`/`audio.js` para TS.
 
 **F1 (concluída):** `js/game.js` portado para `src/core/` tipado, validado no
 navegador (save real v3 preservado, zero erro de console, cena idêntica).
@@ -243,13 +241,11 @@ Estado por arquivo:
 - ⏳ Ainda legados (IIFEs em `window.*`): `js/audio.js`, `js/props.js`,
   `js/iso.js`, `js/ui.js`, `js/main.js`.
 
-**PRÓXIMA TAREFA (F2 — Cena Pixi, paridade):** nascer o renderer Pixi em paralelo
-ao `iso.js` atual (comparação lado a lado via `?renderer=pixi`, §4.3). Começar por
-`src/render/app.ts` (Application/ticker/DPR/resize) + `src/render/iso.ts`
-(projeção + z-sort `gx+gy`) + port dos props de `js/props.js` para
-`src/render/sprites/props.ts` assados em `RenderTexture` (cache). O motor já
-está pronto e desacoplado do render — a cena lê `Game.state` e assina `Game.on`.
-Substituir o `iso.js` só quando atingir paridade (60 FPS tier 5).
+**PRÓXIMA TAREFA:** ver o backlog em §6.1 (tela cheia + painel retrátil →
+botões pra Loja → monitor animado → bônus de foco), e continuar plotando os
+assets de imagem que o dono for enviando. O renderer é o Canvas `js/iso.js`
+(Pixi foi removido — ver §6.1). ⚠️ As tabelas §4.1/§4.4 e o roadmap §5 abaixo
+falam de Pixi/WebGL: estão OBSOLETOS (mantidos só como histórico da decisão).
 
 ### 6.2 Prompt de atalho (opcional)
 
@@ -274,7 +270,7 @@ descritivo e atualize a tabela de status do roadmap no PRD (marque a fase).
 ### Status do roadmap
 - [x] F0 — Fundação (concluída em 2026-07-23: Vite+TS+ESLint+Prettier+Vitest, PWA via vite-plugin-pwa, CI buildando e publicando `dist/`, 9 testes do motor, bug de migração de save v1 corrigido)
 - [x] F1 — Core tipado (concluída em 2026-07-24: `core/data.ts` + motor completo em `src/core/` tipado estrito e modular — bus/state/economy/events/save/engine —, `js/data.js` e `js/game.js` removidos, shims `window.DATA`/`window.Game`, 25 testes verdes, `core/` sem DOM/Pixi/localStorage; validado no navegador com save real preservado)
-- [ ] F2 — Cena Pixi (paridade)
-- [ ] F3 — Personagens 2.0
-- [ ] F4 — Texturas & FX
-- [ ] F5 — Limpeza final
+- [x] F1.5 — Cobertura do core ≥80% (2026-07-24: 94% de linhas, `@vitest/coverage-v8` + `npm run coverage`, 55 testes)
+- [~] ~~F2 — Cena Pixi (paridade)~~ **CANCELADA (2026-07-24)** — trocada por "Canvas 2D + assets de imagem real". O renderer Pixi chegou a rodar (ambiente + mobília + personagens) mas ficava embaçado (textura escalada) e sem as funções da UI; com arte por imagem, o Canvas `js/iso.js` (nítido, completo) venceu. Pixi removido do repo. (ver §6.1)
+- [ ] ~~F3 — Personagens 2.0~~ · ~~F4 — Texturas & FX~~ · ~~F5 — Limpeza final~~ (eram etapas do plano Pixi — obsoletas)
+- [ ] **Nova direção (Canvas + imagens):** plotar os assets enviados + backlog do dono (tela cheia/painel retrátil, botões pra Loja, monitor animado, bônus de foco de equipe). Ver §6.1.
