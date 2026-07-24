@@ -97,7 +97,7 @@
     // recepção / reunião
     reception:     { file: 'reception.png',      worldW: 72, anchorY: 0.74, offGx: 0.5,  offGy: 0.35 },
     plantBig:      { file: 'plant.png',          worldW: 30, anchorY: 0.85 },
-    meetingTable:  { file: 'meeting-table.png',  worldW: 92, anchorY: 0.74, offGx: 0.7,  offGy: 0.35 },
+    meetingTable:  { file: 'meeting-table.png',  worldW: 118, anchorY: 0.72, offGx: 0.55, offGy: 0.3 },
     // cadeira de escritório (direcional): frente / esquerdo / direito (+ base)
     chair:         { file: 'office-chair.png',        worldW: 28, anchorY: 0.82 },
     'chair-frente':   { file: 'office-chair-frente.png',   worldW: 28, anchorY: 0.82 },
@@ -226,13 +226,8 @@
     F.push({ type: 'reception', gx: W - 2.2, gy: H - 1.7 });
     F.push({ type: 'chair', dir: 'esquerdo', gx: W - 0.75, gy: H - 1.5 });
     F.push({ type: 'plantBig', gx: W - 0.4, gy: H - 2.3 });
-    // REUNIÃO (fundo-direita) — cadeiras viram para a mesa conforme o lado
-    F.push({ type: 'meetingTable', gx: W - 2.2, gy: 0.6 });
-    [
-      [-0.45, 0.55, 'esquerdo'], [-0.45, 1.15, 'esquerdo'],  // lado esquerdo
-      [1.55, 0.55, 'direito'], [1.55, 1.15, 'direito'],      // lado direito
-      [0.55, -0.35, 'frente'], [0.55, 1.7, null],            // topo = frente · baixo = office-chair base
-    ].forEach(([dx, dy, dir]) => F.push({ type: 'chair', dir: dir, gx: W - 2.2 + dx, gy: 0.6 + dy }));
+    // REUNIÃO (fundo-direita) — a imagem meeting-table.png já inclui as cadeiras
+    F.push({ type: 'meetingTable', gx: W - 2.2, gy: 0.75 });
     // EQUIPAMENTOS
     F.push({ type: 'serverRack', gx: 0.35, gy: H * 0.5 });
     F.push({ type: 'waterCooler', gx: W - 0.5, gy: H * 0.5 });
