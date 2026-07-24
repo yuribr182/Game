@@ -197,9 +197,29 @@ resumidas, útil se o CLAUDE.md um dia não estiver disponível.
 
 ### 6.1 Ponto exato de parada (atualizado a cada sessão)
 
-**Última sessão: 2026-07-24.** F1 concluída: `js/game.js` portado para
-`src/core/` tipado e validado no navegador (save real v3 preservado, zero erro
-de console, cena idêntica). `npm run check` verde (25 testes).
+**Última sessão: 2026-07-24.** F1 concluída (motor tipado, 55 testes, cobertura
+do core 94%). **F2 iniciada — marco 1a (ambiente) no ar.** `npm run check` verde.
+
+**F2 em andamento (renderer Pixi em paralelo, ativado por `?renderer=pixi`):**
+- ✔ 1a — `src/render/`: `iso.ts` (projeção), `layout.ts` (buildLayout portado),
+  `draw2d.ts` (primitivas Canvas + ambiente + toolkit p/ `window.Props`),
+  `camera.ts` (zoom/pan/pinça/dblclick), `renderer.ts` (Pixi v8: assa o ambiente
+  numa textura WebGL, céu, resize, re-bake por tier/decor/empresa),
+  `pixi-shim.ts` (flag → sobrescreve `window.IsoOffice`; import dinâmico do Pixi
+  → bundle inicial ~30 KB gzip). Validado: ambiente renderiza em WebGL com
+  paridade. O renderer Canvas legado (`js/iso.js`) segue como PADRÃO.
+- ⏳ 1b — assar `js/props.js` + mesas/cadeiras em texturas cacheadas e compor
+  como sprites `zIndex = gx+gy` sob a câmera (`render/sprites/props.ts`,
+  `render/scene.ts`). Reusar o `Painter.toolkit()` já pronto.
+- ⏳ 2 — personagens (billboard de paridade; boneco articulado é F3), pacotes/
+  clientes/carros, partículas/popups, dia/noite animado (véu de tela),
+  clique em trabalhador/pad "+". Só então trocar o renderer padrão para Pixi.
+
+Trechos de referência no legado: `js/iso.js` (draw* em ~589-1091, entidades/FSM
+em ~267-471, input em ~1104-1186), `js/props.js` (toolkit `g` = Painter).
+
+**F1 (concluída):** `js/game.js` portado para `src/core/` tipado, validado no
+navegador (save real v3 preservado, zero erro de console, cena idêntica).
 
 Estado por arquivo:
 - ✔ `src/core/data.ts` — balanceamento completo, tipado (`js/data.js` REMOVIDO).
