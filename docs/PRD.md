@@ -197,30 +197,36 @@ resumidas, útil se o CLAUDE.md um dia não estiver disponível.
 
 ### 6.1 Ponto exato de parada (atualizado a cada sessão)
 
-**Última sessão: 2026-07-23.** Publicado e validado no ar (save real preservado).
+**Última sessão: 2026-07-24.** F1 concluída: `js/game.js` portado para
+`src/core/` tipado e validado no navegador (save real v3 preservado, zero erro
+de console, cena idêntica). `npm run check` verde (25 testes).
 
 Estado por arquivo:
-- ✔ `src/core/data.ts` — balanceamento completo, tipado (`js/data.js` foi REMOVIDO).
-- ✔ `src/data-shim.ts` — expõe `window.DATA` para os legados; importado em
-  `src/main.ts` ANTES de `js/game.js` (ordem importa: imports são içados).
+- ✔ `src/core/data.ts` — balanceamento completo, tipado (`js/data.js` REMOVIDO).
+- ✔ `src/core/` — motor portado de `js/game.js` (REMOVIDO), tipado estrito e
+  modular: `bus.ts` (EventEmitter tipado), `state.ts` (tipos + `freshState` +
+  interface `Ctx`), `economy.ts` (produção/contratos/equipe/compras/produtos),
+  `events.ts` (eventos aleatórios + conquistas), `save.ts` (`migrate`/ids,
+  PURO — não toca `localStorage`), `engine.ts` (`createEngine` = tick/advanceDay/
+  offline + API pública `window.Game`). RNG e relógio são injetáveis (testes
+  determinísticos); a persistência entra por uma porta `Persistence`.
+- ✔ `src/data-shim.ts` / `src/game-shim.ts` — expõem `window.DATA`/`window.Game`
+  para os legados; importados em `src/main.ts` ANTES de `iso.js`/`ui.js`/`main.js`
+  (ordem importa: imports são içados). `game-shim.ts` injeta o `localStorage`.
 - ✔ Infra: `vite.config.ts` (base `/Game/`, PWA com `sw-limpeza.js`),
-  `tsconfig.json`, `eslint.config.js`, `test/engine.test.ts` (9 testes),
+  `tsconfig.json`, `eslint.config.js`, `test/engine.test.ts` (25 testes),
   workflow `deploy-pages.yml` buildando `dist/`. Origem do Pages já está em
   "GitHub Actions" (virada manual feita em 2026-07-23 — não reverter).
-- ⏳ Ainda legados (IIFEs em `window.*`): `js/game.js`, `js/audio.js`,
-  `js/props.js`, `js/iso.js`, `js/ui.js`, `js/main.js`.
+- ⏳ Ainda legados (IIFEs em `window.*`): `js/audio.js`, `js/props.js`,
+  `js/iso.js`, `js/ui.js`, `js/main.js`.
 
-**PRÓXIMA TAREFA (terminar F1):** portar `js/game.js` (~800 linhas) para
-`src/core/` nos módulos do §4.2 (`state.ts`, `save.ts`, `economy.ts`,
-`events.ts`, `engine.ts`, `bus.ts`), mantendo um shim `window.Game` (num
-`src/game-shim.ts`, mesmo padrão do `data-shim.ts`) para `iso.js`/`ui.js`/
-`main.js`. Atenção: `core/` não pode tocar `localStorage` diretamente
-(lint barra `window`/`localStorage` — injete a persistência pelo shim).
-Ao terminar: `npm run check`, testar no navegador com screenshot, commitar,
-e atualizar esta seção + o checklist abaixo.
-
-Depois de F1: F2 (cena Pixi com paridade visual — começar por
-`src/render/app.ts` + `iso.ts` + port dos props com `RenderTexture`).
+**PRÓXIMA TAREFA (F2 — Cena Pixi, paridade):** nascer o renderer Pixi em paralelo
+ao `iso.js` atual (comparação lado a lado via `?renderer=pixi`, §4.3). Começar por
+`src/render/app.ts` (Application/ticker/DPR/resize) + `src/render/iso.ts`
+(projeção + z-sort `gx+gy`) + port dos props de `js/props.js` para
+`src/render/sprites/props.ts` assados em `RenderTexture` (cache). O motor já
+está pronto e desacoplado do render — a cena lê `Game.state` e assina `Game.on`.
+Substituir o `iso.js` só quando atingir paridade (60 FPS tier 5).
 
 ### 6.2 Prompt de atalho (opcional)
 
@@ -244,7 +250,7 @@ descritivo e atualize a tabela de status do roadmap no PRD (marque a fase).
 
 ### Status do roadmap
 - [x] F0 — Fundação (concluída em 2026-07-23: Vite+TS+ESLint+Prettier+Vitest, PWA via vite-plugin-pwa, CI buildando e publicando `dist/`, 9 testes do motor, bug de migração de save v1 corrigido)
-- [ ] F1 — Core tipado (em andamento: `core/data.ts` portado e tipado, `js/data.js` removido; falta portar `game.js` para `core/`)
+- [x] F1 — Core tipado (concluída em 2026-07-24: `core/data.ts` + motor completo em `src/core/` tipado estrito e modular — bus/state/economy/events/save/engine —, `js/data.js` e `js/game.js` removidos, shims `window.DATA`/`window.Game`, 25 testes verdes, `core/` sem DOM/Pixi/localStorage; validado no navegador com save real preservado)
 - [ ] F2 — Cena Pixi (paridade)
 - [ ] F3 — Personagens 2.0
 - [ ] F4 — Texturas & FX

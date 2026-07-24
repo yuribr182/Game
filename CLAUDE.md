@@ -18,12 +18,14 @@ https://yuribr182.github.io/Game/ (o workflow builda e publica a cada push).
 
 ## Arquitetura (migração em curso — PRD F0 concluída)
 
-Código legado (IIFEs em `window.*`, carregados em ordem por `src/main.ts`):
+Motor já portado para `src/core/` (TS estrito, sem DOM/Pixi/localStorage);
+o restante ainda é legado (IIFEs em `window.*`, carregados em ordem por
+`src/main.ts` após os shims):
 
 | Arquivo | Papel | Destino no PRD |
 |---|---|---|
-| `src/core/data.ts` | **Todo o balanceamento**: tiers, cargos (pts/DIA), upgrades, contratos, fases, eventos, produtos, conquistas, rivais (✔ portado, tipado; exposto como `window.DATA` via `src/data-shim.ts`) | concluído (F1) |
-| `js/game.js` | Motor puro (sem DOM): estado, tick, economia, energia, eventos, offline, save v3 + migração | `src/core/` (F1) |
+| `src/core/data.ts` | **Todo o balanceamento**: tiers, cargos (pts/DIA), upgrades, contratos, fases, eventos, produtos, conquistas, rivais (✔ tipado; `window.DATA` via `src/data-shim.ts`) | concluído (F1) |
+| `src/core/` (bus, state, economy, events, save, engine) | **Motor puro**: estado, tick, economia, energia, eventos, offline, save v3 + migração. `createEngine()` monta a API; RNG/relógio injetáveis; persistência por porta. `window.Game` via `src/game-shim.ts` | concluído (F1) |
 | `js/audio.js` | SFX e ambiente por WebAudio (sem arquivos de áudio) | `src/audio/` (F5) |
 | `js/props.js` | Arte procedural: móveis isométricos (`Props.draw.*`) | `src/render/sprites/` (F2/F4) |
 | `js/iso.js` | Cena isométrica Canvas 2D: layout, personagens/rotas, câmera, dia/noite | `src/render/` em Pixi (F2/F3) |
@@ -65,8 +67,8 @@ mais preciso bump de cache). Estáticos ficam em `public/`.
 
 ## Onde mexer para tarefas comuns
 
-- Continuar a migração (fases F1–F5) → **`docs/PRD.md`** (roadmap + prompt executável).
+- Continuar a migração (próxima: F2 — cena Pixi) → **`docs/PRD.md`** (roadmap + prompt executável).
 - Balancear economia/ritmo → `src/core/data.ts` (tipado; valores em pts/DIA).
 - Novo móvel/decoração → skill `novo-movel` (`.claude/skills/novo-movel/`).
-- Novo evento aleatório → `EVENTS` em `data` + `triggerRandomEvent`/`resolveEvent`.
-- Nova conquista → `ACHIEVEMENTS` em `data` (só isso; o motor checa sozinho).
+- Novo evento aleatório → `EVENTS` em `src/core/data.ts` + `triggerRandomEvent`/`resolveEvent` em `src/core/events.ts`.
+- Nova conquista → `ACHIEVEMENTS` em `src/core/data.ts` (só isso; o motor checa sozinho).
