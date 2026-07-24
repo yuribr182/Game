@@ -112,6 +112,16 @@
   };
   $('#btnBuyDesk').onclick = () => G.buyDesk();
   $('#btnUpgradeOffice').onclick = () => G.upgradeOffice();
+
+  // ---------- gaveta lateral (abre/fecha por cima da cena) ----------
+  const sidePanel = $('#sidePanel');
+  const drawerToggle = $('#drawerToggle');
+  if (drawerToggle && sidePanel) {
+    drawerToggle.onclick = () => {
+      const open = sidePanel.classList.toggle('open');
+      drawerToggle.textContent = open ? '›' : '‹';   // › = fechar · ‹ = abrir
+    };
+  }
   $('#btnSave').onclick = () => { G.save(); UI.toast('💾 Jogo salvo!', 'good'); };
   $('#btnMenu').onclick = () => menuModal.classList.remove('hidden');
   $('#btnResume').onclick = () => menuModal.classList.add('hidden');

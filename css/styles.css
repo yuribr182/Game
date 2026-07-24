@@ -117,11 +117,11 @@ body {
 .hud-right { display: flex; gap: 6px; }
 
 /* ---------- Layout de jogo ---------- */
+/* Tela cheia: o escritório ocupa tudo; o painel direito é uma gaveta sobreposta. */
 .game {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 16px;
-  padding: 16px;
+  display: block;
+  position: relative;
+  padding: 0;
   height: calc(100vh - 60px);
 }
 
@@ -132,6 +132,41 @@ body {
   display: flex; flex-direction: column;
   overflow: hidden;
 }
+/* escritório em tela cheia (sem bordas/cantos) */
+.office-panel {
+  height: 100%;
+  border: none;
+  border-radius: 0;
+}
+/* painel direito = gaveta sobreposta que desliza pra dentro/fora */
+.side-panel {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: min(400px, 92vw);
+  z-index: 30;
+  border-radius: 0;
+  border: none;
+  border-left: 1px solid var(--line);
+  overflow: visible;              /* deixa o puxador aparecer pra fora */
+  transform: translateX(100%);
+  transition: transform .28s ease;
+  box-shadow: -14px 0 34px rgba(0,0,0,.45);
+}
+.side-panel.open { transform: translateX(0); }
+/* puxador na borda esquerda da gaveta (fica visível mesmo com ela fechada) */
+.drawer-tab {
+  position: absolute;
+  left: -38px; top: 50%; transform: translateY(-50%);
+  width: 38px; height: 96px;
+  background: var(--panel);
+  border: 1px solid var(--line); border-right: none;
+  border-radius: 12px 0 0 12px;
+  color: var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; line-height: 1;
+  box-shadow: -8px 0 20px rgba(0,0,0,.35);
+}
+.drawer-tab:hover { background: var(--panel-2, #1b2536); }
 .office-header, .office-footer {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px; gap: 10px; flex-wrap: wrap;
