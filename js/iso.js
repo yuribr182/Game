@@ -78,32 +78,35 @@
   // o chão), offGx/offGy (desloca o (gx,gy) da grade p/ o centro do móvel).
   // anchorX = 0.5 e offsets = 0 por padrão. A CHAVE é o tipo do móvel no jogo.
   const ASSET_CFG = {
-    // especiais (mesa de trabalho e cafeteira)
-    desk:        { file: 'desk.png',           worldW: 66,  anchorY: 0.72, offGx: 0.35, offGy: 0.28 },
-    coffee:      { file: 'coffee-machine.png', worldW: 56,  anchorY: 0.82 },
+    // especiais (mesa de trabalho e cafeteira — cafeteira pequena, vai no balcão)
+    desk:          { file: 'desk.png',           worldW: 50, anchorY: 0.72, offGx: 0.35, offGy: 0.28 },
+    coffee:        { file: 'coffee-machine.png', worldW: 26, anchorY: 0.82 },
     // cozinha
-    fridge:      { file: 'fridge.png',         worldW: 46,  anchorY: 0.84, offGx: 0.25, offGy: 0.21 },
-    stove:       { file: 'stove.png',          worldW: 50,  anchorY: 0.82, offGx: 0.24, offGy: 0.21 },
-    sink:        { file: 'sink.png',           worldW: 52,  anchorY: 0.80, offGx: 0.25, offGy: 0.21 },
-    microwave:   { file: 'microwave.png',      worldW: 36,  anchorY: 0.80, offGx: 0.15, offGy: 0.12 },
-    diningTable: { file: 'dining-table.png',   worldW: 58,  anchorY: 0.76, offGx: 0.26, offGy: 0.26 },
-    stool:       { file: 'stool.png',          worldW: 32,  anchorY: 0.82, offGx: 0.17, offGy: 0.17 },
+    counter:       { file: 'counter.png',        worldW: 50, anchorY: 0.82, offGx: 0.3, offGy: 0.22 },
+    fridge:        { file: 'fridge.png',         worldW: 38, anchorY: 0.84, offGx: 0.25, offGy: 0.21 },
+    sink:          { file: 'sink.png',           worldW: 44, anchorY: 0.80, offGx: 0.25, offGy: 0.21 },
+    microwave:     { file: 'microwave.png',      worldW: 26, anchorY: 0.80, offGx: 0.15, offGy: 0.12 },
+    stool:         { file: 'stool.png',          worldW: 26, anchorY: 0.82, offGx: 0.17, offGy: 0.17 },
     // lounge
-    sofa:        { file: 'sofa.png',           worldW: 78,  anchorY: 0.74, offGx: 0.49, offGy: 0.25 },
-    coffeeTable: { file: 'coffee-table.png',   worldW: 46,  anchorY: 0.78, offGx: 0.22, offGy: 0.18 },
-    tv:          { file: 'tv.png',             worldW: 50,  anchorY: 0.86, offGx: 0.25, offGy: 0.03 },
-    pufe:        { file: 'beanbag.png',        worldW: 40,  anchorY: 0.80 },
-    arcade:      { file: 'arcade.png',         worldW: 44,  anchorY: 0.85 },
-    poolTable:   { file: 'pool-table.png',     worldW: 72,  anchorY: 0.76, offGx: 0.35, offGy: 0.25 },
+    sofa:          { file: 'sofa.png',           worldW: 66, anchorY: 0.74, offGx: 0.49, offGy: 0.25 },
+    coffeeTable:   { file: 'coffee-table.png',   worldW: 40, anchorY: 0.78, offGx: 0.22, offGy: 0.18 },
+    tv:            { file: 'tv.png',             worldW: 46, anchorY: 0.86, offGx: 0.25, offGy: 0.03 },
+    pufe:          { file: 'beanbag.png',        worldW: 32, anchorY: 0.80 },
+    arcade:        { file: 'arcade.png',         worldW: 40, anchorY: 0.85 },
+    poolTable:     { file: 'pool-table.png',     worldW: 62, anchorY: 0.76, offGx: 0.35, offGy: 0.25 },
     // recepção / reunião
-    reception:   { file: 'reception.png',      worldW: 88,  anchorY: 0.74, offGx: 0.5,  offGy: 0.35 },
-    chair:       { file: 'office-chair.png',   worldW: 32,  anchorY: 0.82 },
-    plantBig:    { file: 'plant.png',          worldW: 34,  anchorY: 0.85 },
-    meetingTable:{ file: 'meeting-table.png',  worldW: 118, anchorY: 0.74, offGx: 0.7,  offGy: 0.35 },
+    reception:     { file: 'reception.png',      worldW: 72, anchorY: 0.74, offGx: 0.5,  offGy: 0.35 },
+    plantBig:      { file: 'plant.png',          worldW: 30, anchorY: 0.85 },
+    meetingTable:  { file: 'meeting-table.png',  worldW: 92, anchorY: 0.74, offGx: 0.7,  offGy: 0.35 },
+    // cadeira de escritório (direcional): frente / esquerdo / direito (+ base)
+    chair:         { file: 'office-chair.png',        worldW: 28, anchorY: 0.82 },
+    'chair-frente':   { file: 'office-chair-frente.png',   worldW: 28, anchorY: 0.82 },
+    'chair-esquerdo': { file: 'office-chair-esquerdo.png', worldW: 28, anchorY: 0.82 },
+    'chair-direito':  { file: 'office-chair-direito.png',  worldW: 28, anchorY: 0.82 },
     // equipamentos
-    serverRack:  { file: 'server-rack.png',    worldW: 42,  anchorY: 0.86 },
-    waterCooler: { file: 'water-cooler.png',   worldW: 32,  anchorY: 0.88 },
-    printer:     { file: 'printer.png',        worldW: 38,  anchorY: 0.80 },
+    serverRack:    { file: 'server-rack.png',    worldW: 36, anchorY: 0.86 },
+    waterCooler:   { file: 'water-cooler.png',   worldW: 28, anchorY: 0.88 },
+    printer:       { file: 'printer.png',        worldW: 32, anchorY: 0.80 },
   };
   const assets = {};
   function loadAssets() {
@@ -114,13 +117,18 @@
       img.src = new URL('assets/props/' + cfg.file, document.baseURI).href;
     });
   }
-  function drawSprite(a, gx, gy) {
+  function drawSprite(a, gx, gy, elevate) {
     const cfg = a.cfg;
     const ax = cfg.anchorX != null ? cfg.anchorX : 0.5;
     const ay = cfg.anchorY != null ? cfg.anchorY : 0.78;
     const p = iso(gx + (cfg.offGx || 0), gy + (cfg.offGy || 0));
     const w = cfg.worldW, h = w * a.img.height / a.img.width;
-    ctx.drawImage(a.img, p.x - ax * w, p.y - ay * h, w, h);
+    ctx.drawImage(a.img, p.x - ax * w, p.y - ay * h - (elevate || 0), w, h);
+  }
+  // asset de um móvel (cadeira usa a variante direcional se tiver `dir`)
+  function assetFor(item) {
+    if (item.type === 'chair' && item.dir && assets['chair-' + item.dir]) return assets['chair-' + item.dir];
+    return assets[item.type];
   }
 
   // ---------- inicialização ----------
@@ -187,39 +195,44 @@
       seg(0, KH, 0.85, 0.1), seg(0.85, KH, 0.8, 0.1), seg(1.65, KH, KW - 1.65 + 0.1, 0.1), // sul
     ];
 
-    // ---- MÓVEIS (o pacote de arte) por zona ----
+    // ---- MÓVEIS por zona (curados, arte real) ----
     const F = [];
-    // COZINHA (dentro do cômodo)
-    F.push({ type: 'fridge', gx: 0.25, gy: 0.3 });
-    F.push({ type: 'stove', gx: 0.3, gy: 1.05 });
-    F.push({ type: 'sink', gx: 0.3, gy: 1.7 });
-    F.push({ type: 'microwave', gx: 1.1, gy: 0.35 });
-    F.push({ type: 'diningTable', gx: 1.3, gy: 1.5 });
-    F.push({ type: 'stool', gx: 1.15, gy: 1.3, col: '#e0a54b' });
-    F.push({ type: 'stool', gx: 1.95, gy: 1.95, col: '#c94f4f' });
-    // LOUNGE (frente-esquerda / sul-oeste)
-    F.push({ type: 'sofa', gx: 0.45, gy: H - 1.75, col: '#3f6fd6' });
-    F.push({ type: 'coffeeTable', gx: 0.62, gy: H - 1.0 });
-    F.push({ type: 'tv', gx: 0.25, gy: H - 2.55 });
-    // decorações desbloqueáveis (loja)
+    const tier = s.tier;
+    // COZINHA — balcão fixo; os itens surgem conforme o escritório cresce:
+    // tier 0-1: só cafeteira · tier 2: +geladeira · tier 3+: +pia/bancos/micro-ondas
+    F.push({ type: 'counter', gx: 1.05, gy: 0.3 });                       // balcão à direita, junto à parede/porta
+    F.push({ type: 'coffee', gx: 1.25, gy: 0.5, elevate: 26 });           // cafeteira EM CIMA do balcão
+    if (tier >= 3) F.push({ type: 'microwave', gx: 1.9, gy: 0.5, elevate: 24 }); // micro-ondas EM CIMA do balcão
+    if (tier >= 2) F.push({ type: 'fridge', gx: 0.3, gy: 1.0 });          // geladeira (nível 2) à esquerda
+    if (tier >= 3) {                                                       // pia + bancos (nível 3)
+      F.push({ type: 'sink', gx: 0.35, gy: 1.95 });
+      F.push({ type: 'stool', gx: 1.2, gy: 2.05 });
+      F.push({ type: 'stool', gx: 1.85, gy: 2.1 });
+    }
+    layout.coffee = { gx: 1.4, gy: 0.95 };   // fluxo do café vai até o balcão (não a geladeira)
+    // LOUNGE (frente-esquerda) — mais espaçado
+    F.push({ type: 'sofa', gx: 0.4, gy: H - 2.0 });
+    F.push({ type: 'coffeeTable', gx: 0.55, gy: H - 1.05 });
+    F.push({ type: 'tv', gx: 0.22, gy: H - 2.9 });
     const upg = s.upgrades || [];
     if (upg.includes('pufes')) {
-      F.push({ type: 'pufe', gx: 1.85, gy: H - 1.15, col: '#ff9f45' });
-      F.push({ type: 'pufe', gx: 2.15, gy: H - 0.8, col: '#37d67a' });
-      F.push({ type: 'pufe', gx: 1.7, gy: H - 0.65, col: '#4f8cff' });
+      F.push({ type: 'pufe', gx: 1.75, gy: H - 1.5 });
+      F.push({ type: 'pufe', gx: 2.15, gy: H - 0.95 });
     }
-    if (upg.includes('arcade')) F.push({ type: 'arcade', gx: 0.35, gy: H - 3.1 });
-    if (upg.includes('sinuca')) F.push({ type: 'poolTable', gx: 2.7, gy: H - 1.5 });
-    // RECEPÇÃO (frente-direita, perto da porta)
+    if (upg.includes('arcade')) F.push({ type: 'arcade', gx: 0.3, gy: H - 3.3 });
+    if (upg.includes('sinuca')) F.push({ type: 'poolTable', gx: 2.75, gy: H - 1.5 });
+    // RECEPÇÃO (frente-direita)
     layout.reception = { gx: W - 2.2, gy: H - 1.7 };
     F.push({ type: 'reception', gx: W - 2.2, gy: H - 1.7 });
-    F.push({ type: 'chair', gx: W - 0.7, gy: H - 1.6, col: '#7c5cff' });
-    F.push({ type: 'chair', gx: W - 0.7, gy: H - 1.0, col: '#7c5cff' });
+    F.push({ type: 'chair', dir: 'esquerdo', gx: W - 0.75, gy: H - 1.5 });
     F.push({ type: 'plantBig', gx: W - 0.4, gy: H - 2.3 });
-    // REUNIÃO (fundo-direita / norte-leste)
+    // REUNIÃO (fundo-direita) — cadeiras viram para a mesa conforme o lado
     F.push({ type: 'meetingTable', gx: W - 2.2, gy: 0.6 });
-    [[-0.2, 0.4], [-0.2, 1.0], [1.35, 0.4], [1.35, 1.0], [0.5, -0.15], [0.5, 1.5]].forEach(([dx, dy]) =>
-      F.push({ type: 'chair', gx: W - 2.2 + dx, gy: 0.6 + dy, col: '#556071' }));
+    [
+      [-0.45, 0.55, 'esquerdo'], [-0.45, 1.15, 'esquerdo'],  // lado esquerdo
+      [1.55, 0.55, 'direito'], [1.55, 1.15, 'direito'],      // lado direito
+      [0.55, -0.35, 'frente'], [0.55, 1.7, null],            // topo = frente · baixo = office-chair base
+    ].forEach(([dx, dy, dir]) => F.push({ type: 'chair', dir: dir, gx: W - 2.2 + dx, gy: 0.6 + dy }));
     // EQUIPAMENTOS
     F.push({ type: 'serverRack', gx: 0.35, gy: H * 0.5 });
     F.push({ type: 'waterCooler', gx: W - 0.5, gy: H * 0.5 });
@@ -306,7 +319,7 @@
         const st = ROLE_STYLE[roleId];
         if (st) { w.shirt = st.shirt; w.acc = st.acc; }
       }
-      if (w.state === 'work') { w.hx = w.desk.gx; w.hy = w.desk.gy + 0.55; w.path = []; }
+      if (w.state === 'work') { w.hx = w.desk.gx; w.hy = w.desk.gy + 0.8; w.path = []; }
     });
 
     lastDesks = s.desks; lastEmp = emp;
@@ -322,8 +335,8 @@
     const style = ROLE_STYLE[roleId] || { shirt: pick(SHIRTS), acc: null };
     return {
       i, desk: d, role: roleId || null,
-      gx: d.gx, gy: d.gy + 0.55,
-      hx: d.gx, hy: d.gy + 0.55,          // waypoint atual
+      gx: d.gx, gy: d.gy + 0.8,
+      hx: d.gx, hy: d.gy + 0.8,          // waypoint atual
       path: [],                            // waypoints restantes
       state: 'work', timer: rand(3, 10),
       phase: rand(0, Math.PI * 2),
@@ -390,7 +403,7 @@
             routeTo(w, dest.gx, dest.gy);
             w.state = 'walk'; w.errand = dest.errand;
           } else {
-            routeTo(w, w.desk.gx, w.desk.gy + 0.55);
+            routeTo(w, w.desk.gx, w.desk.gy + 0.8);
             w.state = 'return';
           }
         }
@@ -438,15 +451,8 @@
       stepToward(n, dt);
     });
 
-    // fluxo de entregas (pacotes) proporcional à produção -> movimento constante
-    if (producing && layout && workers.length) {
-      spawnAcc += dt * (0.25 + Math.min(2, G.production() * G.DAY_LENGTH * 0.01));
-      while (spawnAcc >= 1) {
-        spawnAcc -= 1;
-        const w = pick(workers);
-        packages.push({ gx: w.desk.gx, gy: w.desk.gy + 0.3, tx: layout.door.gx, ty: layout.door.gy, sp: rand(1.4, 2.2), col: pick(['#4f8cff', '#37d67a', '#ffca4b']), bob: rand(0, 6) });
-      }
-    }
+    // (removido a pedido do dono) as caixas de entrega que saíam das mesas
+    // em direção à recepção não são mais geradas.
     // move pacotes
     for (let i = packages.length - 1; i >= 0; i--) {
       const p = packages[i];
@@ -587,11 +593,10 @@
     layout.desks.forEach((d, i) => {
       if (i >= G.state.desks) return;   // só desenha mesas compradas (o "+" marca o próximo slot)
       ents.push({ d: d.gx + d.gy, kind: 'desk', o: d, idx: i });
-      ents.push({ d: d.gx + d.gy + 0.7, kind: 'chair', o: d });  // encosto na frente do personagem
+      ents.push({ d: d.gx + d.gy + 0.75, kind: 'chair', o: d });  // cadeira logo atrás do funcionário sentado
     });
     layout.furniture.forEach((f) => ents.push({ d: f.gx + f.gy, kind: 'furn', o: f }));
     layout.kwalls.forEach((wl) => ents.push({ d: wl.gx + wl.sx / 2 + wl.gy + wl.sy / 2, kind: 'wall', o: wl }));
-    ents.push({ d: layout.coffee.gx + layout.coffee.gy, kind: 'coffee', o: layout.coffee });
     layout.trees.forEach((tr) => ents.push({ d: tr.gx + tr.gy, kind: 'tree', o: tr }));
     workers.forEach((w) => ents.push({ d: w.gx + w.gy + 0.01, kind: 'worker', o: w }));
     npcs.forEach((n) => ents.push({ d: n.gx + n.gy + 0.01, kind: 'worker', o: n }));
@@ -603,14 +608,13 @@
     ents.sort((a, b) => a.d - b.d);
     ents.forEach((e) => {
       if (e.kind === 'desk') { if (assets.desk) drawSprite(assets.desk, e.o.gx, e.o.gy); else drawDesk(e.o, e.idx); }
-      else if (e.kind === 'furn') { const a = assets[e.o.type]; if (a) drawSprite(a, e.o.gx, e.o.gy); else prop(e.o.type, e.o.gx, e.o.gy, e.o); }
+      else if (e.kind === 'furn') { const a = assetFor(e.o); if (a) drawSprite(a, e.o.gx, e.o.gy, e.o.elevate); else prop(e.o.type, e.o.gx, e.o.gy, e.o); }
       else if (e.kind === 'wall') drawInnerWall(e.o);
       else if (e.kind === 'worker') drawWorker(e.o);
-      else if (e.kind === 'coffee') { if (assets.coffee) drawSprite(assets.coffee, e.o.gx, e.o.gy); else drawCoffee(e.o); }
       else if (e.kind === 'tree') drawTree(e.o);
       else if (e.kind === 'pkg') drawPackage(e.o);
       else if (e.kind === 'car') drawCar(e.o);
-      else if (e.kind === 'chair') drawChair(e.o);
+      else if (e.kind === 'chair') { const a = assets.chair; if (a) drawSprite(a, e.o.gx + 0.3, e.o.gy + 0.8); else drawChair(e.o); }
       else if (e.kind === 'part') drawParticle(e.o);
     });
 
