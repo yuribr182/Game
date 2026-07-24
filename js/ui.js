@@ -43,7 +43,7 @@
   function renderOffice(s) {
     const max = G.maxDesks();
     const n = s.employees.length;
-    el.officeCap.textContent = `${s.desks}/${max} mesas · ${n} ${n === 1 ? 'funcionário' : 'funcionários'}`;
+    el.officeCap.textContent = `${s.desks}/${max} mesas · ${n} func.`;
     el.deskCost.textContent = s.desks >= max ? 'lotado' : money(G.deskCost());
     // a cena isométrica (canvas) desenha o escritório e lê o estado sozinha
   }

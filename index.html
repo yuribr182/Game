@@ -72,16 +72,8 @@
   <main id="game" class="game hidden">
     <!-- Escritório -->
     <section class="office-panel">
-      <div class="office-header">
-        <h2>🏢 Escritório</h2>
-        <div class="office-cap" id="officeCap">0/1 mesas · 0 funcionários</div>
-      </div>
       <div class="office-viewport">
         <canvas id="officeCanvas"></canvas>
-      </div>
-      <div class="office-footer">
-        <button id="btnBuyDesk" class="btn btn-primary">🪑 Comprar mesa (<span id="deskCost">R$ 500</span>)</button>
-        <button id="btnUpgradeOffice" class="btn btn-accent">🏗️ Expandir escritório</button>
       </div>
     </section>
 
@@ -122,6 +114,13 @@
 
         <!-- Loja -->
         <div class="tab-pane" id="tab-shop">
+          <div class="pane-section">
+            <h3>🏢 Escritório <span class="pill" id="officeCap">0/1 mesas</span></h3>
+            <div class="list office-actions">
+              <button id="btnBuyDesk" class="btn btn-primary">🪑 Comprar mesa (<span id="deskCost">R$ 500</span>)</button>
+              <button id="btnUpgradeOffice" class="btn btn-accent">🏗️ Expandir escritório</button>
+            </div>
+          </div>
           <div class="pane-section">
             <h3>💡 Produtos próprios</h3>
             <div id="productList" class="list"></div>

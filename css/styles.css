@@ -167,6 +167,9 @@ body {
   box-shadow: -8px 0 20px rgba(0,0,0,.35);
 }
 .drawer-tab:hover { background: var(--panel-2, #1b2536); }
+/* ações de escritório dentro da Loja (comprar mesa / expandir) */
+.office-actions { gap: 8px; }
+.office-actions .btn { width: 100%; justify-content: center; }
 .office-header, .office-footer {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px; gap: 10px; flex-wrap: wrap;
