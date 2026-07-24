@@ -3,7 +3,8 @@ name: Deploy no GitHub Pages
 on:
   push:
     branches:
-      - main
+      - master
+      - dev
       - claude/dev-agency-tycoon-game-lddla3
   workflow_dispatch:
 
