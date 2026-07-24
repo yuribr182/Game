@@ -200,9 +200,9 @@
     const tier = s.tier;
     // COZINHA — balcão fixo; os itens surgem conforme o escritório cresce:
     // tier 0-1: só cafeteira · tier 2: +geladeira · tier 3+: +pia/bancos/micro-ondas
-    F.push({ type: 'counter', gx: 1.05, gy: 0.3 });                       // balcão à direita, junto à parede/porta
-    F.push({ type: 'coffee', gx: 1.25, gy: 0.5, elevate: 26 });           // cafeteira EM CIMA do balcão
-    if (tier >= 3) F.push({ type: 'microwave', gx: 1.9, gy: 0.5, elevate: 24 }); // micro-ondas EM CIMA do balcão
+    F.push({ type: 'counter', gx: 1.35, gy: 0.32 });                      // balcão à direita, junto à parede/porta
+    F.push({ type: 'coffee', gx: 1.55, gy: 0.5, elevate: 24 });           // cafeteira EM CIMA do balcão
+    if (tier >= 3) F.push({ type: 'microwave', gx: 2.0, gy: 0.5, elevate: 22 }); // micro-ondas EM CIMA do balcão
     if (tier >= 2) F.push({ type: 'fridge', gx: 0.3, gy: 1.0 });          // geladeira (nível 2) à esquerda
     if (tier >= 3) {                                                       // pia + bancos (nível 3)
       F.push({ type: 'sink', gx: 0.35, gy: 1.95 });
@@ -478,11 +478,8 @@
       if (p.life <= 0) pops.splice(i, 1);
     }
 
-    // pad "+" pulsante para comprar mesa
-    if (s.desks < G.maxDesks()) {
-      const d = layout.desks[s.desks];
-      plusPad = d ? iso(d.gx, d.gy) : null;
-    } else plusPad = null;
+    // pad "+" de comprar mesa REMOVIDO da cena (o botão já vive na Loja)
+    plusPad = null;
   }
   let spawnAcc = 0;
 
