@@ -74,11 +74,36 @@
   // ---------- arte real (imagens PNG) sobre o renderer Canvas nítido ----------
   // Cada tipo com asset usa drawImage (downscale nítido da imagem de alta
   // resolução); os que não têm asset caem no desenho procedural (fallback).
-  // Ajuste de âncora/tamanho/posição por item (worldW em px de mundo).
+  // Ajuste por item: worldW (largura em px de mundo), anchorY (~ponto que toca
+  // o chão), offGx/offGy (desloca o (gx,gy) da grade p/ o centro do móvel).
+  // anchorX = 0.5 e offsets = 0 por padrão. A CHAVE é o tipo do móvel no jogo.
   const ASSET_CFG = {
-    desk:   { file: 'desk.png',           anchorX: 0.5, anchorY: 0.72, worldW: 66, offGx: 0.35, offGy: 0.28 },
-    sofa:   { file: 'sofa.png',           anchorX: 0.5, anchorY: 0.72, worldW: 84, offGx: 0.55, offGy: 0.30 },
-    coffee: { file: 'coffee-machine.png', anchorX: 0.5, anchorY: 0.80, worldW: 58, offGx: 0,    offGy: 0 },
+    // especiais (mesa de trabalho e cafeteira)
+    desk:        { file: 'desk.png',           worldW: 66,  anchorY: 0.72, offGx: 0.35, offGy: 0.28 },
+    coffee:      { file: 'coffee-machine.png', worldW: 56,  anchorY: 0.82 },
+    // cozinha
+    fridge:      { file: 'fridge.png',         worldW: 46,  anchorY: 0.84, offGx: 0.25, offGy: 0.21 },
+    stove:       { file: 'stove.png',          worldW: 50,  anchorY: 0.82, offGx: 0.24, offGy: 0.21 },
+    sink:        { file: 'sink.png',           worldW: 52,  anchorY: 0.80, offGx: 0.25, offGy: 0.21 },
+    microwave:   { file: 'microwave.png',      worldW: 36,  anchorY: 0.80, offGx: 0.15, offGy: 0.12 },
+    diningTable: { file: 'dining-table.png',   worldW: 58,  anchorY: 0.76, offGx: 0.26, offGy: 0.26 },
+    stool:       { file: 'stool.png',          worldW: 32,  anchorY: 0.82, offGx: 0.17, offGy: 0.17 },
+    // lounge
+    sofa:        { file: 'sofa.png',           worldW: 78,  anchorY: 0.74, offGx: 0.49, offGy: 0.25 },
+    coffeeTable: { file: 'coffee-table.png',   worldW: 46,  anchorY: 0.78, offGx: 0.22, offGy: 0.18 },
+    tv:          { file: 'tv.png',             worldW: 50,  anchorY: 0.86, offGx: 0.25, offGy: 0.03 },
+    pufe:        { file: 'beanbag.png',        worldW: 40,  anchorY: 0.80 },
+    arcade:      { file: 'arcade.png',         worldW: 44,  anchorY: 0.85 },
+    poolTable:   { file: 'pool-table.png',     worldW: 72,  anchorY: 0.76, offGx: 0.35, offGy: 0.25 },
+    // recepção / reunião
+    reception:   { file: 'reception.png',      worldW: 88,  anchorY: 0.74, offGx: 0.5,  offGy: 0.35 },
+    chair:       { file: 'office-chair.png',   worldW: 32,  anchorY: 0.82 },
+    plantBig:    { file: 'plant.png',          worldW: 34,  anchorY: 0.85 },
+    meetingTable:{ file: 'meeting-table.png',  worldW: 118, anchorY: 0.74, offGx: 0.7,  offGy: 0.35 },
+    // equipamentos
+    serverRack:  { file: 'server-rack.png',    worldW: 42,  anchorY: 0.86 },
+    waterCooler: { file: 'water-cooler.png',   worldW: 32,  anchorY: 0.88 },
+    printer:     { file: 'printer.png',        worldW: 38,  anchorY: 0.80 },
   };
   const assets = {};
   function loadAssets() {
@@ -91,9 +116,11 @@
   }
   function drawSprite(a, gx, gy) {
     const cfg = a.cfg;
+    const ax = cfg.anchorX != null ? cfg.anchorX : 0.5;
+    const ay = cfg.anchorY != null ? cfg.anchorY : 0.78;
     const p = iso(gx + (cfg.offGx || 0), gy + (cfg.offGy || 0));
     const w = cfg.worldW, h = w * a.img.height / a.img.width;
-    ctx.drawImage(a.img, p.x - cfg.anchorX * w, p.y - cfg.anchorY * h, w, h);
+    ctx.drawImage(a.img, p.x - ax * w, p.y - ay * h, w, h);
   }
 
   // ---------- inicialização ----------
