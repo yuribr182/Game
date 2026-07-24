@@ -51,6 +51,7 @@ export interface Project {
   daysLeft: number;
   repReq: number;
   vip?: boolean;
+  noStaffDays?: number; // dias sem ninguém atribuído antes de expirar
 }
 
 export interface Product {

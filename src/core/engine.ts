@@ -17,6 +17,7 @@ import {
   buyDesk,
   buyUpgrade,
   canPromote,
+  checkProjectStaffExpiry,
   clearAssignments,
   completeProject,
   contractValueMult,
@@ -150,10 +151,10 @@ export function createEngine(persistence: Persistence, opts: EngineOptions = {})
         if (seated && working && !e.resting) {
           e.energy = Math.max(0, e.energy - drain * dt);
           e.exp = (e.exp || 0) + dt / DAY_LENGTH; // experiência em dias trabalhados
-          if (e.energy <= 15) e.resting = true; // pausa silenciosa (sem toast)
+          if (e.energy <= 30) e.resting = true; // pausa mais frequente (30% de energia)
         } else {
           e.energy = Math.min(100, e.energy + recover * coffeeBoost * dt);
-          if (e.resting && e.energy >= 85) e.resting = false;
+          if (e.resting && e.energy >= 70) e.resting = false; // volta ao trabalho em 70%
         }
       });
     }
@@ -186,6 +187,8 @@ export function createEngine(persistence: Persistence, opts: EngineOptions = {})
   function advanceDay(): void {
     const state = ctx.state;
     state.day++;
+    // verifica projetos sem funcionários atribuídos (expiram em 5+ dias)
+    checkProjectStaffExpiry(ctx);
     // prazos dos projetos
     for (let i = state.active.length - 1; i >= 0; i--) {
       const p = state.active[i]!;

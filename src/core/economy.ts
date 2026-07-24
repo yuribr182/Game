@@ -55,9 +55,17 @@ export function prodMultiplier(ctx: Ctx): number {
   return m;
 }
 
+// bônus de foco de equipe: +12% por colega no mesmo projeto (teto +60%)
+export function teamFocusBonus(ctx: Ctx, projectUid: string): number {
+  const assigned = assignedCount(ctx, projectUid);
+  if (assigned <= 1) return 1;
+  const bonus = Math.min(0.6, (assigned - 1) * 0.12);
+  return 1 + bonus;
+}
+
 // velocidade efetiva de um funcionário em pts/SEGUNDO
 // (role.speed é pts/dia; considera energia, humor e fase do projeto)
-export function empSpeed(e: Employee, project: Project | null): number {
+export function empSpeed(e: Employee, project: Project | null, ctx?: Ctx): number {
   if (e.resting) return 0;
   const role = ROLES.find((r) => r.id === e.role);
   if (!role) return 0;
@@ -69,6 +77,10 @@ export function empSpeed(e: Employee, project: Project | null): number {
     const ph = phaseFor(project.done / project.work);
     const w = ph.weights[e.role];
     s *= w == null ? 1 : w;
+    // aplica bônus de foco de equipe (se ctx e projeto atribuído)
+    if (ctx && e.assign === project.uid) {
+      s *= teamFocusBonus(ctx, project.uid);
+    }
   }
   return s;
 }
@@ -80,7 +92,7 @@ export function production(ctx: Ctx): number {
   let sum = 0;
   for (let i = 0; i < capacity; i++) {
     const e = state.employees[i];
-    if (e) sum += empSpeed(e, null);
+    if (e) sum += empSpeed(e, null, undefined);
   }
   return sum * prodMultiplier(ctx);
 }
@@ -112,11 +124,11 @@ export function projectRates(ctx: Ctx): Record<string, number> {
     if (!e) continue;
     const target = e.assign ? byUid[e.assign] : undefined;
     if (target) {
-      rates[e.assign!] = (rates[e.assign!] ?? 0) + empSpeed(e, target) * mult;
+      rates[e.assign!] = (rates[e.assign!] ?? 0) + empSpeed(e, target, ctx) * mult;
     } else {
       // auto: divide igualmente, cada parte com o peso da fase daquele projeto
       state.active.forEach((p) => {
-        rates[p.uid] = (rates[p.uid] ?? 0) + (empSpeed(e, p) * mult) / state.active.length;
+        rates[p.uid] = (rates[p.uid] ?? 0) + (empSpeed(e, p, ctx) * mult) / state.active.length;
       });
     }
   }
@@ -306,10 +318,37 @@ export function fire(ctx: Ctx, uid: string): void {
   const state = ctx.state;
   const idx = state.employees.findIndex((e) => e.uid === uid);
   if (idx >= 0) {
-    const role = ROLES.find((r) => r.id === state.employees[idx]!.role);
+    const emp = state.employees[idx]!;
+    const role = ROLES.find((r) => r.id === emp.role);
+    // se o funcionário estava alocado a um projeto, verifica expiração
+    if (emp.assign) {
+      const proj = state.active.find((p) => p.uid === emp.assign);
+      if (proj && !proj.noStaffDays) proj.noStaffDays = 0;
+    }
     state.employees.splice(idx, 1);
     ctx.emit({ type: 'info', msg: `${role ? role.name : 'Funcionário'} demitido.` });
     ctx.changed();
+  }
+}
+
+// verifica e expira projetos que ficaram 5+ dias sem ninguém atribuído
+export function checkProjectStaffExpiry(ctx: Ctx): void {
+  const state = ctx.state;
+  for (let i = state.active.length - 1; i >= 0; i--) {
+    const p = state.active[i]!;
+    const hasStaff = state.employees.some((e) => e.assign === p.uid);
+    if (!hasStaff) {
+      p.noStaffDays = (p.noStaffDays ?? 0) + 1;
+      if (p.noStaffDays >= 5) {
+        ctx.emit({
+          type: 'info',
+          msg: `${p.emoji} Projeto "${p.name}" cancelado (sem funcionários por 5 dias).`,
+        });
+        state.active.splice(i, 1);
+      }
+    } else {
+      p.noStaffDays = 0;
+    }
   }
 }
 
