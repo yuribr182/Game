@@ -13,6 +13,7 @@ import './data-shim'; // core/data.ts tipado -> window.DATA (antes dos legados!)
 import './game-shim'; // core/engine.ts tipado -> window.Game (antes dos legados!)
 import '../js/audio.js';
 import '../js/props.js';
-import '../js/iso.js';
+import '../js/iso.js'; // renderer Canvas legado (padrão) -> window.IsoOffice
+import './render/pixi-shim'; // F2: se ?renderer=pixi, sobrescreve window.IsoOffice pela cena Pixi
 import '../js/ui.js';
 import '../js/main.js';
