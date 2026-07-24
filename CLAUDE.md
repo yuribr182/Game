@@ -44,8 +44,14 @@ mais preciso bump de cache). Estáticos ficam em `public/`.
 ## Regras do projeto
 
 - **Idioma**: todo texto de UI, comentários e commits em **pt-BR**.
-- **Arte e áudio 100% procedurais**: nenhum asset binário (PNG/MP3) no repo;
-  texturas são geradas por código (no Pixi: `RenderTexture` em runtime).
+- **Arte**: em migração para **assets de imagem reais** (PNG isométrico) — a
+  regra antiga "100% procedural" foi substituída a pedido do dono (2026-07-24).
+  Os PNGs ficam em `public/assets/props|characters|env/` (guia em
+  `public/assets/LEIA-ME.md`; prompts de IA em `PROMPTS-IA.md`) e são carregados
+  como sprites Pixi por `src/render/sprites/assets.ts` (ajuste de âncora/escala/
+  posição por item). Quando um asset não existe, a cena cai no **desenho
+  procedural** (fallback), então os dois coexistem durante a troca.
+- **Áudio 100% procedural**: SFX por WebAudio, sem arquivos de áudio no repo.
 - **Tempo**: 1 dia de jogo = `DAY_LENGTH` (1440s = 24 min). Velocidades de
   produção são **pontos por DIA** em `data`; `empSpeed()` converte p/ segundo.
   Qualquer nova mecânica temporal deve escalar por `DAY_LENGTH`.

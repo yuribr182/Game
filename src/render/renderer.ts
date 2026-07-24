@@ -15,6 +15,7 @@ import { Camera } from './camera';
 import { Scene } from './scene';
 import { Entities } from './entities';
 import { CharacterLayer } from './sprites/character';
+import { loadPropAssets } from './sprites/assets';
 import { DAY_LENGTH } from '../core/state';
 import type { GameState } from '../core/state';
 
@@ -101,6 +102,7 @@ export class PixiRenderer {
     this.envSprite.zIndex = -1000;
     this.world.addChild(this.envSprite);
     this.scene = new Scene(this.world, dpr);
+    this.scene.setAssets(await loadPropAssets()); // arte real (PNG) quando disponível
     this.chars = new CharacterLayer(this.world, dpr);
     this.rebuildIfNeeded(true);
     app.ticker.add(this.frame);
