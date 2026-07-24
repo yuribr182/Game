@@ -485,6 +485,183 @@ export class Painter {
     ctx.quadraticCurveTo(p.x + s + 3, p.y - 22, p.x, p.y - 30);
     ctx.stroke();
   }
+
+  /** personagem billboard (portado de drawWorker do js/iso.js), desenhado na
+   *  ORIGEM (0,0): a posição no mundo fica a cargo do sprite. Animação via t. */
+  worker(w: CharacterVisual, t: number): void {
+    const ctx = this.ctx;
+    const px = 0;
+    const walk = w.moving;
+    const bob = walk ? Math.abs(Math.sin(t * 9 + w.phase)) * 3 : Math.sin(t * 2.2 + w.phase) * 1.1;
+    const baseY = -bob;
+    ctx.beginPath();
+    ctx.ellipse(px, 1, 11, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.fill();
+    const legSwing = walk ? Math.sin(t * 9 + w.phase) * 3 : 0;
+    ctx.fillStyle = '#2b3242';
+    ctx.fillRect(px - 6, baseY - 8, 4, 9 + legSwing);
+    ctx.fillRect(px + 2, baseY - 8, 4, 9 - legSwing);
+    ctx.fillStyle = '#1b1f28';
+    ctx.fillRect(px - 7, baseY - 0.5 + legSwing, 5.5, 2.6);
+    ctx.fillRect(px + 1.5, baseY - 0.5 - legSwing, 5.5, 2.6);
+    this.roundRect(px - 8, baseY - 24, 16, 17, 4, w.shirt);
+    ctx.strokeStyle = 'rgba(0,0,0,.22)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    if (w.state === 'work') {
+      const type = Math.sin(t * 12 + w.phase) * 2;
+      ctx.fillStyle = w.skin;
+      ctx.fillRect(px - 9, baseY - 18 + type, 4, 6);
+      ctx.fillRect(px + 5, baseY - 18 - type, 4, 6);
+    } else {
+      ctx.fillStyle = w.shirt;
+      ctx.fillRect(px - 10, baseY - 22, 3, 10);
+      ctx.fillRect(px + 7, baseY - 22, 3, 10);
+    }
+    ctx.beginPath();
+    ctx.arc(px, baseY - 30, 7, 0, Math.PI * 2);
+    ctx.fillStyle = w.skin;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(px, baseY - 32, 7, Math.PI, Math.PI * 2);
+    ctx.fillStyle = w.hair;
+    ctx.fill();
+    ctx.fillRect(px - 7, baseY - 33, 14, 3);
+    this.accessory(w.acc, px, baseY);
+    if (w.bubble) {
+      const by = baseY - 50;
+      ctx.globalAlpha = Math.min(1, w.bubble.life);
+      this.roundRect(px - 11, by - 10, 22, 20, 7, 'rgba(255,255,255,.92)');
+      ctx.beginPath();
+      ctx.moveTo(px - 3, by + 10);
+      ctx.lineTo(px + 3, by + 10);
+      ctx.lineTo(px, by + 15);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.fill();
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(w.bubble.emoji, px, by + 5);
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+    }
+    if (w.briefcase) {
+      const bx = px + (w.dir >= 0 ? 9 : -14),
+        by = baseY - 12;
+      this.roundRect(bx, by, 6.5, 5.5, 1.5, '#6b4a2b');
+      ctx.strokeStyle = '#553a22';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(bx + 3.2, by, 2, Math.PI, 0);
+      ctx.stroke();
+    }
+    if (w.mug > 0) {
+      const mx = px + (w.dir >= 0 ? 10 : -13),
+        my = baseY - 16;
+      ctx.fillStyle = '#e8eef7';
+      ctx.fillRect(mx, my, 5.5, 6);
+      ctx.strokeStyle = '#e8eef7';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(mx + (w.dir >= 0 ? 6 : 0), my + 3, 2.2, -Math.PI / 2, Math.PI / 2);
+      ctx.stroke();
+      ctx.fillStyle = '#6f472e';
+      ctx.fillRect(mx + 1, my + 1, 3.5, 1.6);
+      const sw = Math.sin(t * 4 + w.phase) * 1.5;
+      ctx.strokeStyle = 'rgba(255,255,255,.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(mx + 3, my - 2);
+      ctx.quadraticCurveTo(mx + 3 + sw, my - 6, mx + 3, my - 10);
+      ctx.stroke();
+    }
+  }
+
+  /** acessório do personagem por cargo (portado de drawWorker) */
+  private accessory(acc: string | null, px: number, baseY: number): void {
+    const ctx = this.ctx;
+    const hy = baseY - 32;
+    if (acc === 'cap') {
+      ctx.fillStyle = '#e04f4f';
+      ctx.beginPath();
+      ctx.arc(px, hy, 7.4, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(px - 1, hy - 2, 10, 3);
+    } else if (acc === 'glasses') {
+      ctx.strokeStyle = '#20242e';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(px - 3.4, baseY - 30, 2.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px + 3.4, baseY - 30, 2.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px - 1, baseY - 30);
+      ctx.lineTo(px + 1, baseY - 30);
+      ctx.stroke();
+    } else if (acc === 'beret') {
+      ctx.fillStyle = '#8a4dbf';
+      ctx.beginPath();
+      ctx.ellipse(px - 2, hy - 2, 8, 4, -0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(px - 2, hy - 6, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (acc === 'phones') {
+      ctx.strokeStyle = '#20242e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, hy + 1, 8, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.stroke();
+      ctx.fillStyle = '#20242e';
+      ctx.fillRect(px - 9.5, baseY - 32, 3.4, 5);
+      ctx.fillRect(px + 6.1, baseY - 32, 3.4, 5);
+    } else if (acc === 'tie') {
+      ctx.fillStyle = '#c94f4f';
+      ctx.beginPath();
+      ctx.moveTo(px, baseY - 24);
+      ctx.lineTo(px + 2.4, baseY - 20);
+      ctx.lineTo(px, baseY - 12);
+      ctx.lineTo(px - 2.4, baseY - 20);
+      ctx.closePath();
+      ctx.fill();
+    } else if (acc === 'headset') {
+      ctx.strokeStyle = '#20242e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, hy + 1, 8, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.stroke();
+      ctx.fillStyle = '#20242e';
+      ctx.fillRect(px + 6.1, baseY - 32, 3.2, 4.6);
+      ctx.beginPath();
+      ctx.moveTo(px + 7.5, baseY - 28);
+      ctx.quadraticCurveTo(px + 6, baseY - 24, px + 2.5, baseY - 25);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px + 2.2, baseY - 25, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+/** dados visuais mínimos de um personagem (o que o billboard precisa) */
+export interface CharacterVisual {
+  moving: boolean;
+  phase: number;
+  shirt: string;
+  acc: string | null;
+  skin: string;
+  hair: string;
+  state: string;
+  mug: number;
+  bubble: { emoji: string; life: number } | null;
+  dir: number;
+  briefcase?: boolean;
 }
 
 /** cor do céu conforme o horário (dia -> noite), como no js/iso.js. */

@@ -6,12 +6,15 @@
    Lê window.Game.state; personagens/FX chegam nos marcos seguintes.
    =========================================================== */
 import { Application, Container, Sprite, Texture } from 'pixi.js';
+import type { Ticker } from 'pixi.js';
 import { iso } from './iso';
 import { Painter, skyStops } from './draw2d';
 import { buildLayout } from './layout';
 import type { Layout } from './layout';
 import { Camera } from './camera';
 import { Scene } from './scene';
+import { Entities } from './entities';
+import { CharacterLayer } from './sprites/character';
 import { DAY_LENGTH } from '../core/state';
 import type { GameState } from '../core/state';
 
@@ -62,6 +65,9 @@ export class PixiRenderer {
   private sky: Sprite | null = null;
   private camera: Camera;
   private scene: Scene | null = null;
+  private readonly entities = new Entities();
+  private chars: CharacterLayer | null = null;
+  private t = 0; // relógio de animação (segundos, escalado pela velocidade)
   private layout: Layout | null = null;
   private lastTier = -1;
   private lastDecor = '';
@@ -95,6 +101,7 @@ export class PixiRenderer {
     this.envSprite.zIndex = -1000;
     this.world.addChild(this.envSprite);
     this.scene = new Scene(this.world, dpr);
+    this.chars = new CharacterLayer(this.world, dpr);
     this.rebuildIfNeeded(true);
     app.ticker.add(this.frame);
   }
@@ -183,9 +190,19 @@ export class PixiRenderer {
     this.sky.height = this.app.renderer.height / dpr;
   }
 
-  private frame = (): void => {
-    if (!window.Game.state) return;
+  private frame = (ticker: Ticker): void => {
+    const s = window.Game.state;
+    if (!s) return;
     this.rebuildIfNeeded();
+    let dt = ticker.deltaMS / 1000;
+    if (dt > 0.1) dt = 0.1;
+    const scale = window.Game.timeScale == null ? 1 : window.Game.timeScale; // acompanha ⏸/2x/3x
+    this.t += dt * scale;
+    if (this.layout) {
+      this.entities.sync(this.layout, s);
+      this.entities.update(dt * scale, this.layout, s);
+      this.chars?.render(this.entities.workers, this.t);
+    }
     this.camera.apply(this.world);
   };
 
@@ -200,6 +217,7 @@ export class PixiRenderer {
   destroy(): void {
     window.removeEventListener('resize', this.resize);
     this.camera.destroy();
+    this.chars?.destroy();
     this.scene?.destroy();
     this.envTexture?.destroy(true);
     this.skyTexture?.destroy(true);
