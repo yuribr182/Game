@@ -137,8 +137,9 @@ export class Painter {
     };
   }
 
-  // ---------- ambiente (portado das funções drawX de js/iso.js) ----------
-  private drawTree(o: { gx: number; gy: number; s: number }, t: number): void {
+  // ---------- objetos z-ordenados (assados individualmente) ----------
+  /** árvore (portada de drawTree do js/iso.js) */
+  tree(o: { gx: number; gy: number; s: number }, t = 0): void {
     const ctx = this.ctx;
     const sc = o.s || 1;
     this.shadow(o.gx, o.gy, 10 * sc, 5 * sc);
@@ -327,11 +328,162 @@ export class Painter {
     layout.bgTrees
       .slice()
       .sort((a, b) => a.gx + a.gy - (b.gx + b.gy))
-      .forEach((tr) => this.drawTree(tr, t));
+      .forEach((tr) => this.tree(tr, t));
     this.drawWalls(W, H, company, night);
     this.drawFloor(W, H);
     this.drawFloorDecor(layout);
-    layout.trees.forEach((tr) => this.drawTree(tr, t));
+    // árvores da FRENTE não entram no ambiente: são assadas como sprites
+    // z-ordenados (render/scene.ts) para intercalar com móveis/personagens.
+  }
+
+  /** mesa de trabalho (idle) — portada de drawDesk do js/iso.js.
+   *  A tela "digitando" animada fica para a fase F4 (telas animadas). */
+  desk(gx: number, gy: number): void {
+    const ctx = this.ctx;
+    this.shadow(gx + 0.35, gy + 0.32, 27, 13);
+    (
+      [
+        [0.04, 0.05],
+        [0.6, 0.05],
+        [0.04, 0.44],
+        [0.6, 0.44],
+      ] as [number, number][]
+    ).forEach(([lx, ly]) => this.cuboid(gx + lx, gy + ly, 0.06, 0.06, 11, '#5a6272', '#464d5c', '#3a404d'));
+    this.cuboid(gx, gy, 0.7, 0.55, 14, '#a97a4e', '#7e5a39', '#6a4b2f');
+    ctx.strokeStyle = 'rgba(90,58,32,.3)';
+    ctx.lineWidth = 1;
+    for (let k = 0; k < 3; k++) {
+      const a = iso(gx + 0.07, gy + 0.12 + k * 0.15),
+        b = iso(gx + 0.63, gy + 0.12 + k * 0.15);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y - 14);
+      ctx.lineTo(b.x, b.y - 14);
+      ctx.stroke();
+    }
+    const m = iso(gx + 0.32, gy + 0.13);
+    const topY = m.y - 14;
+    ctx.fillStyle = '#2a2e38';
+    ctx.beginPath();
+    ctx.ellipse(m.x, topY, 7, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(m.x - 1.5, topY - 9, 3, 9);
+    this.roundRect(m.x - 14, topY - 28, 28, 20, 3, '#1a1d24');
+    ctx.fillStyle = '#0a0d12';
+    ctx.fillRect(m.x - 12, topY - 26, 24, 16);
+    ctx.fillStyle = 'rgba(140,160,190,.35)';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('· · ·', m.x, topY - 17);
+    ctx.textAlign = 'left';
+    const kb = iso(gx + 0.36, gy + 0.35);
+    const ky = kb.y - 14;
+    this.roundRect(kb.x - 9, ky - 4, 18, 8, 2, '#3a4150');
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 6; c++) ctx.fillRect(kb.x - 7 + c * 2.5, ky - 2.4 + r * 2.6, 1.7, 1.7);
+    const mo = iso(gx + 0.58, gy + 0.32);
+    ctx.fillStyle = '#c7ccd6';
+    ctx.beginPath();
+    ctx.ellipse(mo.x, mo.y - 15, 2.6, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const mg = iso(gx + 0.1, gy + 0.42);
+    const mgy = mg.y - 14;
+    ctx.fillStyle = '#c94f4f';
+    ctx.fillRect(mg.x - 3, mgy - 6, 6, 6);
+    ctx.strokeStyle = '#c94f4f';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(mg.x + 4, mgy - 3, 2.2, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+  }
+
+  /** cadeira de escritório — portada de drawChair do js/iso.js */
+  chair(gx: number, gy: number): void {
+    const ctx = this.ctx;
+    const p = iso(gx + 0.32, gy + 0.66);
+    ctx.fillStyle = 'rgba(0,0,0,.22)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 2, 10, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#2c3140';
+    ctx.lineWidth = 2;
+    (
+      [
+        [-8, 1],
+        [8, 1],
+        [-5, 4],
+        [5, 4],
+      ] as [number, number][]
+    ).forEach(([dx2, dy2]) => {
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - 6);
+      ctx.lineTo(p.x + dx2, p.y + dy2);
+      ctx.stroke();
+      ctx.fillStyle = '#2c3140';
+      ctx.beginPath();
+      ctx.arc(p.x + dx2, p.y + dy2, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = '#2c3140';
+    ctx.fillRect(p.x - 1.5, p.y - 12, 3, 7);
+    this.roundRect(p.x - 8.5, p.y - 30, 17, 19, 4, '#454f68');
+    this.roundRect(p.x - 6.5, p.y - 28, 13, 15, 3, '#525d7a');
+  }
+
+  /** parede interna de meia altura (divisória da cozinha) — de drawInnerWall */
+  innerWall(gx: number, gy: number, sx: number, sy: number): void {
+    const ctx = this.ctx;
+    this.cuboid(gx, gy, sx, sy, 30, '#8a93a8', '#5d667c', '#4c5468');
+    const a = iso(gx, gy),
+      b = iso(gx + sx, gy),
+      c = iso(gx + sx, gy + sy),
+      d2 = iso(gx, gy + sy);
+    ctx.strokeStyle = 'rgba(255,255,255,.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y - 30);
+    ctx.lineTo(b.x, b.y - 30);
+    ctx.lineTo(c.x, c.y - 30);
+    ctx.lineTo(d2.x, d2.y - 30);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  /** máquina de espresso — portada de drawCoffee (frame estático t) */
+  coffee(gx: number, gy: number, t = 0): void {
+    const ctx = this.ctx;
+    this.shadow(gx, gy, 11, 5);
+    const p = iso(gx, gy);
+    this.cuboid(gx - 0.17, gy - 0.16, 0.36, 0.32, 8, '#3a4150', '#2e3440', '#262b35');
+    this.cuboid(gx - 0.14, gy - 0.13, 0.3, 0.26, 26, '#d7dbe2', '#a7adb8', '#8b919d');
+    this.cuboid(gx - 0.14, gy - 0.13, 0.3, 0.26, 30, '#3a3f4c', '#3a3f4c', '#2e323c');
+    ctx.fillStyle = '#20242c';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - 32, 4, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a3f4c';
+    ctx.fillRect(p.x - 1.5, p.y - 18, 3, 5);
+    ctx.fillStyle = '#eef1f6';
+    ctx.fillRect(p.x - 3, p.y - 11, 6, 4.5);
+    ctx.strokeStyle = '#eef1f6';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(p.x + 4, p.y - 9, 1.8, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+    ctx.fillStyle = Math.sin(t * 2) > 0 ? '#37d67a' : '#255c3a';
+    ctx.beginPath();
+    ctx.arc(p.x - 7, p.y - 24, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#c94f4f';
+    ctx.beginPath();
+    ctx.arc(p.x - 3, p.y - 24, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    const s = Math.sin(t * 3) * 2;
+    ctx.strokeStyle = 'rgba(255,255,255,.4)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 13);
+    ctx.quadraticCurveTo(p.x + s + 3, p.y - 22, p.x, p.y - 30);
+    ctx.stroke();
   }
 }
 

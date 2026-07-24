@@ -11,6 +11,7 @@ import { Painter, skyStops } from './draw2d';
 import { buildLayout } from './layout';
 import type { Layout } from './layout';
 import { Camera } from './camera';
+import { Scene } from './scene';
 import { DAY_LENGTH } from '../core/state';
 import type { GameState } from '../core/state';
 
@@ -60,10 +61,12 @@ export class PixiRenderer {
   private readonly envSprite = new Sprite();
   private sky: Sprite | null = null;
   private camera: Camera;
+  private scene: Scene | null = null;
   private layout: Layout | null = null;
   private lastTier = -1;
   private lastDecor = '';
   private lastCompany = '';
+  private lastDesks = -1;
   private envTexture: Texture | null = null;
   private skyTexture: Texture | null = null;
 
@@ -91,6 +94,7 @@ export class PixiRenderer {
     this.world.sortableChildren = true;
     this.envSprite.zIndex = -1000;
     this.world.addChild(this.envSprite);
+    this.scene = new Scene(this.world, dpr);
     this.rebuildIfNeeded(true);
     app.ticker.add(this.frame);
   }
@@ -104,21 +108,33 @@ export class PixiRenderer {
     const s = window.Game.state;
     if (!s) return false;
     const decor = (s.upgrades || []).join(',');
-    return s.tier !== this.lastTier || decor !== this.lastDecor || s.company !== this.lastCompany;
+    return (
+      s.tier !== this.lastTier ||
+      decor !== this.lastDecor ||
+      s.company !== this.lastCompany ||
+      s.desks !== this.lastDesks
+    );
   }
 
   private rebuildIfNeeded(force = false): void {
     const s = window.Game.state;
     if (!s) return;
     if (!force && !this.stateChanged()) return;
+    const layoutChanged = s.tier !== this.lastTier || (s.upgrades || []).join(',') !== this.lastDecor;
+    const companyChanged = s.company !== this.lastCompany;
     this.lastTier = s.tier;
     this.lastDecor = (s.upgrades || []).join(',');
     this.lastCompany = s.company;
-    this.layout = buildLayout(s, window.Game.maxDesks());
-    this.bakeEnvironment(s);
+    this.lastDesks = s.desks;
+    if (!this.layout || layoutChanged) {
+      this.layout = buildLayout(s, window.Game.maxDesks());
+      const [w, h] = this.viewportSize();
+      this.camera.recompute(this.layout, w, h);
+    }
+    if (!this.layout) return;
+    if (layoutChanged || companyChanged) this.bakeEnvironment(s);
     this.bakeSky(nightFactor(s));
-    const [w, h] = this.viewportSize();
-    this.camera.recompute(this.layout, w, h);
+    this.scene?.rebuild(this.layout, s);
   }
 
   /** desenha o ambiente na arte procedural atual e "assa" numa textura WebGL */
@@ -184,6 +200,7 @@ export class PixiRenderer {
   destroy(): void {
     window.removeEventListener('resize', this.resize);
     this.camera.destroy();
+    this.scene?.destroy();
     this.envTexture?.destroy(true);
     this.skyTexture?.destroy(true);
     this.app?.destroy(true, { children: true });
