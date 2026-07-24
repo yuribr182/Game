@@ -71,11 +71,38 @@
     if (window.Props && Props.draw[type]) { TK.t = t; Props.draw[type](TK, gx, gy, opt); }
   }
 
+  // ---------- arte real (imagens PNG) sobre o renderer Canvas nítido ----------
+  // Cada tipo com asset usa drawImage (downscale nítido da imagem de alta
+  // resolução); os que não têm asset caem no desenho procedural (fallback).
+  // Ajuste de âncora/tamanho/posição por item (worldW em px de mundo).
+  const ASSET_CFG = {
+    desk:   { file: 'desk.png',           anchorX: 0.5, anchorY: 0.72, worldW: 66, offGx: 0.35, offGy: 0.28 },
+    sofa:   { file: 'sofa.png',           anchorX: 0.5, anchorY: 0.72, worldW: 84, offGx: 0.55, offGy: 0.30 },
+    coffee: { file: 'coffee-machine.png', anchorX: 0.5, anchorY: 0.80, worldW: 58, offGx: 0,    offGy: 0 },
+  };
+  const assets = {};
+  function loadAssets() {
+    Object.keys(ASSET_CFG).forEach((type) => {
+      const cfg = ASSET_CFG[type];
+      const img = new Image();
+      img.onload = () => { assets[type] = { img: img, cfg: cfg }; };
+      img.src = new URL('assets/props/' + cfg.file, document.baseURI).href;
+    });
+  }
+  function drawSprite(a, gx, gy) {
+    const cfg = a.cfg;
+    const p = iso(gx + (cfg.offGx || 0), gy + (cfg.offGy || 0));
+    const w = cfg.worldW, h = w * a.img.height / a.img.width;
+    ctx.drawImage(a.img, p.x - cfg.anchorX * w, p.y - cfg.anchorY * h, w, h);
+  }
+
   // ---------- inicialização ----------
   function init(cv) {
     canvas = cv;
     ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';   // downscale nítido dos PNGs
     buildTK();
+    loadAssets();
     window.addEventListener('resize', resize);
     // câmera: zoom (roda), arrastar (mouse/touch), duplo clique = enquadrar
     canvas.addEventListener('wheel', onWheel, { passive: false });
@@ -548,11 +575,11 @@
 
     ents.sort((a, b) => a.d - b.d);
     ents.forEach((e) => {
-      if (e.kind === 'desk') drawDesk(e.o, e.idx);
-      else if (e.kind === 'furn') prop(e.o.type, e.o.gx, e.o.gy, e.o);
+      if (e.kind === 'desk') { if (assets.desk) drawSprite(assets.desk, e.o.gx, e.o.gy); else drawDesk(e.o, e.idx); }
+      else if (e.kind === 'furn') { const a = assets[e.o.type]; if (a) drawSprite(a, e.o.gx, e.o.gy); else prop(e.o.type, e.o.gx, e.o.gy, e.o); }
       else if (e.kind === 'wall') drawInnerWall(e.o);
       else if (e.kind === 'worker') drawWorker(e.o);
-      else if (e.kind === 'coffee') drawCoffee(e.o);
+      else if (e.kind === 'coffee') { if (assets.coffee) drawSprite(assets.coffee, e.o.gx, e.o.gy); else drawCoffee(e.o); }
       else if (e.kind === 'tree') drawTree(e.o);
       else if (e.kind === 'pkg') drawPackage(e.o);
       else if (e.kind === 'car') drawCar(e.o);
