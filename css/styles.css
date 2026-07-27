@@ -628,3 +628,4 @@ body.modo-real .tab[data-tab="shop"] { display: none; }
 .conq-emoji { font-size: 1.3rem; }
 .conq.ok { border-color: rgba(255,202,75,.5); background: rgba(255,202,75,.07); }
 .conq.trancada { opacity: .62; }
+.crm-proposta { margin-top: 4px; font-size: .78rem; }

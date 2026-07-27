@@ -3,6 +3,8 @@
 // projetos reais do snapshot — aqui é só o cadastro comercial.
 
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { agoraISO } from '../config.js';
@@ -127,6 +129,41 @@ export function rotasCrm(app: FastifyInstance, ctx: Contexto): void {
       await ctx.store.salvarOportunidades(restantes);
       await ctx.aoMudarEstado();
       return { ok: true };
+    } catch (erro) {
+      return responderErro(reply, erro);
+    }
+  });
+
+  // ---- proposta em PDF pelo agente comercial (backlog 3) ----
+
+  app.post('/crm/oportunidades/:id/proposta', async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string };
+      await ctx.propostas.gerar(id);
+      return { ok: true, mensagem: 'Proposta em geração — acompanhe pelo card (leva 1–3 min).' };
+    } catch (erro) {
+      return responderErro(reply, erro);
+    }
+  });
+
+  // download do arquivo gerado (fica em data/propostas/<oportunidade>/)
+  app.get('/crm/oportunidades/:id/proposta/:nome', async (req, reply) => {
+    try {
+      const { id, nome } = req.params as { id: string; nome: string };
+      const oportunidade = (await ctx.store.listarOportunidades()).find((o) => o.id === id);
+      const seguro = path.basename(nome); // nunca sair da pasta da proposta
+      if (!oportunidade?.proposta?.arquivos.includes(seguro)) {
+        return reply.code(404).send({ erro: 'Arquivo de proposta não encontrado' });
+      }
+      const conteudo = await readFile(path.join(ctx.store.caminhoPropostas(id), seguro));
+      const tipos: Record<string, string> = {
+        '.pdf': 'application/pdf',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      };
+      return reply
+        .header('content-type', tipos[path.extname(seguro).toLowerCase()] ?? 'application/octet-stream')
+        .header('content-disposition', `attachment; filename="${seguro}"`)
+        .send(conteudo);
     } catch (erro) {
       return responderErro(reply, erro);
     }

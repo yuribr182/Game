@@ -978,6 +978,29 @@
         ctx.fillText(nome, p.x, baseY - 39);
         ctx.textAlign = 'left';
       }
+
+      // ---- monitor "ao vivo" (backlog 4): mini-terminal com a sessão correndo (só com zoom) ----
+      if (empReal && !empReal.resting && empReal.assign && w.state === 'work' &&
+          G.realLinhas && cam.scale >= fit.scale * 1.35) {
+        const linhas = G.realLinhas(empReal.assign);
+        const resumo = G.realResumo ? G.realResumo(empReal.assign) : '';
+        const texto = linhas.length ? linhas.slice(-3) : (resumo ? [resumo] : []);
+        if (texto.length) {
+          const tw = 66, th = 6 + texto.length * 5.5;
+          const ty = baseY - 52 - th;
+          roundRect(p.x - tw / 2, ty, tw, th, 3, 'rgba(8,12,20,.88)');
+          ctx.strokeStyle = 'rgba(127,212,160,.35)'; ctx.lineWidth = 0.6;
+          ctx.strokeRect(p.x - tw / 2 + 0.3, ty + 0.3, tw - 0.6, th - 0.6);
+          ctx.font = '4.2px monospace'; ctx.textAlign = 'left';
+          ctx.fillStyle = '#7fd4a0';
+          texto.forEach((linha, i) => {
+            let t = String(linha).replace(/\s+/g, ' ').slice(0, 26);
+            if (i === texto.length - 1 && Math.floor(Date.now() / 500) % 2 === 0) t += '▌';
+            ctx.fillText('> ' + t, p.x - tw / 2 + 3, ty + 5.5 + i * 5.5);
+          });
+          ctx.textAlign = 'left';
+        }
+      }
     }
 
     // ---- balão de fala (emoji do jogo OU texto da etapa no modo real) ----

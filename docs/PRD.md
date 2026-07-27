@@ -268,10 +268,17 @@ concluídas em 2026-07-27**:
   entrega, selo do QA, 1º PR, R$ 10 mil, mês no azul, time de 3, meta batida,
   cliente fiel — bloqueadas viram metas na aba Equipe; desbloqueio = toast
   dourado + Telegram). Suíte Playwright 13/13.
+- Backlog "insano" (3ª leva, 2026-07-27 — **backlog de médio prazo 100%
+  entregue**): **gerente de IA multiagente** (opção "👥 Equipe toda" no wizard —
+  Agent coordenador com o roster dos ativos delega as tarefas; threads no log
+  📤/📥, custo reconciliado, cena com todo mundo trabalhando), **propostas em
+  PDF** (botão 🤖 no CRM: agente Comercial com skills pdf/docx gera a proposta
+  do briefing + histórico real; download no card) e **monitor ao vivo** (zoom
+  no boneco trabalhando mostra um mini-terminal com as linhas reais da
+  sessão). Suíte Playwright 12/12 + regressões F4–F6 verdes.
 Guia de uso: **`EMPRESA-REAL.md`** na raiz. Rodar: **`npm run empresa`** e abrir
-`http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Próximo no
-backlog: gerente multiagente, propostas em PDF (a partir do CRM), monitor ao
-vivo no PC do boneco.
+`http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Restante do
+plano: só as ideias "Longe (visão)" (acesso remoto/VPS 24-7 etc.).
 
 **F1 (concluída):** `js/game.js` portado para `src/core/` tipado, validado no
 navegador (save real v3 preservado, zero erro de console, cena idêntica).

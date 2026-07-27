@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { agoraISO } from '../config.js';
 import type { ProjetoReal } from '../store/tipos.js';
+import { FUNCIONARIO_EQUIPE } from '../store/tipos.js';
 import { responderErro, type Contexto } from './contexto.js';
 
 const esquemaSpec = z.object({
@@ -73,10 +74,17 @@ export function rotasProjetos(app: FastifyInstance, ctx: Contexto): void {
         return reply.code(400).send({ erro: 'Cadastro inválido', detalhes: corpo.error.issues });
       }
       const funcionarios = await ctx.store.listarFuncionarios();
-      const responsavel = funcionarios.find(
-        (f) => f.id === corpo.data.funcionarioId && f.status === 'ativo',
-      );
-      if (!responsavel) return reply.code(400).send({ erro: 'Funcionário responsável inválido ou arquivado' });
+      if (corpo.data.funcionarioId === FUNCIONARIO_EQUIPE) {
+        // Gerente de IA delega para o roster inteiro (backlog 1)
+        if (!funcionarios.some((f) => f.status === 'ativo')) {
+          return reply.code(400).send({ erro: 'Contrate pelo menos 1 funcionário para usar o Gerente de IA' });
+        }
+      } else {
+        const responsavel = funcionarios.find(
+          (f) => f.id === corpo.data.funcionarioId && f.status === 'ativo',
+        );
+        if (!responsavel) return reply.code(400).send({ erro: 'Funcionário responsável inválido ou arquivado' });
+      }
 
       const projeto: ProjetoReal = {
         id: randomUUID(),
@@ -135,11 +143,18 @@ export function rotasProjetos(app: FastifyInstance, ctx: Contexto): void {
         return reply.code(409).send({ erro: `Projeto já está '${projeto.status}'` });
       }
       const funcionarios = await ctx.store.listarFuncionarios();
-      const responsavel = funcionarios.find((f) => f.id === projeto.funcionarioId);
-      if (!responsavel || responsavel.status !== 'ativo') {
-        return reply.code(400).send({ erro: 'Funcionário responsável indisponível' });
+      if (projeto.funcionarioId === FUNCIONARIO_EQUIPE) {
+        if (!funcionarios.some((f) => f.status === 'ativo')) {
+          return reply.code(400).send({ erro: 'O Gerente de IA precisa de pelo menos 1 funcionário ativo' });
+        }
+        await ctx.sessoes.iniciar(projeto, null);
+      } else {
+        const responsavel = funcionarios.find((f) => f.id === projeto.funcionarioId);
+        if (!responsavel || responsavel.status !== 'ativo') {
+          return reply.code(400).send({ erro: 'Funcionário responsável indisponível' });
+        }
+        await ctx.sessoes.iniciar(projeto, responsavel);
       }
-      await ctx.sessoes.iniciar(projeto, responsavel);
       return await ctx.store.listarProjetos().then((ps) => ps.find((p) => p.id === id));
     } catch (erro) {
       return responderErro(reply, erro);

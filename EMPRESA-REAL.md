@@ -137,6 +137,20 @@ dois modos não se misturam e o save do jogo não é tocado.
   (primeira entrega, selo do QA, 1º Pull Request, R$ 10 mil recebidos, mês no
   azul, time de 3, meta batida, cliente fiel). As bloqueadas aparecem como
   metas 🔒; desbloquear é toast dourado na cena + aviso no Telegram.
+- **👥 Gerente de IA (multiagente)** — no wizard, escolha **"Equipe toda"**
+  como responsável: um Agent coordenador recebe a spec, **quebra em tarefas e
+  delega para os seus funcionários** (cada um com as próprias especialidades e
+  memória). O log de Atividade mostra as delegações (📤 Gerente → Bia) e os
+  retornos (📥); na cena, quem estiver livre senta e trabalha junto. O custo
+  dos subagentes é somado ao projeto no fim.
+- **🤖 Propostas em PDF** — nos cards de lead/proposta do CRM, o botão
+  **Gerar proposta (PDF)** chama o agente Comercial: ele recebe a oportunidade,
+  o cliente e o **histórico real de contratos/custos** para calibrar preço e
+  prazo, e devolve um PDF pronto (link de download no card, arquivo em
+  `server/data/propostas/`).
+- **🖥️ Monitor ao vivo** — dê zoom num funcionário trabalhando: o boneco ganha
+  um mini-terminal verde com as **linhas reais da sessão** correndo (com
+  cursor piscando e tudo).
 
 ## Financeiro
 

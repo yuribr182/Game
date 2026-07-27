@@ -1,6 +1,7 @@
-// Backlog "insano" — sino de vendas + meta mensal, conquistas reais.
+// Backlog "insano" — sino/meta, conquistas, gerente multiagente e propostas.
 
 import { describe, expect, it } from 'vitest';
+import { montarBriefingProposta, montarKickoff, rosterMudou } from '../src/anthropic/agentes.js';
 import { avaliarConquistas, DEFS_CONQUISTAS, listaConquistas } from '../src/conquistas.js';
 import { metaFoiBatida } from '../src/financeiro/motor.js';
 import type { FuncionarioAgente, Lancamento, ProjetoReal } from '../src/store/tipos.js';
@@ -91,5 +92,63 @@ describe('avaliarConquistas — marcos reais', () => {
     expect(lista).toHaveLength(DEFS_CONQUISTAS.length);
     expect(lista.find((c) => c.id === 'primeira_entrega')?.quando).toBe('2026-07-27T12:00:00Z');
     expect(lista.find((c) => c.id === 'selo_qa')?.quando).toBeNull();
+  });
+});
+
+// ---- gerente de IA multiagente ----
+
+describe('gerente de IA — roster e kickoff', () => {
+  it('rosterMudou ignora a ordem e pega inclusão/remoção', () => {
+    expect(rosterMudou(['a', 'b'], ['b', 'a'])).toBe(false);
+    expect(rosterMudou(['a', 'b', 'c'], ['a', 'b'])).toBe(true);
+    expect(rosterMudou(['a'], ['a', 'b'])).toBe(true);
+    expect(rosterMudou(['a'], undefined)).toBe(true);
+  });
+
+  it('kickoff de projeto da equipe instrui o gerente a delegar', () => {
+    const equipe = montarKickoff(projeto({ id: 'x', funcionarioId: 'equipe' }));
+    expect(equipe).toContain('Trabalho em equipe');
+    expect(equipe).toContain('distribua');
+    const solo = montarKickoff(projeto({ id: 'y' }));
+    expect(solo).not.toContain('Trabalho em equipe');
+  });
+});
+
+// ---- propostas em PDF ----
+
+describe('montarBriefingProposta', () => {
+  it('leva cliente, valor, observações e o histórico real de projetos', () => {
+    const briefing = montarBriefingProposta({
+      titulo: 'Loja virtual completa',
+      valorEstimadoBRL: 8000,
+      observacoes: 'quer integração com Pix',
+      cliente: { nome: 'Loja da Maria', contato: 'maria@loja.com', origem: 'site' },
+      historico: [
+        { nome: 'Cardápio Online', tipo: 'entrega', valorContratoBRL: 4500, custoUSD: 1.87, prazoDias: 10 },
+      ],
+    });
+    for (const trecho of [
+      'Loja virtual completa',
+      'Loja da Maria',
+      'maria@loja.com',
+      'Pix',
+      '8.000,00', // toLocaleString usa espaço não-quebrável após o R$
+      'Cardápio Online',
+      '10 dias',
+      '/mnt/session/outputs/proposta.pdf',
+    ]) {
+      expect(briefing).toContain(trecho);
+    }
+  });
+
+  it('sem valor estimado, pede sugestão; sem histórico, some a seção', () => {
+    const briefing = montarBriefingProposta({
+      titulo: 'X',
+      valorEstimadoBRL: 0,
+      cliente: { nome: 'Y' },
+      historico: [],
+    });
+    expect(briefing).toContain('sugira você');
+    expect(briefing).not.toContain('Histórico real');
   });
 });

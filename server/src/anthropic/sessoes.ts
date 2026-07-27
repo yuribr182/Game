@@ -20,11 +20,13 @@ import type {
   ProjetoReal,
   ResultadoQA,
 } from '../store/tipos.js';
+import { FUNCIONARIO_EQUIPE } from '../store/tipos.js';
 import type { TempoReal } from '../tempoReal.js';
 import {
   extrairLinkPR,
   FERRAMENTA_PROGRESSO,
   garantirEnvironment,
+  garantirGerente,
   garantirMemoria,
   montarKickoff,
   montarRubric,
@@ -134,31 +136,42 @@ export class GerenciadorSessoes {
 
   // ---- ciclo de vida ----
 
-  /** Inicia o projeto: registra a VENDA, cria a Session e liga o loop de eventos. */
-  async iniciar(projeto: ProjetoReal, funcionario: FuncionarioAgente): Promise<void> {
+  /** Inicia o projeto: registra a VENDA, cria a Session e liga o loop de eventos.
+   *  Com funcionário null + funcionarioId 'equipe', quem assume é o Gerente de IA
+   *  (coordenador multiagente cujo roster são os funcionários ativos). */
+  async iniciar(projeto: ProjetoReal, funcionario: FuncionarioAgente | null): Promise<void> {
     const { store } = this.deps;
     const cliente = this.deps.cliente();
-    if (!funcionario.agentId) {
-      throw new ErroPonte(`O funcionário ${funcionario.nome} ainda não tem Agent na Anthropic.`);
+    const equipe = projeto.funcionarioId === FUNCIONARIO_EQUIPE;
+    if (!equipe && !funcionario?.agentId) {
+      throw new ErroPonte(`O funcionário ${funcionario?.nome ?? '?'} ainda não tem Agent na Anthropic.`);
     }
     if (projeto.tipo === 'codigo' && !process.env.GITHUB_TOKEN) {
       throw new ErroPonte('Projeto de código exige GITHUB_TOKEN em server/.env.', 503);
     }
 
     const environmentId = await garantirEnvironment(cliente, store);
+    const agentId = equipe ? await garantirGerente(cliente, store) : funcionario!.agentId!;
 
     const recursos: Record<string, unknown>[] = [];
-    // memória profissional (F4e): criada no 1º projeto do funcionário; acessório — sem ela a sessão sai igual
-    try {
-      const memoryStoreId = await garantirMemoria(cliente, store, funcionario);
-      recursos.push({
-        type: 'memory_store',
-        memory_store_id: memoryStoreId,
-        access: 'read_write',
-        instructions: `Memória profissional de ${funcionario.nome}. Leia as notas antes de começar; registre as lições aprendidas ao concluir o projeto.`,
-      });
-    } catch (erro) {
-      console.warn(`[memória] não consegui criar/montar a memória de ${funcionario.nome}: ${mensagem(erro)}`);
+    // memória profissional (F4e): acessório — sem ela a sessão sai igual.
+    // Projeto de equipe monta as memórias de até 8 ativos (o container é compartilhado
+    // entre os threads, então cada subagente enxerga a própria).
+    const donosDeMemoria = equipe
+      ? (await store.listarFuncionarios()).filter((f) => f.status === 'ativo').slice(0, 8)
+      : [funcionario!];
+    for (const dono of donosDeMemoria) {
+      try {
+        const memoryStoreId = await garantirMemoria(cliente, store, dono);
+        recursos.push({
+          type: 'memory_store',
+          memory_store_id: memoryStoreId,
+          access: 'read_write',
+          instructions: `Memória profissional de ${dono.nome}. ${dono.nome} deve ler as notas antes de começar e registrar as lições aprendidas ao concluir.`,
+        });
+      } catch (erro) {
+        console.warn(`[memória] não consegui criar/montar a memória de ${dono.nome}: ${mensagem(erro)}`);
+      }
     }
     if (projeto.tipo === 'codigo' && projeto.repoUrl) {
       recursos.push({
@@ -173,9 +186,9 @@ export class GerenciadorSessoes {
     }
 
     const sessao = await cliente.beta.sessions.create({
-      agent: funcionario.agentId,
+      agent: agentId,
       environment_id: environmentId,
-      title: `${projeto.emoji} ${projeto.nome} — ${funcionario.nome}`,
+      title: `${projeto.emoji} ${projeto.nome} — ${equipe ? 'Equipe toda (Gerente de IA)' : funcionario!.nome}`,
       ...(recursos.length ? { resources: recursos } : {}),
     } as Parameters<typeof cliente.beta.sessions.create>[0]);
 
@@ -189,7 +202,11 @@ export class GerenciadorSessoes {
       p.iniciadoEm = agoraISO();
       p.motivoPausa = null;
     });
-    await this.registrarAtividade(projeto.id, 'sistema', `Sessão criada (${sessao.id}) — ${funcionario.nome} assumiu o projeto.`);
+    await this.registrarAtividade(
+      projeto.id,
+      'sistema',
+      `Sessão criada (${sessao.id}) — ${equipe ? 'o Gerente de IA assumiu com a equipe toda' : `${funcionario!.nome} assumiu o projeto`}.`,
+    );
     this.ligarLoop(projeto.id);
     await this.deps.aoMudarEstado();
   }
@@ -302,6 +319,7 @@ export class GerenciadorSessoes {
       throw new ErroPonte(`Não dá para entregar um projeto com status '${projeto.status}'.`);
     }
     this.desligarLoop(projetoId);
+    await this.reconciliarCustoEquipe(projetoId); // multiagente: fecha a conta dos subagentes
 
     const hoje = hojeISO();
     const contas = gerarContasReceber(projeto, hoje);
@@ -558,6 +576,32 @@ export class GerenciadorSessoes {
       case 'agent.thread_context_compacted':
         await this.registrarAtividade(projetoId, 'sistema', 'Contexto da sessão foi compactado.');
         return;
+      // ---- multiagente (backlog 1): o gerente delegando para a equipe ----
+      case 'session.thread_created': {
+        const nome = typeof ev.agent_name === 'string' ? ev.agent_name : 'um agente';
+        await this.registrarAtividade(projetoId, 'sistema', `🧵 ${nome} entrou no projeto.`);
+        return;
+      }
+      case 'agent.thread_message_sent': {
+        const para = typeof ev.to_agent_name === 'string' ? ev.to_agent_name : 'funcionário';
+        const texto = textoDoEvento(ev);
+        await this.registrarAtividade(
+          projetoId,
+          'mensagem',
+          `📤 Gerente → ${para}: ${texto.slice(0, 400) || '(tarefa delegada)'}`,
+        );
+        return;
+      }
+      case 'agent.thread_message_received': {
+        const de = typeof ev.from_agent_name === 'string' ? ev.from_agent_name : 'funcionário';
+        const texto = textoDoEvento(ev);
+        await this.registrarAtividade(
+          projetoId,
+          'mensagem',
+          `📥 ${de} → Gerente: ${texto.slice(0, 400) || '(retorno)'}`,
+        );
+        return;
+      }
       case 'session.error': {
         const erro = ev.error as { message?: string } | undefined;
         const texto = erro?.message ?? 'erro na sessão';
@@ -674,12 +718,15 @@ export class GerenciadorSessoes {
       respondidos.add(id);
       const projeto = await this.obterProjeto(projetoId);
       if (projeto?.sessionId) {
+        // multiagente: tool de um subagente chega no stream primário com session_thread_id — ecoar de volta
+        const threadId = typeof ev.session_thread_id === 'string' ? ev.session_thread_id : null;
         await this.deps.cliente().beta.sessions.events.send(projeto.sessionId, {
           events: [
             {
               type: 'user.custom_tool_result',
               custom_tool_use_id: id,
               content: [{ type: 'text', text: resposta }],
+              ...(threadId ? { session_thread_id: threadId } : {}),
             },
           ],
         } as Parameters<Anthropic['beta']['sessions']['events']['send']>[1]);
@@ -768,10 +815,44 @@ export class GerenciadorSessoes {
     }
   }
 
+  /**
+   * Multiagente: o stream primário NÃO traz os model_requests dos subagentes.
+   * No fim do trabalho, soma o uso de todos os threads e cobra só a diferença
+   * do que já foi contabilizado (idempotente; melhor esforço).
+   */
+  private async reconciliarCustoEquipe(projetoId: string): Promise<void> {
+    const projeto = await this.obterProjeto(projetoId);
+    if (!projeto?.sessionId || projeto.funcionarioId !== FUNCIONARIO_EQUIPE) return;
+    try {
+      const total = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+      for await (const bruto of this.deps.cliente().beta.sessions.threads.list(projeto.sessionId)) {
+        const uso = (bruto as { usage?: Record<string, number> | null }).usage;
+        if (!uso) continue;
+        total.input += uso.input_tokens ?? 0;
+        total.output += uso.output_tokens ?? 0;
+        total.cacheRead += uso.cache_read_input_tokens ?? 0;
+        total.cacheWrite += uso.cache_creation_input_tokens ?? 0;
+      }
+      const delta: UsoModelo = {
+        input_tokens: Math.max(0, total.input - projeto.tokens.input),
+        output_tokens: Math.max(0, total.output - projeto.tokens.output),
+        cache_read_input_tokens: Math.max(0, total.cacheRead - projeto.tokens.cacheRead),
+        cache_creation_input_tokens: Math.max(0, total.cacheWrite - projeto.tokens.cacheWrite),
+      };
+      if (Object.values(delta).some((v) => (v ?? 0) > 0)) {
+        await this.registrarCusto(projetoId, delta);
+        await this.registrarAtividade(projetoId, 'custo', 'Custo dos subagentes da equipe reconciliado no total do projeto.');
+      }
+    } catch (erro) {
+      console.warn(`[equipe] reconciliação de custo falhou: ${mensagem(erro)}`);
+    }
+  }
+
   private async aplicarDecisao(projetoId: string, decisao: Decisao): Promise<void> {
     const projeto = await this.obterProjeto(projetoId);
     if (!projeto) return;
     if (projeto.status === 'pausado' || projeto.status === 'entregue') return; // pausa/entrega mandam
+    if (decisao.tipo !== 'continuar') await this.reconciliarCustoEquipe(projetoId);
     const aprovadoQA = projeto.qaAtivo && projeto.qaResultado === 'aprovado';
     const rotulo = `${projeto.emoji} ${projeto.nome}`;
     if (decisao.tipo === 'revisao') {

@@ -30,6 +30,8 @@ declare global {
       real?: PonteRealApi;
       /** Só no modo real: resumo da etapa atual por projeto (balões do iso.js). */
       realResumo?: (projetoId: string) => string;
+      /** Só no modo real: últimas linhas de atividade por projeto (monitor ao vivo do boneco). */
+      realLinhas?: (projetoId: string) => string[];
     };
   }
 }

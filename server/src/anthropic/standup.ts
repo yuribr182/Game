@@ -96,7 +96,10 @@ export function montarContextoStandup(dados: {
       nome: `${p.emoji} ${p.nome}`,
       cliente: p.cliente,
       status: p.status,
-      responsavel: dados.funcionarios.find((f) => f.id === p.funcionarioId)?.nome ?? '?',
+      responsavel:
+        p.funcionarioId === 'equipe'
+          ? 'Equipe toda (Gerente de IA)'
+          : (dados.funcionarios.find((f) => f.id === p.funcionarioId)?.nome ?? '?'),
       etapas: `${p.etapasConcluidas}/${p.etapasTotais || '?'}`,
       fazendoAgora: p.resumoAtual || '(sem resumo ainda)',
       diasRestantes: p.iniciadoEm

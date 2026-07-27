@@ -208,6 +208,10 @@ export class Store {
     return this.db.caminho(path.join('entregas', projetoId));
   }
 
+  caminhoPropostas(oportunidadeId: string): string {
+    return this.db.caminho(path.join('propostas', oportunidadeId));
+  }
+
   // ---- CRM (backlog 7) ----
 
   listarClientes(): Promise<ClienteCRM[]> {

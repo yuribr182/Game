@@ -148,6 +148,10 @@ export interface ConfigPonte {
   // ---- sino de vendas + meta mensal (backlog 6) ----
   metaMensalBRL: number; // 0 = sem meta
   metaBatidaMes?: string | null; // yyyy-mm em que a meta já foi comemorada (dedupe)
+  // ---- gerente de IA multiagente (backlog 1) + agente comercial (backlog 3) ----
+  gerenteAgentId?: string | null; // Agent coordenador (roster = funcionários ativos)
+  gerenteRoster?: string[]; // agentIds usados na última atualização do roster
+  comercialAgentId?: string | null; // Agent que escreve propostas em PDF
 }
 
 export const CONFIG_PADRAO: ConfigPonte = {
@@ -162,7 +166,13 @@ export const CONFIG_PADRAO: ConfigPonte = {
   standupHoraAplicada: null,
   metaMensalBRL: 0,
   metaBatidaMes: null,
+  gerenteAgentId: null,
+  gerenteRoster: [],
+  comercialAgentId: null,
 };
+
+/** Responsável especial: o Gerente de IA delega para o roster inteiro (backlog 1). */
+export const FUNCIONARIO_EQUIPE = 'equipe';
 
 export interface EntradaAtividade {
   ts: string; // ISO completo
@@ -193,6 +203,13 @@ export interface OportunidadeCRM {
   observacoes?: string;
   criadoEm: string;
   atualizadoEm: string;
+  /** Proposta em PDF gerada pelo agente comercial (backlog 3). */
+  proposta?: {
+    status: 'gerando' | 'pronta' | 'falhou';
+    arquivos: string[]; // nomes em data/propostas/<oportunidade>/
+    geradaEm?: string;
+    erro?: string;
+  } | null;
 }
 
 // ---- conquistas reais (backlog 5) ----

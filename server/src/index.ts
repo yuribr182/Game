@@ -3,6 +3,7 @@
 
 import Fastify from 'fastify';
 import { clienteAnthropic, temChaveApi } from './anthropic/cliente.js';
+import { GerenciadorPropostas } from './anthropic/propostas.js';
 import { GerenciadorSessoes } from './anthropic/sessoes.js';
 import { GerenciadorStandup } from './anthropic/standup.js';
 import { carregarEnv, dirDados, hojeISO, porta } from './config.js';
@@ -46,6 +47,13 @@ async function principal(): Promise<void> {
     aoMudarEstado,
   });
 
+  const propostas = new GerenciadorPropostas({
+    store,
+    tempoReal,
+    cliente: clienteAnthropic,
+    aoMudarEstado,
+  });
+
   /** Rotina diária: contas atrasadas + custos fixos recorrentes (idempotente; com catch-up). */
   const rodarRotinaDiaria = async (): Promise<void> => {
     const hoje = hojeISO();
@@ -77,7 +85,7 @@ async function principal(): Promise<void> {
     }
   };
 
-  const ctx: Contexto = { store, tempoReal, sessoes, standup, aoMudarEstado, rodarRotinaDiaria };
+  const ctx: Contexto = { store, tempoReal, sessoes, standup, propostas, aoMudarEstado, rodarRotinaDiaria };
 
   const app = Fastify({ logger: { level: 'info' } });
   await app.register(

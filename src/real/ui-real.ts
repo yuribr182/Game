@@ -209,6 +209,7 @@ function montarLinhaTempo(entradas: EntradaAtividadeReal[], projeto: ProjetoReal
 // ---------- projetos ----------
 
 function nomeFuncionario(id: string): string {
+  if (id === 'equipe') return '👥 Equipe (Gerente de IA)';
   return snap()?.funcionarios.find((f) => f.id === id)?.nome ?? '?';
 }
 
@@ -605,6 +606,7 @@ function renderWizard(): void {
       <select id="wFuncionario">
         <option value="">— escolha —</option>
         ${funcionarios.map((f) => `<option value="${f.id}" ${d.funcionarioId === f.id ? 'selected' : ''}>${esc(f.nome)} (${CARGOS[f.cargoVisual] ?? f.cargoVisual})</option>`).join('')}
+        ${funcionarios.length ? `<option value="equipe" ${d.funcionarioId === 'equipe' ? 'selected' : ''}>👥 Equipe toda — o Gerente de IA delega as tarefas</option>` : ''}
       </select>
       ${funcionarios.length ? '' : '<p class="modal-hint">⚠️ Contrate um funcionário na aba Equipe antes.</p>'}`;
     $('#wForma').addEventListener('change', () => {
@@ -992,6 +994,14 @@ async function renderFinanceiro(): Promise<void> {
         const b = (rotulo: string, attrs: string, classe = 'btn') =>
           `<button class="btn ${classe}" style="padding:4px 9px;font-size:.75rem" ${attrs}>${rotulo}</button>`;
         const acoes: string[] = [];
+        // proposta em PDF pelo agente comercial (backlog 3)
+        if (o.etapa === 'lead' || o.etapa === 'proposta') {
+          if (o.proposta?.status === 'gerando') {
+            acoes.push('<span class="pr-chip qa">🤖 gerando proposta…</span>');
+          } else {
+            acoes.push(b(o.proposta?.status === 'pronta' ? '🔁 Regerar proposta' : '🤖 Gerar proposta (PDF)', `data-opp-gerar="${o.id}"`));
+          }
+        }
         if (o.etapa === 'lead') acoes.push(b('📄 Mandei proposta', `data-opp-etapa="proposta" data-id="${o.id}"`));
         if (o.etapa === 'proposta') acoes.push(b('✅ Fechou!', `data-opp-etapa="fechado" data-id="${o.id}"`, 'btn-primary'));
         if (o.etapa === 'lead' || o.etapa === 'proposta') acoes.push(b('❌ Perdi', `data-opp-etapa="perdido" data-id="${o.id}"`));
@@ -999,8 +1009,16 @@ async function renderFinanceiro(): Promise<void> {
         if (o.etapa === 'perdido') {
           acoes.push(b('🔁 Reabrir', `data-opp-etapa="lead" data-id="${o.id}"`), b('🗑', `data-opp-excluir="${o.id}"`));
         }
+        const arquivosProposta =
+          o.proposta?.status === 'pronta' && o.proposta.arquivos.length
+            ? `<div class="crm-proposta">📎 ${o.proposta.arquivos
+                .map((n) => `<a class="pr-link" href="/api/crm/oportunidades/${o.id}/proposta/${encodeURIComponent(n)}">${esc(n)}</a>`)
+                .join(' · ')}</div>`
+            : o.proposta?.status === 'falhou'
+              ? `<div class="crm-proposta pr-sub-inline">⚠️ proposta falhou: ${esc(o.proposta.erro ?? 'erro')}</div>`
+              : '';
         return `<div class="crm-opp">
-          <div><b>${esc(o.titulo)}</b> <span class="pr-sub-inline">· ${esc(nomeCliente(o.clienteId))} · ${brlCentavos(o.valorEstimadoBRL)}</span></div>
+          <div><b>${esc(o.titulo)}</b> <span class="pr-sub-inline">· ${esc(nomeCliente(o.clienteId))} · ${brlCentavos(o.valorEstimadoBRL)}</span>${arquivosProposta}</div>
           <div class="pr-acoes">${acoes.join('')}</div>
         </div>`;
       };
@@ -1267,6 +1285,15 @@ function iniciarPaineis(): void {
           toast(valor > 0 ? `🎯 Meta do mês: ${brlCentavos(valor)}.` : '🎯 Meta desligada.', 'good');
           void renderFinanceiro();
         })
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+      return;
+    }
+    const oppGerar = (ev.target as HTMLElement).closest('[data-opp-gerar]') as HTMLElement | null;
+    if (oppGerar) {
+      toast('🤖 Chamando o Comercial — a proposta leva 1–3 min…');
+      void api
+        .gerarProposta(oppGerar.dataset.oppGerar!)
+        .then(() => void renderFinanceiro())
         .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
       return;
     }

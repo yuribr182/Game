@@ -98,6 +98,15 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
 
   let ultimoSnapshot: SnapshotReal | null = null;
   const resumos = new Map<string, string>();
+  // últimas linhas de atividade por projeto — alimentam o "monitor ao vivo" do boneco
+  const linhas = new Map<string, string[]>();
+
+  function guardarLinha(projetoId: string, texto: string): void {
+    const lista = linhas.get(projetoId) ?? [];
+    lista.push(texto);
+    while (lista.length > 6) lista.shift();
+    linhas.set(projetoId, lista);
+  }
 
   const real: PonteRealApi = {
     snapshot: () => ultimoSnapshot,
@@ -176,18 +185,28 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
       .filter((n) => Number.isFinite(n));
     if (datas.length) inicioEmpresaMs = Math.min(...datas);
 
+    // projeto da "equipe" (gerente de IA): todo mundo sem projeto próprio senta e trabalha nele
+    const projetoEquipe = emAberto.find(
+      (p) => p.funcionarioId === 'equipe' && p.status === 'em_andamento',
+    );
+
     // a ORDEM define qual boneco é quem — segue a ordem estável da ponte
     estado.employees = ativos.map((f): Employee => {
+      // prioridade: projeto próprio rodando > projeto da equipe rodando > projeto próprio parado
       const projetoDele =
         emAberto.find((p) => p.funcionarioId === f.id && p.status === 'em_andamento') ??
+        projetoEquipe ??
         emAberto.find((p) => p.funcionarioId === f.id);
+      const trabalhando =
+        emAberto.some((p) => p.funcionarioId === f.id && p.status === 'em_andamento') ||
+        Boolean(projetoEquipe);
       return {
         uid: f.id,
         role: f.cargoVisual,
         assign: projetoDele ? projetoDele.id : null,
         name: f.nome,
         energy: 100,
-        resting: !emAberto.some((p) => p.funcionarioId === f.id && p.status === 'em_andamento'),
+        resting: !trabalhando,
         exp: Math.max(0, Math.floor((Date.now() - Date.parse(f.criadoEm)) / 86400000)),
         salaryMult: 1,
         mood: null,
@@ -256,7 +275,11 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
         }
         emitirReal('progresso', ev);
       },
-      aoAtividade: (dados) => emitirReal('atividade', dados),
+      aoAtividade: (dados) => {
+        const ev = dados as { projetoId?: string; entrada?: { texto?: string } };
+        if (ev.projetoId && ev.entrada?.texto) guardarLinha(ev.projetoId, ev.entrada.texto);
+        emitirReal('atividade', dados);
+      },
       aoCusto: (dados) => {
         const ev = dados as EventoCusto;
         const projetoSnap = ultimoSnapshot?.projetos.find((p) => p.id === ev.projetoId);
@@ -274,7 +297,7 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
               ? 'meta'
               : ev.tipo === 'conquista'
                 ? 'achieve'
-                : ev.tipo === 'aguardando_revisao' || ev.tipo === 'standup'
+                : ev.tipo === 'aguardando_revisao' || ev.tipo === 'standup' || ev.tipo === 'proposta'
                   ? 'info'
                   : ev.tipo === 'falha'
                     ? 'fail'
@@ -318,6 +341,7 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
     modoReal: true as const,
     real,
     realResumo: (projetoId: string) => resumos.get(projetoId) ?? '',
+    realLinhas: (projetoId: string) => linhas.get(projetoId) ?? [],
 
     on(tipo: NomeEventoBus, fn: (dados: never) => void): void {
       ouvintes[tipo]?.push(fn as (dados: unknown) => void);

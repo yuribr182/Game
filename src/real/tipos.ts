@@ -99,6 +99,12 @@ export interface OportunidadeCRMReal {
   observacoes?: string;
   criadoEm: string;
   atualizadoEm: string;
+  proposta?: {
+    status: 'gerando' | 'pronta' | 'falhou';
+    arquivos: string[];
+    geradaEm?: string;
+    erro?: string;
+  } | null;
 }
 
 // ---- conquistas reais (backlog 5) ----

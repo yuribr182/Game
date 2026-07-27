@@ -172,6 +172,10 @@ export function excluirOportunidade(id: string): Promise<unknown> {
   return chamar(`/crm/oportunidades/${id}`, { method: 'DELETE' });
 }
 
+export function gerarProposta(id: string): Promise<unknown> {
+  return chamar(`/crm/oportunidades/${id}/proposta`, { method: 'POST' });
+}
+
 // ---- tempo real ----
 
 export interface CanaisStream {
