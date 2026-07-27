@@ -3,3 +3,7 @@ node_modules/
 *.log
 dist/
 dev-dist/
+
+# Modo Empresa Real — dados da empresa e segredos NUNCA vão pro repo público
+server/data/
+server/.env
