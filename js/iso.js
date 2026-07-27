@@ -364,14 +364,23 @@
     workers.forEach((w) => {
       const emp = s.employees[w.i];
       const idle = noWork || (emp && emp.resting);
+      // Modo Empresa Real: sem sessão rodando = FORA do computador (nunca fica digitando)
+      if (G.modoReal && idle && w.state === 'work') w.timer = 0;
       w.timer -= dt;
       if (w.mug > 0) w.mug -= dt;
       if (w.bubble && (w.bubble.life -= dt) <= 0) w.bubble = null;
       // balões contextuais
       if (!w.bubble) {
-        if (emp && emp.resting && Math.random() < dt * 0.25) w.bubble = { emoji: '😴', life: 2.2 };
-        else if (w.mug > 0 && Math.random() < dt * 0.2) w.bubble = { emoji: '☕', life: 2 };
-        else if (w.state === 'work' && !noWork && Math.random() < dt * 0.05) w.bubble = { emoji: pick(['💡', '🐛', '🚀', '🤔']), life: 2.2 };
+        // Modo Empresa Real: quem está trabalhando mostra a ETAPA ATUAL da sessão
+        if (G.modoReal && w.state === 'work' && emp && !emp.resting && !idle && G.realResumo && Math.random() < dt * 0.12) {
+          const resumo = G.realResumo(emp.assign || '');
+          if (resumo) w.bubble = { texto: resumo.length > 34 ? resumo.slice(0, 33) + '…' : resumo, life: 4.5 };
+        }
+        if (!w.bubble) {
+          if (emp && emp.resting && Math.random() < dt * 0.25) w.bubble = { emoji: '😴', life: 2.2 };
+          else if (w.mug > 0 && Math.random() < dt * 0.2) w.bubble = { emoji: '☕', life: 2 };
+          else if (w.state === 'work' && !noWork && Math.random() < dt * 0.05) w.bubble = { emoji: pick(['💡', '🐛', '🚀', '🤔']), life: 2.2 };
+        }
       }
       if (w.state === 'work') {
         // na mesa; desocupado levanta logo, ocupado só de vez em quando
@@ -392,8 +401,9 @@
         }
       } else if (w.state === 'pause') {
         if (w.timer <= 0) {
-          if (idle && Math.random() < 0.55) {
+          if (idle && (G.modoReal || Math.random() < 0.55)) {
             // continua vagando (cozinha/lounge) enquanto não há trabalho
+            // (no modo real, ocioso NUNCA volta para a mesa)
             const dest = pickDest(true);
             routeTo(w, dest.gx, dest.gy);
             w.state = 'walk'; w.errand = dest.errand;
@@ -405,7 +415,7 @@
       }
       if (w.state === 'return' && reached(w)) {
         w.state = 'work';
-        w.timer = idle ? rand(1.5, 4) : rand(6, 14);
+        w.timer = G.modoReal && idle ? 0 : idle ? rand(1.5, 4) : rand(6, 14);
       }
       stepToward(w, dt);
     });
@@ -956,17 +966,42 @@
       ctx.beginPath(); ctx.arc(p.x + 2.2, baseY - 25, 1.4, 0, Math.PI * 2); ctx.fill();
     }
 
-    // ---- balão de fala ----
+    // ---- Modo Empresa Real: nome sobre o boneco (a cena é a empresa — dá pra saber quem é quem) ----
+    if (G.modoReal && w.i >= 0 && !w.bubble) {
+      const empReal = G.state && G.state.employees[w.i];
+      if (empReal && empReal.name) {
+        const nome = empReal.name;
+        ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+        const meia = ctx.measureText(nome).width / 2 + 5;
+        roundRect(p.x - meia, baseY - 48, meia * 2, 12, 6, 'rgba(13,20,32,.72)');
+        ctx.fillStyle = empReal.resting ? '#9fb0c8' : '#7fd4a0';
+        ctx.fillText(nome, p.x, baseY - 39);
+        ctx.textAlign = 'left';
+      }
+    }
+
+    // ---- balão de fala (emoji do jogo OU texto da etapa no modo real) ----
     if (w.bubble) {
       const alpha = Math.min(1, w.bubble.life);
       ctx.globalAlpha = alpha;
       const by = baseY - 50;
-      roundRect(p.x - 11, by - 10, 22, 20, 7, 'rgba(255,255,255,.92)');
-      ctx.beginPath(); ctx.moveTo(p.x - 3, by + 10); ctx.lineTo(p.x + 3, by + 10); ctx.lineTo(p.x, by + 15); ctx.closePath();
-      ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
-      ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(w.bubble.emoji, p.x, by + 5);
-      ctx.textAlign = 'left';
+      if (w.bubble.texto) {
+        ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+        const meia = Math.min(92, ctx.measureText(w.bubble.texto).width / 2 + 7);
+        roundRect(p.x - meia, by - 8, meia * 2, 16, 6, 'rgba(255,255,255,.94)');
+        ctx.beginPath(); ctx.moveTo(p.x - 3, by + 8); ctx.lineTo(p.x + 3, by + 8); ctx.lineTo(p.x, by + 13); ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,.94)'; ctx.fill();
+        ctx.fillStyle = '#20242e';
+        ctx.fillText(w.bubble.texto, p.x, by + 3);
+        ctx.textAlign = 'left';
+      } else {
+        roundRect(p.x - 11, by - 10, 22, 20, 7, 'rgba(255,255,255,.92)');
+        ctx.beginPath(); ctx.moveTo(p.x - 3, by + 10); ctx.lineTo(p.x + 3, by + 10); ctx.lineTo(p.x, by + 15); ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
+        ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(w.bubble.emoji, p.x, by + 5);
+        ctx.textAlign = 'left';
+      }
       ctx.globalAlpha = 1;
     }
 

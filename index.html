@@ -22,6 +22,7 @@
       <div class="start-actions">
         <button id="btnNewGame" class="btn btn-primary btn-lg">🚀 Novo Jogo</button>
         <button id="btnContinue" class="btn btn-ghost btn-lg" disabled>▶️ Continuar</button>
+        <button id="btnEmpresaReal" class="btn btn-ghost btn-lg" title="Sua agência de verdade: funcionários são agentes de IA reais">🏢 Empresa Real</button>
       </div>
       <p class="start-hint">Progresso salvo automaticamente no seu navegador.</p>
     </div>
@@ -90,11 +91,12 @@
       <div class="tab-content">
         <!-- Projetos -->
         <div class="tab-pane active" id="tab-projects">
-          <div class="pane-section">
+          <div id="realProjetos" class="painel-real"></div>
+          <div class="pane-section so-jogo">
             <h3>Projetos ativos <span class="pill" id="activeCount">0/1</span></h3>
             <div id="activeProjects" class="list"></div>
           </div>
-          <div class="pane-section">
+          <div class="pane-section so-jogo">
             <h3>Contratos disponíveis</h3>
             <div id="availableProjects" class="list"></div>
           </div>
@@ -102,11 +104,12 @@
 
         <!-- Equipe -->
         <div class="tab-pane" id="tab-team">
-          <div class="pane-section">
+          <div id="realEquipe" class="painel-real"></div>
+          <div class="pane-section so-jogo">
             <h3>Contratar</h3>
             <div id="hireList" class="list"></div>
           </div>
-          <div class="pane-section">
+          <div class="pane-section so-jogo">
             <h3>Sua equipe <span class="pill" id="teamCount">0</span></h3>
             <div id="teamList" class="list"></div>
           </div>
@@ -131,17 +134,18 @@
           </div>
         </div>
 
-        <!-- Empresa -->
+        <!-- Empresa (no modo real vira o painel Financeiro) -->
         <div class="tab-pane" id="tab-company">
-          <div class="pane-section">
+          <div id="realFinanceiro" class="painel-real"></div>
+          <div class="pane-section so-jogo">
             <h3>🏁 Ranking de agências</h3>
             <div id="rankList" class="list"></div>
           </div>
-          <div class="pane-section">
+          <div class="pane-section so-jogo">
             <h3>📈 Estatísticas</h3>
             <div id="statsPanel" class="card"></div>
           </div>
-          <div class="pane-section">
+          <div class="pane-section so-jogo">
             <h3>🏆 Conquistas <span class="pill" id="achCount">0/0</span></h3>
             <div id="achList" class="list"></div>
           </div>
@@ -190,6 +194,64 @@
 
   <!-- ===== Painel de personagem (clique na cena) ===== -->
   <div id="workerCard" class="worker-card hidden"></div>
+
+  <!-- ===== Modo Empresa Real: wizard de novo projeto (4 passos) ===== -->
+  <div id="modalWizard" class="overlay hidden">
+    <div class="modal modal-grande">
+      <h2 id="wizardTitulo">📋 Novo projeto</h2>
+      <div class="wizard-passos" id="wizardPassos"></div>
+      <div id="wizardCorpo" class="wizard-corpo"></div>
+      <div class="modal-actions">
+        <button id="wizardVoltar" class="btn">← Voltar</button>
+        <button id="wizardCancelar" class="btn">Cancelar</button>
+        <button id="wizardAvancar" class="btn btn-primary">Avançar →</button>
+      </div>
+      <p class="modal-hint" id="wizardErro"></p>
+    </div>
+  </div>
+
+  <!-- ===== Modo Empresa Real: contratar/editar funcionário ===== -->
+  <div id="modalFuncionario" class="overlay hidden">
+    <div class="modal modal-grande">
+      <h2 id="funcTitulo">👥 Contratar funcionário</h2>
+      <div id="funcCorpo" class="wizard-corpo"></div>
+      <div class="modal-actions">
+        <button id="funcCancelar" class="btn">Cancelar</button>
+        <button id="funcSalvar" class="btn btn-primary">✅ Salvar</button>
+      </div>
+      <p class="modal-hint" id="funcErro"></p>
+    </div>
+  </div>
+
+  <!-- ===== Modo Empresa Real: atividade do projeto + chat com o funcionário ===== -->
+  <div id="modalAtividade" class="overlay hidden">
+    <div class="modal modal-grande">
+      <h2 id="atvTitulo">📡 Atividade</h2>
+      <div id="atvLog" class="atv-log"></div>
+      <div class="atv-chat">
+        <input id="atvMensagem" class="name-input" type="text" maxlength="2000"
+               placeholder="Falar com o funcionário… (Enter envia)" autocomplete="off" />
+        <button id="atvEnviar" class="btn btn-primary">📨 Enviar</button>
+        <button id="atvRetomar" class="btn btn-accent hidden">▶️ Retomar com este texto</button>
+      </div>
+      <div class="modal-actions">
+        <button id="atvFechar" class="btn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modo Empresa Real: ponte local desligada ===== -->
+  <div id="ponteOffline" class="overlay hidden">
+    <div class="modal">
+      <h2>🔌 A ponte está desligada</h2>
+      <p class="event-text">O Modo Empresa Real precisa da ponte local (que guarda seus dados e fala com os agentes). Rode no terminal, na pasta do projeto:</p>
+      <p class="ponte-comando"><code>npm run empresa</code></p>
+      <div class="modal-actions">
+        <button id="btnPonteRetry" class="btn btn-primary">🔄 Tentar de novo</button>
+        <button id="btnSairModoReal" class="btn">← Voltar ao jogo normal</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

@@ -106,6 +106,9 @@
     showGame();
   };
   $('#btnContinue').onclick = () => { if (G.load()) { showGame(); showOfflineReport(); syncEventModal(G.state); } };
+  // Modo Empresa Real: recarrega com ?empresa=1 (o boot troca o window.Game)
+  const btnEmpresa = $('#btnEmpresaReal');
+  if (btnEmpresa) btnEmpresa.onclick = () => { location.href = location.pathname + '?empresa=1'; };
   $('#btnRename').onclick = () => {
     const name = $('#renameInput').value.trim();
     if (name) { G.setCompany(name); $('#renameInput').value = ''; UI.toast('✏️ Agência renomeada!', 'good'); }
@@ -167,6 +170,8 @@
   window.addEventListener('scenebgclick', hideWorkerCard);
   window.addEventListener('workerclick', (ev) => {
     const { kind, idx, sx, sy } = ev.detail;
+    // Modo Empresa Real: clicar no boneco abre a Atividade do projeto dele (chat com o agente)
+    if (G.modoReal && kind === 'emp' && window.UIReal) { window.UIReal.abrirAtividadePorFuncionario(idx); return; }
     const s = G.state; if (!s) return;
     let html = '';
     if (kind === 'emp') {
@@ -249,7 +254,12 @@
   }
 
   // ---------- boot ----------
-  showStart();
+  if (G.modoReal) {
+    // Empresa Real: a cena É a empresa — sem tela inicial, direto ao escritório
+    showGame();
+  } else {
+    showStart();
+  }
   // auto-continua se houver save (mas mantém a tela inicial para o jogador escolher)
   requestAnimationFrame(loop);
 })();

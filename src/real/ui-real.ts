@@ -1,0 +1,941 @@
+/* Modo Empresa Real — painéis reais (F3):
+   - Projetos: cards com etapas/custo de API ao vivo + wizard de cadastro em 4 passos
+   - Equipe: cards de funcionário-agente + contratar/editar/arquivar
+   - Financeiro: substitui a aba Empresa (visão, vendas, contas, custos, relatórios, livro)
+   - Atividade: log ao vivo da sessão + chat com o funcionário (user.message)
+   Só ativa quando window.Game.modoReal (importado por último em src/main.ts). */
+
+import * as api from './api';
+import type {
+  EntradaAtividadeReal,
+  FuncionarioReal,
+  ProjetoRealFront,
+  SnapshotReal,
+} from './tipos';
+
+const G = window.Game;
+
+// ---------- utilitários ----------
+
+const $ = (sel: string): HTMLElement => {
+  const el = document.querySelector(sel);
+  if (!el) throw new Error(`elemento não encontrado: ${sel}`);
+  return el as HTMLElement;
+};
+
+function esc(texto: unknown): string {
+  return String(texto ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+  );
+}
+
+function brl(n: number): string {
+  return `R$ ${G.fmt(n)}`;
+}
+
+function brlCentavos(n: number): string {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function toast(msg: string, tipo = ''): void {
+  const UI = (window as unknown as { UI?: { toast: (m: string, t?: string) => void } }).UI;
+  UI?.toast(msg, tipo);
+}
+
+function cambio(): number {
+  return G.real?.snapshot()?.config.cambioUsdBrl ?? 5.4;
+}
+
+function snap(): SnapshotReal | null {
+  return G.real?.snapshot() ?? null;
+}
+
+const CARGOS: Record<string, string> = {
+  junior: '🧑‍💻 Júnior',
+  pleno: '👨‍💻 Pleno',
+  senior: '🧙 Sênior',
+  designer: '🎨 Designer',
+  qa: '🔍 QA',
+  manager: '📋 Manager',
+};
+
+const SKILLS_BLOCO: Record<string, string> = {
+  web: 'Desenvolvimento Web',
+  mobile: 'Mobile / PWA',
+  backend: 'Backend / APIs',
+  design: 'Design UI/UX',
+  copy: 'Copy / Conteúdo',
+  pesquisa: 'Pesquisa / Análise',
+  planilhas: 'Planilhas / Financeiro',
+  qa: 'QA / Testes',
+};
+
+const SKILLS_ANTHROPIC: Record<string, string> = {
+  xlsx: 'Excel (.xlsx)',
+  docx: 'Word (.docx)',
+  pptx: 'PowerPoint (.pptx)',
+  pdf: 'PDF',
+};
+
+const MODELOS = [
+  { id: 'claude-opus-5', rotulo: 'Claude Opus 5 — o melhor (US$ 5/25 por MTok)' },
+  { id: 'claude-sonnet-5', rotulo: 'Claude Sonnet 5 — equilíbrio (US$ 3/15)' },
+  { id: 'claude-haiku-4-5', rotulo: 'Claude Haiku 4.5 — econômico (US$ 1/5)' },
+];
+
+const BADGE_STATUS: Record<string, { classe: string; rotulo: string }> = {
+  em_andamento: { classe: 'andamento', rotulo: '💼 trabalhando' },
+  pausado: { classe: 'pausado', rotulo: '⏸ pausado' },
+  aguardando_revisao: { classe: 'revisao', rotulo: '👀 aguardando revisão' },
+  entregue: { classe: 'entregue', rotulo: '✅ entregue' },
+  falhou: { classe: 'falhou', rotulo: '❌ falhou' },
+  rascunho: { classe: 'entregue', rotulo: '📝 rascunho' },
+};
+
+// ---------- projetos ----------
+
+function nomeFuncionario(id: string): string {
+  return snap()?.funcionarios.find((f) => f.id === id)?.nome ?? '?';
+}
+
+function cardProjeto(p: ProjetoRealFront): string {
+  const badge = BADGE_STATUS[p.status] ?? BADGE_STATUS.rascunho!;
+  const custoBRL = p.custoUSD * cambio();
+  const tokensK = Math.round(
+    (p.tokens.input + p.tokens.output + p.tokens.cacheRead + p.tokens.cacheWrite) / 1000,
+  );
+  const pct = p.etapasTotais > 0 ? Math.round((p.etapasConcluidas / p.etapasTotais) * 100) : 0;
+  const prazo = (() => {
+    if (!p.iniciadoEm) return `${p.prazoDias}d de prazo`;
+    const corridos = Math.floor((Date.now() - Date.parse(p.iniciadoEm)) / 86400000);
+    const resta = p.prazoDias - corridos;
+    return resta >= 0 ? `${resta}d restantes` : `${-resta}d atrasado ⚠️`;
+  })();
+
+  const acoes: string[] = [];
+  const b = (acao: string, rotulo: string, classe = 'btn') =>
+    `<button class="btn ${classe}" data-acao="${acao}" data-id="${p.id}">${rotulo}</button>`;
+  if (p.status === 'rascunho') {
+    acoes.push(b('iniciar', '🚀 Iniciar', 'btn-primary'), b('editar', '✏️ Editar'));
+  } else if (p.status === 'em_andamento') {
+    acoes.push(b('pausar', '⏸ Pausar'), b('atividade', '📡 Atividade'));
+  } else if (p.status === 'pausado' || p.status === 'aguardando_revisao') {
+    acoes.push(
+      b('atividade', '📡 Atividade / Retomar'),
+      b('entregar', '📦 Entregar', 'btn-accent'),
+    );
+  } else {
+    acoes.push(b('atividade', '📜 Histórico'));
+  }
+
+  const barra =
+    p.status === 'rascunho'
+      ? ''
+      : `<div class="pr-etapa">${p.etapasTotais ? `Etapa ${p.etapasConcluidas}/${p.etapasTotais}` : 'planejando…'}${
+          p.resumoAtual ? ` — ${esc(p.resumoAtual)}` : ''
+        }</div>
+         <div class="pr-barra"><div style="width:${pct}%"></div></div>`;
+
+  return `<div class="pr-card">
+    <h4>${esc(p.emoji)} ${esc(p.nome)} <span class="pr-badge ${badge.classe}">${badge.rotulo}</span></h4>
+    <div class="pr-sub">${esc(p.cliente)} · ${p.tipo === 'codigo' ? '💻 código' : '📦 entrega'} · 👤 ${esc(nomeFuncionario(p.funcionarioId))} · 📅 ${prazo}</div>
+    ${barra}
+    <div class="pr-metricas">
+      <span>💰 contrato <b>${brl(p.valorContratoBRL)}</b></span>
+      <span>🔌 API <b>${brlCentavos(custoBRL)}</b> (US$ ${p.custoUSD.toFixed(2)})</span>
+      <span>🧮 <b>${G.fmt(tokensK)}k</b> tokens</span>
+    </div>
+    <div class="pr-acoes">${acoes.join('')}</div>
+  </div>`;
+}
+
+function renderProjetos(): void {
+  const s = snap();
+  const alvo = $('#realProjetos');
+  if (!s) {
+    alvo.innerHTML = '<p class="pr-sub">Conectando à ponte…</p>';
+    return;
+  }
+  const abertos = s.projetos.filter((p) =>
+    ['em_andamento', 'pausado', 'aguardando_revisao'].includes(p.status),
+  );
+  const rascunhos = s.projetos.filter((p) => p.status === 'rascunho');
+  const passados = s.projetos.filter((p) => ['entregue', 'falhou'].includes(p.status));
+
+  alvo.innerHTML = `
+    <div class="pr-topo"><h3>📋 Projetos</h3>
+      <button class="btn btn-primary" data-acao="novo">+ Novo Projeto</button></div>
+    ${abertos.length ? `<div class="pr-secao">Em produção</div>${abertos.map(cardProjeto).join('')}` : ''}
+    ${rascunhos.length ? `<div class="pr-secao">Rascunhos</div>${rascunhos.map(cardProjeto).join('')}` : ''}
+    ${!abertos.length && !rascunhos.length ? '<p class="pr-sub">Nenhum projeto ainda — cadastre o primeiro!</p>' : ''}
+    ${passados.length ? `<div class="pr-secao">Histórico</div>${passados.map(cardProjeto).join('')}` : ''}`;
+}
+
+async function agirProjeto(acao: string, id: string): Promise<void> {
+  const projeto = snap()?.projetos.find((p) => p.id === id);
+  try {
+    if (acao === 'novo') abrirWizard(null);
+    else if (acao === 'editar' && projeto) abrirWizard(projeto);
+    else if (acao === 'iniciar') {
+      toast('🚀 Iniciando o projeto…');
+      await api.iniciarProjeto(id);
+      toast('💼 Funcionário assumiu o projeto!', 'good');
+    } else if (acao === 'pausar') {
+      await api.pausarProjeto(id);
+      toast('⏸ Projeto pausado.');
+    } else if (acao === 'entregar') {
+      if (!confirm('Marcar como ENTREGUE? Isso gera as contas a receber e encerra a sessão.')) return;
+      const r = (await api.entregarProjeto(id)) as { contasGeradas: number; arquivosBaixados: string[] };
+      toast(`📦 Entregue! ${r.contasGeradas} conta(s) a receber; ${r.arquivosBaixados.length} arquivo(s) baixado(s).`, 'good');
+    } else if (acao === 'atividade' && projeto) abrirAtividade(projeto.id);
+  } catch (erro) {
+    toast(`⚠️ ${(erro as Error).message}`, 'bad');
+  }
+}
+
+// ---------- equipe ----------
+
+function cardFuncionario(f: FuncionarioReal): string {
+  const s = snap();
+  const projetoAtivo = s?.projetos.find(
+    (p) => p.funcionarioId === f.id && p.status === 'em_andamento',
+  );
+  const entregues = s?.projetos.filter((p) => p.funcionarioId === f.id && p.status === 'entregue').length ?? 0;
+  const chips = f.skills
+    .map((k) => SKILLS_BLOCO[k] ?? SKILLS_ANTHROPIC[k] ?? k)
+    .map((r) => `<span class="pr-chip">${esc(r)}</span>`)
+    .join('');
+  const status = projetoAtivo
+    ? `<span class="pr-badge andamento">💼 em ${esc(projetoAtivo.emoji)} ${esc(projetoAtivo.nome)}</span>`
+    : '<span class="pr-badge entregue">☕ disponível</span>';
+  return `<div class="pr-card">
+    <h4>${esc(f.nome)} ${status}</h4>
+    <div class="pr-sub">${CARGOS[f.cargoVisual] ?? f.cargoVisual} · ${esc(f.modelo)}</div>
+    <div>${chips || '<span class="pr-sub">sem skills marcadas</span>'}</div>
+    <div class="pr-metricas">
+      <span>📆 salário do dia <b>${brlCentavos(f.custoHojeUSD * cambio())}</b></span>
+      <span>Σ API <b>${brlCentavos(f.custoTotalUSD * cambio())}</b></span>
+      <span>✅ entregues <b>${entregues}</b></span>
+    </div>
+    <div class="pr-acoes">
+      <button class="btn" data-acao-func="editar" data-id="${f.id}">✏️ Editar</button>
+      <button class="btn" data-acao-func="arquivar" data-id="${f.id}">🗄 Arquivar</button>
+    </div>
+  </div>`;
+}
+
+function renderEquipe(): void {
+  const s = snap();
+  const alvo = $('#realEquipe');
+  const ativos = s?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
+  alvo.innerHTML = `
+    <div class="pr-topo"><h3>👥 Equipe (${ativos.length})</h3>
+      <button class="btn btn-primary" data-acao-func="contratar">+ Contratar</button></div>
+    ${ativos.length ? ativos.map(cardFuncionario).join('') : '<p class="pr-sub">Ninguém contratado ainda. Seu primeiro funcionário-agente está a um clique.</p>'}`;
+}
+
+async function agirFuncionario(acao: string, id: string): Promise<void> {
+  const f = snap()?.funcionarios.find((x) => x.id === id) ?? null;
+  try {
+    if (acao === 'contratar') abrirFuncionario(null);
+    else if (acao === 'editar' && f) abrirFuncionario(f);
+    else if (acao === 'arquivar' && f) {
+      if (!confirm(`Arquivar ${f.nome}? O boneco sai da cena (o histórico fica).`)) return;
+      await api.arquivarFuncionario(id);
+      toast(`🗄 ${f.nome} arquivado.`);
+    }
+  } catch (erro) {
+    toast(`⚠️ ${(erro as Error).message}`, 'bad');
+  }
+}
+
+// ---------- modal de funcionário ----------
+
+let funcionarioEmEdicao: FuncionarioReal | null = null;
+
+function abrirFuncionario(f: FuncionarioReal | null): void {
+  funcionarioEmEdicao = f;
+  $('#funcTitulo').textContent = f ? `✏️ Editar ${f.nome}` : '👥 Contratar funcionário';
+  $('#funcErro').textContent = '';
+  const marcada = (k: string) => (f?.skills.includes(k) ? 'checked' : '');
+  $('#funcCorpo').innerHTML = `
+    <label>Nome (aparece sobre o boneco na cena)</label>
+    <input type="text" id="fNome" maxlength="40" value="${esc(f?.nome ?? '')}" placeholder="ex.: Rafa" />
+    <div class="wizard-linha">
+      <div><label>Cargo visual (roupa/acessório do avatar)</label>
+        <select id="fCargo">${Object.entries(CARGOS)
+          .map(([id, r]) => `<option value="${id}" ${f?.cargoVisual === id ? 'selected' : ''}>${r}</option>`)
+          .join('')}</select></div>
+      <div><label>Modelo (custo real ao lado)</label>
+        <select id="fModelo">${MODELOS.map(
+          (m) => `<option value="${m.id}" ${f?.modelo === m.id ? 'selected' : ''}>${m.rotulo}</option>`,
+        ).join('')}</select></div>
+    </div>
+    <label>Especialidades (viram o system prompt do agente)</label>
+    <div class="wizard-checks">${Object.entries(SKILLS_BLOCO)
+      .map(([k, r]) => `<label><input type="checkbox" data-skill="${k}" ${marcada(k)} /> ${r}</label>`)
+      .join('')}</div>
+    <label>Skills de documento (hospedadas pela Anthropic)</label>
+    <div class="wizard-checks">${Object.entries(SKILLS_ANTHROPIC)
+      .map(([k, r]) => `<label><input type="checkbox" data-skill="${k}" ${marcada(k)} /> ${r}</label>`)
+      .join('')}</div>
+    <label>Persona — como esse funcionário trabalha (livre)</label>
+    <textarea id="fPersona" maxlength="4000" placeholder="ex.: Direto, entrega rápido, comenta o código em pt-BR…">${esc(f?.persona ?? '')}</textarea>`;
+  $('#modalFuncionario').classList.remove('hidden');
+}
+
+async function salvarFuncionario(): Promise<void> {
+  const nome = ($('#fNome') as HTMLInputElement).value.trim();
+  if (!nome) {
+    $('#funcErro').textContent = 'Dê um nome ao funcionário.';
+    return;
+  }
+  const skills = [...document.querySelectorAll('#funcCorpo [data-skill]:checked')].map(
+    (el) => (el as HTMLElement).dataset.skill!,
+  );
+  const dados = {
+    nome,
+    cargoVisual: ($('#fCargo') as HTMLSelectElement).value,
+    modelo: ($('#fModelo') as HTMLSelectElement).value,
+    skills,
+    persona: ($('#fPersona') as HTMLTextAreaElement).value.trim(),
+  };
+  $('#funcErro').textContent = 'Criando o agente na Anthropic…';
+  try {
+    if (funcionarioEmEdicao) await api.atualizarFuncionario(funcionarioEmEdicao.id, dados);
+    else await api.criarFuncionario(dados);
+    $('#modalFuncionario').classList.add('hidden');
+    toast(funcionarioEmEdicao ? `✏️ ${nome} atualizado (nova versão do agente).` : `🎉 ${nome} contratado! O boneco já está na cena.`, 'good');
+  } catch (erro) {
+    $('#funcErro').textContent = `⚠️ ${(erro as Error).message}`;
+  }
+}
+
+// ---------- wizard de projeto (4 passos) ----------
+
+interface DadosWizard {
+  nome: string;
+  cliente: string;
+  emoji: string;
+  tipo: 'codigo' | 'entrega';
+  valorContratoBRL: number;
+  forma: 'avista' | 'parcelado';
+  parcelas: number;
+  entradaBRL: number;
+  prazoDias: number;
+  funcionarioId: string;
+  objetivo: string;
+  escopo: string;
+  foraDoEscopo: string;
+  requisitosTecnicos: string;
+  designReferencias: string;
+  entregaveis: string;
+  criteriosAceite: string;
+  observacoes: string;
+  repoUrl: string;
+  branch: string;
+}
+
+let wizardPasso = 1;
+let wizardDados: DadosWizard;
+let wizardEditandoId: string | null = null;
+
+const PASSOS = ['1. Contrato', '2. Especificação', '3. Entrega', '4. Revisão'];
+
+function abrirWizard(projeto: ProjetoRealFront | null): void {
+  wizardEditandoId = projeto?.id ?? null;
+  const spec = (projeto as unknown as { spec?: Record<string, string> })?.spec ?? {};
+  wizardDados = {
+    nome: projeto?.nome ?? '',
+    cliente: projeto?.cliente ?? '',
+    emoji: projeto?.emoji ?? '📦',
+    tipo: projeto?.tipo ?? 'entrega',
+    valorContratoBRL: projeto?.valorContratoBRL ?? 0,
+    forma: (projeto as unknown as { pagamento?: { forma: 'avista' | 'parcelado' } })?.pagamento?.forma ?? 'avista',
+    parcelas: (projeto as unknown as { pagamento?: { parcelas?: number } })?.pagamento?.parcelas ?? 2,
+    entradaBRL: (projeto as unknown as { pagamento?: { entradaBRL?: number } })?.pagamento?.entradaBRL ?? 0,
+    prazoDias: projeto?.prazoDias ?? 7,
+    funcionarioId: projeto?.funcionarioId ?? '',
+    objetivo: spec.objetivo ?? '',
+    escopo: spec.escopo ?? '',
+    foraDoEscopo: spec.foraDoEscopo ?? '',
+    requisitosTecnicos: spec.requisitosTecnicos ?? '',
+    designReferencias: spec.designReferencias ?? '',
+    entregaveis: spec.entregaveis ?? '',
+    criteriosAceite: spec.criteriosAceite ?? '',
+    observacoes: spec.observacoes ?? '',
+    repoUrl: (projeto as unknown as { repoUrl?: string })?.repoUrl ?? '',
+    branch: (projeto as unknown as { branch?: string })?.branch ?? '',
+  };
+  wizardPasso = 1;
+  $('#wizardTitulo').textContent = projeto ? `✏️ Editar ${projeto.nome}` : '📋 Novo projeto';
+  renderWizard();
+  $('#modalWizard').classList.remove('hidden');
+}
+
+function renderWizard(): void {
+  $('#wizardPassos').innerHTML = PASSOS.map(
+    (r, i) => `<span class="${i + 1 === wizardPasso ? 'ativo' : ''}">${r}</span>`,
+  ).join('');
+  $('#wizardErro').textContent = '';
+  ($('#wizardVoltar') as HTMLButtonElement).style.visibility = wizardPasso === 1 ? 'hidden' : 'visible';
+  $('#wizardAvancar').textContent = wizardPasso === 4 ? '✅ Salvar rascunho' : 'Avançar →';
+
+  const d = wizardDados;
+  const corpo = $('#wizardCorpo');
+  if (wizardPasso === 1) {
+    const funcionarios = snap()?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
+    corpo.innerHTML = `
+      <div class="wizard-linha">
+        <div><label>Nome do projeto</label><input type="text" id="wNome" maxlength="80" value="${esc(d.nome)}" /></div>
+        <div><label>Cliente</label><input type="text" id="wCliente" maxlength="80" value="${esc(d.cliente)}" /></div>
+      </div>
+      <div class="wizard-linha">
+        <div><label>Emoji</label><input type="text" id="wEmoji" maxlength="4" value="${esc(d.emoji)}" /></div>
+        <div><label>Tipo</label><select id="wTipo">
+          <option value="entrega" ${d.tipo === 'entrega' ? 'selected' : ''}>📦 Entrega (arquivos/documentos)</option>
+          <option value="codigo" ${d.tipo === 'codigo' ? 'selected' : ''}>💻 Código (repositório GitHub)</option>
+        </select></div>
+      </div>
+      <div class="wizard-linha">
+        <div><label>Valor do contrato (R$)</label><input type="number" id="wValor" min="1" value="${d.valorContratoBRL || ''}" /></div>
+        <div><label>Prazo (dias)</label><input type="number" id="wPrazo" min="1" max="365" value="${d.prazoDias}" /></div>
+      </div>
+      <div class="wizard-linha">
+        <div><label>Forma de pagamento</label><select id="wForma">
+          <option value="avista" ${d.forma === 'avista' ? 'selected' : ''}>À vista (na entrega)</option>
+          <option value="parcelado" ${d.forma === 'parcelado' ? 'selected' : ''}>Entrada + parcelas mensais</option>
+        </select></div>
+        <div id="wParcelasCampo" style="${d.forma === 'parcelado' ? '' : 'display:none'}">
+          <label>Parcelas / entrada (R$)</label>
+          <div class="wizard-linha">
+            <input type="number" id="wParcelas" min="1" max="48" value="${d.parcelas}" />
+            <input type="number" id="wEntrada" min="0" value="${d.entradaBRL}" />
+          </div>
+        </div>
+      </div>
+      <label>Funcionário responsável</label>
+      <select id="wFuncionario">
+        <option value="">— escolha —</option>
+        ${funcionarios.map((f) => `<option value="${f.id}" ${d.funcionarioId === f.id ? 'selected' : ''}>${esc(f.nome)} (${CARGOS[f.cargoVisual] ?? f.cargoVisual})</option>`).join('')}
+      </select>
+      ${funcionarios.length ? '' : '<p class="modal-hint">⚠️ Contrate um funcionário na aba Equipe antes.</p>'}`;
+    $('#wForma').addEventListener('change', () => {
+      $('#wParcelasCampo').style.display =
+        ($('#wForma') as HTMLSelectElement).value === 'parcelado' ? '' : 'none';
+    });
+  } else if (wizardPasso === 2) {
+    corpo.innerHTML = `
+      <label>Objetivo — o que o projeto resolve e para quem</label>
+      <textarea id="wObjetivo">${esc(d.objetivo)}</textarea>
+      <label>Escopo / funcionalidades (uma por linha)</label>
+      <textarea id="wEscopo">${esc(d.escopo)}</textarea>
+      <label>Fora do escopo (opcional)</label>
+      <textarea id="wFora">${esc(d.foraDoEscopo)}</textarea>
+      <label>Requisitos técnicos — stack, integrações, restrições (opcional)</label>
+      <textarea id="wReq">${esc(d.requisitosTecnicos)}</textarea>
+      <label>Design / referências — identidade visual, links (opcional)</label>
+      <textarea id="wDesign">${esc(d.designReferencias)}</textarea>`;
+  } else if (wizardPasso === 3) {
+    corpo.innerHTML = `
+      <label>Entregáveis exatos</label>
+      <textarea id="wEntregaveis">${esc(d.entregaveis)}</textarea>
+      <label>Critérios de aceite (um por linha — viram o checklist da revisão)</label>
+      <textarea id="wCriterios">${esc(d.criteriosAceite)}</textarea>
+      <label>Observações (opcional)</label>
+      <textarea id="wObs">${esc(d.observacoes)}</textarea>
+      <div id="wRepoCampos" style="${d.tipo === 'codigo' ? '' : 'display:none'}">
+        <label>Repositório GitHub (https://github.com/…)</label>
+        <input type="text" id="wRepo" value="${esc(d.repoUrl)}" placeholder="https://github.com/voce/projeto" />
+        <label>Branch de trabalho</label>
+        <input type="text" id="wBranch" value="${esc(d.branch)}" placeholder="main" />
+      </div>`;
+  } else {
+    const custoEstimado = estimarCusto(d.tipo);
+    corpo.innerHTML = `
+      <p class="pr-sub">É exatamente isso que o funcionário vai receber:</p>
+      <div class="wizard-preview">${esc(montarPreview(d))}</div>
+      <div class="pr-metricas" style="margin-top:10px">
+        <span>💰 contrato <b>${brl(d.valorContratoBRL)}</b></span>
+        <span>👤 <b>${esc(nomeFuncionario(d.funcionarioId))}</b></span>
+        <span>🔌 custo de API estimado <b>${custoEstimado}</b></span>
+      </div>`;
+  }
+}
+
+function montarPreview(d: DadosWizard): string {
+  const linhas = [
+    `# Projeto: ${d.emoji} ${d.nome}`,
+    `Cliente: ${d.cliente} · Tipo: ${d.tipo === 'codigo' ? 'CÓDIGO' : 'ENTREGA'} · Prazo: ${d.prazoDias} dias`,
+    `\n## Objetivo\n${d.objetivo}`,
+    `\n## Escopo / funcionalidades\n${d.escopo}`,
+  ];
+  if (d.foraDoEscopo) linhas.push(`\n## Fora do escopo\n${d.foraDoEscopo}`);
+  if (d.requisitosTecnicos) linhas.push(`\n## Requisitos técnicos\n${d.requisitosTecnicos}`);
+  if (d.designReferencias) linhas.push(`\n## Design / referências\n${d.designReferencias}`);
+  linhas.push(`\n## Entregáveis\n${d.entregaveis}`);
+  linhas.push(`\n## Critérios de aceite\n${d.criteriosAceite}`);
+  if (d.observacoes) linhas.push(`\n## Observações\n${d.observacoes}`);
+  if (d.tipo === 'codigo') linhas.push(`\n## Repositório\n${d.repoUrl} (branch ${d.branch || 'main'})`);
+  return linhas.join('\n');
+}
+
+function estimarCusto(tipo: 'codigo' | 'entrega'): string {
+  const historico = snap()?.projetos.filter((p) => p.status === 'entregue' && p.tipo === tipo && p.custoUSD > 0) ?? [];
+  if (!historico.length) return 'sem histórico ainda';
+  const media = historico.reduce((s, p) => s + p.custoUSD, 0) / historico.length;
+  const c = cambio();
+  return `${brlCentavos(media * 0.6 * c)} – ${brlCentavos(media * 1.6 * c)}`;
+}
+
+function colherPasso(): string | null {
+  const d = wizardDados;
+  const v = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value ?? '';
+  if (wizardPasso === 1) {
+    d.nome = v('wNome').trim();
+    d.cliente = v('wCliente').trim();
+    d.emoji = v('wEmoji').trim() || '📦';
+    d.tipo = v('wTipo') as 'codigo' | 'entrega';
+    d.valorContratoBRL = Number(v('wValor'));
+    d.prazoDias = Number(v('wPrazo'));
+    d.forma = v('wForma') as 'avista' | 'parcelado';
+    d.parcelas = Number(v('wParcelas')) || 2;
+    d.entradaBRL = Number(v('wEntrada')) || 0;
+    d.funcionarioId = v('wFuncionario');
+    if (!d.nome || !d.cliente) return 'Preencha nome e cliente.';
+    if (!(d.valorContratoBRL > 0)) return 'Informe o valor do contrato.';
+    if (!(d.prazoDias >= 1)) return 'Informe o prazo em dias.';
+    if (!d.funcionarioId) return 'Escolha o funcionário responsável.';
+    if (d.forma === 'parcelado' && d.entradaBRL >= d.valorContratoBRL) return 'A entrada precisa ser menor que o contrato.';
+  } else if (wizardPasso === 2) {
+    d.objetivo = v('wObjetivo').trim();
+    d.escopo = v('wEscopo').trim();
+    d.foraDoEscopo = v('wFora').trim();
+    d.requisitosTecnicos = v('wReq').trim();
+    d.designReferencias = v('wDesign').trim();
+    if (!d.objetivo || !d.escopo) return 'Objetivo e escopo são obrigatórios — é a spec que o agente recebe.';
+  } else if (wizardPasso === 3) {
+    d.entregaveis = v('wEntregaveis').trim();
+    d.criteriosAceite = v('wCriterios').trim();
+    d.observacoes = v('wObs').trim();
+    d.repoUrl = v('wRepo').trim();
+    d.branch = v('wBranch').trim();
+    if (!d.entregaveis || !d.criteriosAceite) return 'Entregáveis e critérios de aceite são obrigatórios.';
+    if (d.tipo === 'codigo' && !d.repoUrl.startsWith('https://github.com/')) return 'Projeto de código exige o repositório do GitHub.';
+  }
+  return null;
+}
+
+async function avancarWizard(): Promise<void> {
+  const erro = colherPasso();
+  if (erro) {
+    $('#wizardErro').textContent = `⚠️ ${erro}`;
+    return;
+  }
+  if (wizardPasso < 4) {
+    wizardPasso += 1;
+    renderWizard();
+    return;
+  }
+  const d = wizardDados;
+  const corpo = {
+    nome: d.nome,
+    cliente: d.cliente,
+    emoji: d.emoji,
+    tipo: d.tipo,
+    valorContratoBRL: d.valorContratoBRL,
+    prazoDias: d.prazoDias,
+    funcionarioId: d.funcionarioId,
+    pagamento:
+      d.forma === 'avista'
+        ? { forma: 'avista' as const }
+        : { forma: 'parcelado' as const, parcelas: d.parcelas, ...(d.entradaBRL > 0 ? { entradaBRL: d.entradaBRL } : {}) },
+    spec: {
+      objetivo: d.objetivo,
+      escopo: d.escopo,
+      ...(d.foraDoEscopo ? { foraDoEscopo: d.foraDoEscopo } : {}),
+      ...(d.requisitosTecnicos ? { requisitosTecnicos: d.requisitosTecnicos } : {}),
+      ...(d.designReferencias ? { designReferencias: d.designReferencias } : {}),
+      entregaveis: d.entregaveis,
+      criteriosAceite: d.criteriosAceite,
+      ...(d.observacoes ? { observacoes: d.observacoes } : {}),
+    },
+    ...(d.tipo === 'codigo' ? { repoUrl: d.repoUrl, branch: d.branch || 'main' } : {}),
+  };
+  $('#wizardErro').textContent = 'Salvando…';
+  try {
+    if (wizardEditandoId) await api.atualizarProjeto(wizardEditandoId, corpo);
+    else await api.criarProjeto(corpo);
+    $('#modalWizard').classList.add('hidden');
+    toast(`📋 ${d.nome} salvo como rascunho — é só Iniciar quando quiser.`, 'good');
+  } catch (erroSalvar) {
+    $('#wizardErro').textContent = `⚠️ ${(erroSalvar as Error).message}`;
+  }
+}
+
+// ---------- modal de atividade + chat ----------
+
+let atividadeAberta: string | null = null;
+
+function linhaAtividade(e: EntradaAtividadeReal): string {
+  const hora = new Date(e.ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `<div class="atv-linha tipo-${e.tipo}"><span class="hora">${hora}</span>${esc(e.texto)}</div>`;
+}
+
+async function abrirAtividade(projetoId: string): Promise<void> {
+  const projeto = snap()?.projetos.find((p) => p.id === projetoId);
+  if (!projeto) return;
+  atividadeAberta = projetoId;
+  $('#atvTitulo').textContent = `📡 ${projeto.emoji} ${projeto.nome} — ${nomeFuncionario(projeto.funcionarioId)}`;
+  $('#atvRetomar').classList.toggle(
+    'hidden',
+    !['pausado', 'aguardando_revisao'].includes(projeto.status),
+  );
+  $('#atvLog').innerHTML = '<div class="atv-linha">carregando…</div>';
+  $('#modalAtividade').classList.remove('hidden');
+  try {
+    const entradas = await api.obterAtividade(projetoId, 300);
+    $('#atvLog').innerHTML = entradas.map(linhaAtividade).join('') || '<div class="atv-linha">sem atividade ainda.</div>';
+    $('#atvLog').scrollTop = $('#atvLog').scrollHeight;
+  } catch (erro) {
+    $('#atvLog').innerHTML = `<div class="atv-linha tipo-sistema">⚠️ ${esc((erro as Error).message)}</div>`;
+  }
+}
+
+async function enviarMensagemAtividade(comoRetomar: boolean): Promise<void> {
+  if (!atividadeAberta) return;
+  const campo = $('#atvMensagem') as HTMLInputElement;
+  const texto = campo.value.trim();
+  try {
+    if (comoRetomar) {
+      await api.retomarProjeto(atividadeAberta, texto || undefined);
+      toast('▶️ Projeto retomado.', 'good');
+      $('#atvRetomar').classList.add('hidden');
+    } else {
+      if (!texto) return;
+      await api.enviarMensagemProjeto(atividadeAberta, texto);
+    }
+    campo.value = '';
+  } catch (erro) {
+    toast(`⚠️ ${(erro as Error).message}`, 'bad');
+  }
+}
+
+// ---------- financeiro (substitui a aba Empresa) ----------
+
+type SubAba = 'visao' | 'vendas' | 'contas' | 'custos' | 'relatorios' | 'livro';
+let subAbaAtual: SubAba = 'visao';
+
+const SUB_ABAS: { id: SubAba; rotulo: string }[] = [
+  { id: 'visao', rotulo: '📊 Visão geral' },
+  { id: 'vendas', rotulo: '🧾 Vendas' },
+  { id: 'contas', rotulo: '💳 A receber' },
+  { id: 'custos', rotulo: '📉 Custos' },
+  { id: 'relatorios', rotulo: '📈 Relatórios' },
+  { id: 'livro', rotulo: '📚 Livro-razão' },
+];
+
+function moldeFinanceiro(): void {
+  $('#realFinanceiro').innerHTML = `
+    <div class="pr-topo"><h3>💰 Financeiro</h3></div>
+    <div class="fin-abas">${SUB_ABAS.map(
+      (a) => `<button class="fin-aba ${a.id === subAbaAtual ? 'ativa' : ''}" data-fin="${a.id}">${a.rotulo}<span data-badge="${a.id}"></span></button>`,
+    ).join('')}</div>
+    <div id="finCorpo"><p class="pr-sub">carregando…</p></div>`;
+}
+
+async function renderFinanceiro(): Promise<void> {
+  const corpo = document.getElementById('finCorpo');
+  if (!corpo) return;
+  try {
+    if (subAbaAtual === 'visao') {
+      const r = (await api.financeiroResumo()) as Record<string, number>;
+      const card = (rotulo: string, valor: number, classe = '') =>
+        `<div class="fin-card"><div class="rotulo">${rotulo}</div><div class="valor ${classe}">${brlCentavos(valor)}</div></div>`;
+      corpo.innerHTML = `<div class="fin-cards">
+        ${card('Caixa', r.caixaBRL!, r.caixaBRL! >= 0 ? 'pos' : 'neg')}
+        ${card('A receber', r.totalAReceberBRL!)}
+        ${card('Atrasadas', r.atrasadasBRL!, r.atrasadasBRL! > 0 ? 'neg' : '')}
+        ${card('Vencendo em 7 dias', r.vencendo7DiasBRL!)}
+        ${card('Vendas no mês', r.vendasMesBRL!)}
+        ${card('Recebido no mês', r.recebidoMesBRL!, 'pos')}
+        ${card('Custo de API no mês', r.custoApiMesBRL!, r.custoApiMesBRL! > 0 ? 'neg' : '')}
+        ${card('Custos fixos no mês', r.custosFixosMesBRL!, r.custosFixosMesBRL! > 0 ? 'neg' : '')}
+        ${card('Lucro do mês', r.lucroMesBRL!, r.lucroMesBRL! >= 0 ? 'pos' : 'neg')}
+      </div>`;
+    } else if (subAbaAtual === 'vendas') {
+      const r = (await api.relatorioVendas()) as {
+        totalBRL: number;
+        quantidade: number;
+        ticketMedioBRL: number;
+        porCliente: { cliente: string; totalBRL: number; quantidade: number }[];
+      };
+      corpo.innerHTML = `<div class="fin-cards">
+          <div class="fin-card"><div class="rotulo">Total vendido</div><div class="valor pos">${brlCentavos(r.totalBRL)}</div></div>
+          <div class="fin-card"><div class="rotulo">Contratos</div><div class="valor">${r.quantidade}</div></div>
+          <div class="fin-card"><div class="rotulo">Ticket médio</div><div class="valor">${brlCentavos(r.ticketMedioBRL)}</div></div>
+        </div>
+        <table class="fin-tabela" style="margin-top:10px"><tr><th>Cliente</th><th class="num">Contratos</th><th class="num">Total</th></tr>
+        ${r.porCliente.map((c) => `<tr><td>${esc(c.cliente)}</td><td class="num">${c.quantidade}</td><td class="num">${brlCentavos(c.totalBRL)}</td></tr>`).join('') || '<tr><td colspan="3">sem vendas ainda</td></tr>'}
+        </table>`;
+    } else if (subAbaAtual === 'contas') {
+      const contas = (await api.listarContas()) as {
+        id: string; descricao: string; valorBRL: number; vencimento: string; status: string;
+      }[];
+      const abertas = contas.filter((c) => c.status !== 'recebida');
+      const recebidas = contas.filter((c) => c.status === 'recebida');
+      const linha = (c: (typeof contas)[0]) => `<tr>
+        <td>${esc(c.descricao)} ${c.status === 'atrasada' ? '<span class="pr-badge atrasada">atrasada</span>' : ''}</td>
+        <td class="num">${c.vencimento.split('-').reverse().join('/')}</td>
+        <td class="num">${brlCentavos(c.valorBRL)}</td>
+        <td class="num">${c.status === 'recebida' ? '✅' : `<button class="btn btn-primary" style="padding:4px 9px;font-size:.75rem" data-receber="${c.id}">Receber</button>`}</td></tr>`;
+      corpo.innerHTML = `<table class="fin-tabela"><tr><th>Conta</th><th class="num">Vencimento</th><th class="num">Valor</th><th class="num"></th></tr>
+        ${abertas.map(linha).join('') || '<tr><td colspan="4">nada em aberto 🎉</td></tr>'}
+        ${recebidas.length ? `<tr><th colspan="4" style="padding-top:12px">Recebidas</th></tr>${recebidas.map(linha).join('')}` : ''}</table>`;
+    } else if (subAbaAtual === 'custos') {
+      const custos = (await api.listarCustosFixos()) as {
+        id: string; nome: string; categoria: string; valorBRL: number; recorrencia: string; diaVencimento: number; ativo: boolean;
+      }[];
+      const porFuncionario = (await api.relatorioFuncionarios()) as { nome: string; custoApiBRL: number }[];
+      corpo.innerHTML = `
+        <div class="pr-secao">Custos fixos (lançados no vencimento, automático)</div>
+        <table class="fin-tabela"><tr><th>Nome</th><th>Recorrência</th><th class="num">Valor</th><th class="num"></th></tr>
+        ${custos.map((c) => `<tr><td>${esc(c.nome)} ${c.ativo ? '' : '<span class="pr-badge entregue">inativo</span>'}</td>
+          <td>${c.recorrencia} (dia ${c.diaVencimento})</td><td class="num">${brlCentavos(c.valorBRL)}</td>
+          <td class="num"><button class="btn" style="padding:4px 8px;font-size:.72rem" data-custo-toggle="${c.id}" data-ativo="${c.ativo}">${c.ativo ? '⏸' : '▶️'}</button>
+          <button class="btn" style="padding:4px 8px;font-size:.72rem" data-custo-excluir="${c.id}">🗑</button></td></tr>`).join('') || '<tr><td colspan="4">nenhum custo fixo</td></tr>'}
+        </table>
+        <div class="pr-secao" style="margin-top:14px">Novo custo fixo</div>
+        <div class="wizard-corpo"><div class="wizard-linha">
+          <div><label>Nome</label><input type="text" id="cfNome" placeholder="ex.: VPS Hetzner" /></div>
+          <div><label>Categoria</label><select id="cfCategoria">
+            <option value="servidor">Servidor</option><option value="ferramenta">Ferramenta</option>
+            <option value="imposto">Imposto</option><option value="outro">Outro</option></select></div>
+        </div><div class="wizard-linha">
+          <div><label>Valor (R$)</label><input type="number" id="cfValor" min="1" /></div>
+          <div><label>Recorrência / dia do vencimento</label><div class="wizard-linha">
+            <select id="cfRecorrencia"><option value="mensal">Mensal</option><option value="anual">Anual</option></select>
+            <input type="number" id="cfDia" min="1" max="28" value="5" /></div></div>
+        </div>
+        <div class="pr-acoes" style="margin-top:8px"><button class="btn btn-primary" id="cfSalvar">➕ Adicionar</button></div></div>
+        <div class="pr-secao" style="margin-top:14px">Custo de API por funcionário</div>
+        <table class="fin-tabela"><tr><th>Funcionário</th><th class="num">Total em R$</th></tr>
+        ${porFuncionario.map((f) => `<tr><td>${esc(f.nome)}</td><td class="num">${brlCentavos(f.custoApiBRL)}</td></tr>`).join('')}</table>`;
+      document.getElementById('cfSalvar')?.addEventListener('click', () => {
+        void (async () => {
+          try {
+            await api.criarCustoFixo({
+              nome: (document.getElementById('cfNome') as HTMLInputElement).value.trim(),
+              categoria: (document.getElementById('cfCategoria') as HTMLSelectElement).value,
+              valorBRL: Number((document.getElementById('cfValor') as HTMLInputElement).value),
+              recorrencia: (document.getElementById('cfRecorrencia') as HTMLSelectElement).value,
+              diaVencimento: Number((document.getElementById('cfDia') as HTMLInputElement).value),
+              ativo: true,
+            });
+            toast('➕ Custo fixo cadastrado.', 'good');
+            void renderFinanceiro();
+          } catch (erro) {
+            toast(`⚠️ ${(erro as Error).message}`, 'bad');
+          }
+        })();
+      });
+    } else if (subAbaAtual === 'relatorios') {
+      const [fluxo, dre, margem] = await Promise.all([
+        api.relatorioFluxo() as Promise<{ mes: string; entradasBRL: number; saidasBRL: number; saldoBRL: number }[]>,
+        api.relatorioDre() as Promise<{ mes: string; receitaBRL: number; custoApiBRL: number; custosFixosBRL: number; lucroBRL: number }>,
+        api.relatorioMargem() as Promise<{ nome: string; valorContratoBRL: number; custoApiBRL: number; margemBRL: number; margemPct: number }[]>,
+      ]);
+      const maior = Math.max(1, ...fluxo.map((m) => Math.max(m.entradasBRL, m.saidasBRL)));
+      corpo.innerHTML = `
+        <div class="pr-secao">Fluxo de caixa mensal</div>
+        ${fluxo.map((m) => `<div class="fin-fluxo-linha"><span>${m.mes.slice(2).replace('-', '/')}</span>
+          <div class="fin-fluxo-barra entrada" style="width:${(m.entradasBRL / maior) * 100}%" title="entradas ${brlCentavos(m.entradasBRL)}"></div>
+          <div class="fin-fluxo-barra saida" style="width:${(m.saidasBRL / maior) * 100}%" title="saídas ${brlCentavos(m.saidasBRL)}"></div></div>`).join('') || '<p class="pr-sub">sem movimento ainda</p>'}
+        <div class="pr-secao" style="margin-top:14px">DRE de ${dre.mes}</div>
+        <table class="fin-tabela">
+          <tr><td>Receita recebida</td><td class="num">${brlCentavos(dre.receitaBRL)}</td></tr>
+          <tr><td>(−) Custo de API</td><td class="num">${brlCentavos(dre.custoApiBRL)}</td></tr>
+          <tr><td>(−) Custos fixos</td><td class="num">${brlCentavos(dre.custosFixosBRL)}</td></tr>
+          <tr><th>= Lucro</th><th class="num">${brlCentavos(dre.lucroBRL)}</th></tr></table>
+        <div class="pr-secao" style="margin-top:14px">Margem por projeto (contrato − API)</div>
+        <table class="fin-tabela"><tr><th>Projeto</th><th class="num">Contrato</th><th class="num">API</th><th class="num">Margem</th></tr>
+        ${margem.map((m) => `<tr><td>${esc(m.nome)}</td><td class="num">${brlCentavos(m.valorContratoBRL)}</td>
+          <td class="num">${brlCentavos(m.custoApiBRL)}</td><td class="num">${brlCentavos(m.margemBRL)} (${m.margemPct}%)</td></tr>`).join('') || '<tr><td colspan="4">sem projetos iniciados</td></tr>'}
+        </table>`;
+    } else {
+      const lancamentos = (await api.financeiroLancamentos()) as {
+        data: string; tipo: string; descricao: string; valorBRL: number;
+      }[];
+      corpo.innerHTML = `
+        <div class="pr-acoes" style="margin-bottom:8px"><button class="btn" id="livroCsv">⬇️ Exportar CSV</button></div>
+        <table class="fin-tabela"><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th class="num">Valor</th></tr>
+        ${lancamentos.map((l) => `<tr><td>${l.data.split('-').reverse().join('/')}</td><td>${l.tipo}</td>
+          <td>${esc(l.descricao)}</td><td class="num" style="color:${l.valorBRL < 0 ? '#e08a8a' : '#7fd4a0'}">${brlCentavos(l.valorBRL)}</td></tr>`).join('') || '<tr><td colspan="4">livro vazio</td></tr>'}
+        </table>`;
+      document.getElementById('livroCsv')?.addEventListener('click', () => {
+        const csv = ['data;tipo;descricao;valorBRL']
+          .concat(lancamentos.map((l) => `${l.data};${l.tipo};"${l.descricao.replace(/"/g, "'")}";${l.valorBRL.toFixed(2).replace('.', ',')}`))
+          .join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'livro-razao.csv';
+        a.click();
+      });
+    }
+    void atualizarBadgeAtrasadas();
+  } catch (erro) {
+    corpo.innerHTML = `<p class="pr-sub">⚠️ ${esc((erro as Error).message)}</p>`;
+  }
+}
+
+async function atualizarBadgeAtrasadas(): Promise<void> {
+  try {
+    const contas = (await api.listarContas()) as { status: string }[];
+    const atrasadas = contas.filter((c) => c.status === 'atrasada').length;
+    const badge = document.querySelector('[data-badge="contas"]');
+    if (badge) badge.textContent = atrasadas ? ` (${atrasadas}!)` : '';
+  } catch {
+    /* sem ponte, sem badge */
+  }
+}
+
+// ---------- montagem e eventos ----------
+
+let renderAgendado = false;
+
+function agendarRender(): void {
+  if (renderAgendado) return;
+  renderAgendado = true;
+  setTimeout(() => {
+    renderAgendado = false;
+    renderProjetos();
+    renderEquipe();
+    const abaEmpresaAtiva = document.querySelector('.tab[data-tab="company"]')?.classList.contains('active');
+    if (abaEmpresaAtiva && subAbaAtual === 'visao') void renderFinanceiro();
+  }, 300);
+}
+
+function iniciarPaineis(): void {
+  const abaEmpresa = document.querySelector('.tab[data-tab="company"]');
+  if (abaEmpresa) abaEmpresa.textContent = '💰 Financeiro';
+
+  renderProjetos();
+  renderEquipe();
+  moldeFinanceiro();
+  void renderFinanceiro();
+
+  // delegação de cliques nos painéis
+  $('#realProjetos').addEventListener('click', (ev) => {
+    const alvo = (ev.target as HTMLElement).closest('[data-acao]') as HTMLElement | null;
+    if (alvo) void agirProjeto(alvo.dataset.acao!, alvo.dataset.id ?? '');
+  });
+  $('#realEquipe').addEventListener('click', (ev) => {
+    const alvo = (ev.target as HTMLElement).closest('[data-acao-func]') as HTMLElement | null;
+    if (alvo) void agirFuncionario(alvo.dataset.acaoFunc!, alvo.dataset.id ?? '');
+  });
+  $('#realFinanceiro').addEventListener('click', (ev) => {
+    const aba = (ev.target as HTMLElement).closest('[data-fin]') as HTMLElement | null;
+    if (aba) {
+      subAbaAtual = aba.dataset.fin as SubAba;
+      moldeFinanceiro();
+      void renderFinanceiro();
+      return;
+    }
+    const receber = (ev.target as HTMLElement).closest('[data-receber]') as HTMLElement | null;
+    if (receber) {
+      void api
+        .receberConta(receber.dataset.receber!)
+        .then(() => {
+          toast('💵 Recebido — o caixa subiu!', 'good');
+          void renderFinanceiro();
+        })
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+      return;
+    }
+    const toggle = (ev.target as HTMLElement).closest('[data-custo-toggle]') as HTMLElement | null;
+    if (toggle) {
+      void api
+        .atualizarCustoFixo(toggle.dataset.custoToggle!, { ativo: toggle.dataset.ativo !== 'true' })
+        .then(() => void renderFinanceiro())
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+      return;
+    }
+    const excluir = (ev.target as HTMLElement).closest('[data-custo-excluir]') as HTMLElement | null;
+    if (excluir && confirm('Excluir este custo fixo? (lançamentos já feitos ficam no livro)')) {
+      void api
+        .excluirCustoFixo(excluir.dataset.custoExcluir!)
+        .then(() => void renderFinanceiro())
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+    }
+  });
+
+  // wizard
+  $('#wizardAvancar').addEventListener('click', () => void avancarWizard());
+  $('#wizardVoltar').addEventListener('click', () => {
+    if (wizardPasso > 1) {
+      colherPasso();
+      wizardPasso -= 1;
+      renderWizard();
+    }
+  });
+  $('#wizardCancelar').addEventListener('click', () => $('#modalWizard').classList.add('hidden'));
+
+  // funcionário
+  $('#funcSalvar').addEventListener('click', () => void salvarFuncionario());
+  $('#funcCancelar').addEventListener('click', () => $('#modalFuncionario').classList.add('hidden'));
+
+  // atividade / chat
+  $('#atvEnviar').addEventListener('click', () => void enviarMensagemAtividade(false));
+  $('#atvRetomar').addEventListener('click', () => void enviarMensagemAtividade(true));
+  $('#atvMensagem').addEventListener('keydown', (ev) => {
+    if ((ev as KeyboardEvent).key === 'Enter') void enviarMensagemAtividade(false);
+  });
+  $('#atvFechar').addEventListener('click', () => {
+    atividadeAberta = null;
+    $('#modalAtividade').classList.add('hidden');
+  });
+
+  // aba Financeiro recarrega ao abrir
+  document.querySelector('.tab[data-tab="company"]')?.addEventListener('click', () => {
+    moldeFinanceiro();
+    void renderFinanceiro();
+  });
+
+  // eventos da ponte
+  G.real!.on('snapshot', agendarRender);
+  G.real!.on('progresso', agendarRender);
+  G.real!.on('custo', agendarRender);
+  G.real!.on('atividade', (dados) => {
+    const ev = dados as { projetoId: string; entrada: EntradaAtividadeReal };
+    if (ev.projetoId !== atividadeAberta) return;
+    const log = document.getElementById('atvLog');
+    if (!log) return;
+    log.insertAdjacentHTML('beforeend', linhaAtividade(ev.entrada));
+    log.scrollTop = log.scrollHeight;
+  });
+  void atualizarBadgeAtrasadas();
+}
+
+// gancho para o clique no boneco (js/main.js)
+declare global {
+  interface Window {
+    UIReal?: { abrirAtividadePorFuncionario: (indice: number) => void };
+  }
+}
+
+if (G.modoReal && G.real) {
+  window.UIReal = {
+    abrirAtividadePorFuncionario(indice: number) {
+      const funcionario = snap()?.funcionarios.filter((f) => f.status === 'ativo')[indice];
+      if (!funcionario) return;
+      const projeto = snap()?.projetos.find(
+        (p) =>
+          p.funcionarioId === funcionario.id &&
+          ['em_andamento', 'pausado', 'aguardando_revisao'].includes(p.status),
+      );
+      if (projeto) void abrirAtividade(projeto.id);
+      else toast(`☕ ${funcionario.nome} está disponível — cadastre um projeto para ele!`);
+    },
+  };
+  iniciarPaineis();
+}

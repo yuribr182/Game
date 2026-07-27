@@ -4,6 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   // o site é publicado em https://yuribr182.github.io/Game/
   base: '/Game/',
+  server: {
+    // Modo Empresa Real (dev): o front fala com a ponte local em /api
+    proxy: { '/api': 'http://127.0.0.1:3777' },
+  },
   plugins: [
     VitePWA({
       // o main.js legado já registra 'sw.js'; o plugin só gera o worker
@@ -24,5 +28,7 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
+    // server/ é um projeto npm próprio com check próprio (npm --prefix server run check)
+    exclude: ['server/**', 'node_modules/**'],
   },
 });

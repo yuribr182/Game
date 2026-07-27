@@ -406,3 +406,125 @@ body {
   .btn-icon { padding: 11px 13px; }
   .stat { padding: 7px 10px; font-size: .92rem; }
 }
+
+/* ---------- Modo Empresa Real ---------- */
+/* O tempo é o relógio de verdade: acelerar e salvar não existem aqui. */
+body.modo-real .speed-group,
+body.modo-real #btnSave,
+body.modo-real #btnManualSave,
+body.modo-real #btnReset { display: none; }
+
+#btnEmpresaReal { border-color: #2e7dd7; }
+#btnEmpresaReal:hover { background: rgba(46, 125, 215, 0.12); }
+
+.ponte-comando {
+  text-align: center;
+  margin: 10px 0 4px;
+}
+.ponte-comando code {
+  display: inline-block;
+  background: var(--bg, #0d1420);
+  border: 1px solid var(--line, #2a3750);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 1.05rem;
+}
+
+/* ---------- Modo Empresa Real: painéis (F3) ---------- */
+.painel-real { display: none; }
+body.modo-real .painel-real { display: block; }
+body.modo-real .tab-pane .pane-section.so-jogo { display: none; }
+body.modo-real .tab[data-tab="shop"] { display: none; }
+
+.pr-topo { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 10px; }
+.pr-topo h3 { margin: 0; }
+.pr-secao { margin: 14px 0 6px; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, #8fa1bd); }
+
+.pr-card {
+  background: var(--panel-2, #16202f); border: 1px solid var(--line, #2a3750);
+  border-radius: 12px; padding: 12px; margin-bottom: 10px;
+}
+.pr-card h4 { margin: 0 0 2px; font-size: 1rem; }
+.pr-sub { color: var(--muted, #8fa1bd); font-size: .82rem; margin-bottom: 8px; }
+.pr-etapa { font-size: .85rem; margin: 6px 0 4px; min-height: 1.1em; }
+.pr-barra { height: 8px; border-radius: 6px; background: var(--line, #2a3750); overflow: hidden; }
+.pr-barra > div { height: 100%; background: #43c56e; transition: width .4s ease; }
+.pr-metricas { display: flex; flex-wrap: wrap; gap: 10px; font-size: .8rem; color: var(--muted, #8fa1bd); margin: 8px 0; }
+.pr-metricas b { color: var(--text, #e8eefb); }
+.pr-acoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-acoes .btn { padding: 7px 10px; font-size: .82rem; }
+.pr-chip {
+  display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .72rem;
+  background: rgba(46,125,215,.15); border: 1px solid rgba(46,125,215,.4); margin: 0 4px 4px 0;
+}
+.pr-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .72rem; margin-left: 6px; }
+.pr-badge.andamento { background: rgba(67,197,110,.15); color: #7fd4a0; }
+.pr-badge.pausado { background: rgba(240,180,60,.15); color: #ecc35f; }
+.pr-badge.revisao { background: rgba(46,125,215,.18); color: #7db4e8; }
+.pr-badge.entregue { background: rgba(140,150,170,.15); color: #aab6cc; }
+.pr-badge.falhou { background: rgba(220,80,80,.15); color: #e08a8a; }
+.pr-badge.atrasada { background: rgba(220,80,80,.2); color: #e08a8a; }
+
+/* sub-abas do financeiro */
+.fin-abas { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.fin-aba {
+  border: 1px solid var(--line, #2a3750); background: transparent; color: var(--muted, #8fa1bd);
+  border-radius: 20px; padding: 6px 11px; font-size: .8rem; cursor: pointer;
+}
+.fin-aba.ativa { background: rgba(46,125,215,.18); color: #cfe3f7; border-color: rgba(46,125,215,.5); }
+.fin-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fin-card {
+  background: var(--panel-2, #16202f); border: 1px solid var(--line, #2a3750);
+  border-radius: 10px; padding: 10px;
+}
+.fin-card .rotulo { font-size: .72rem; color: var(--muted, #8fa1bd); text-transform: uppercase; letter-spacing: .05em; }
+.fin-card .valor { font-size: 1.15rem; font-weight: 700; margin-top: 2px; }
+.fin-card .valor.pos { color: #7fd4a0; }
+.fin-card .valor.neg { color: #e08a8a; }
+
+.fin-tabela { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.fin-tabela th, .fin-tabela td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line, #2a3750); }
+.fin-tabela th { color: var(--muted, #8fa1bd); font-weight: 600; }
+.fin-tabela td.num, .fin-tabela th.num { text-align: right; white-space: nowrap; }
+
+.fin-fluxo-linha { display: grid; grid-template-columns: 64px 1fr 1fr; gap: 6px; align-items: center; margin: 4px 0; font-size: .78rem; }
+.fin-fluxo-barra { height: 10px; border-radius: 5px; }
+.fin-fluxo-barra.entrada { background: #43c56e; }
+.fin-fluxo-barra.saida { background: #d06060; }
+
+/* wizard e formulários */
+.modal-grande { width: min(680px, 94vw); max-height: 90vh; overflow-y: auto; }
+.wizard-passos { display: flex; gap: 4px; margin: 6px 0 12px; }
+.wizard-passos span {
+  flex: 1; text-align: center; font-size: .72rem; padding: 5px 2px;
+  border-radius: 8px; background: var(--panel-2, #16202f); color: var(--muted, #8fa1bd);
+  border: 1px solid var(--line, #2a3750);
+}
+.wizard-passos span.ativo { background: rgba(46,125,215,.2); color: #cfe3f7; border-color: rgba(46,125,215,.5); }
+.wizard-corpo label { display: block; font-size: .8rem; color: var(--muted, #8fa1bd); margin: 10px 0 4px; }
+.wizard-corpo input[type="text"], .wizard-corpo input[type="number"],
+.wizard-corpo select, .wizard-corpo textarea {
+  width: 100%; box-sizing: border-box; background: var(--bg, #0d1420); color: var(--text, #e8eefb);
+  border: 1px solid var(--line, #2a3750); border-radius: 8px; padding: 9px 10px; font: inherit; font-size: .88rem;
+}
+.wizard-corpo textarea { min-height: 64px; resize: vertical; }
+.wizard-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wizard-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 4px; }
+.wizard-checks label { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: .84rem; color: var(--text, #e8eefb); }
+.wizard-preview {
+  background: var(--bg, #0d1420); border: 1px solid var(--line, #2a3750); border-radius: 8px;
+  padding: 10px 12px; font-size: .8rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto;
+}
+
+/* atividade / chat */
+.atv-log {
+  background: var(--bg, #0d1420); border: 1px solid var(--line, #2a3750); border-radius: 8px;
+  height: 300px; overflow-y: auto; padding: 8px 10px; font-size: .8rem;
+}
+.atv-linha { margin: 3px 0; line-height: 1.35; }
+.atv-linha .hora { color: var(--muted, #8fa1bd); font-size: .7rem; margin-right: 6px; }
+.atv-linha.tipo-progresso { color: #7fd4a0; }
+.atv-linha.tipo-sistema { color: #ecc35f; }
+.atv-linha.tipo-ferramenta { color: #8fa1bd; }
+.atv-chat { display: flex; gap: 6px; margin-top: 8px; }
+.atv-chat input { flex: 1; margin: 0; }

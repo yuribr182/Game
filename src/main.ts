@@ -9,9 +9,10 @@
    Ainda a portar para TS: iso.js/props.js/ui.js/main.js/audio.js.
    =========================================================== */
 import './data-shim'; // core/data.ts tipado -> window.DATA (antes dos legados!)
-import './game-shim'; // core/engine.ts tipado -> window.Game (antes dos legados!)
+import './real/boot'; // decide window.Game: jogo normal OU Modo Empresa Real (?empresa=1)
 import '../js/audio.js';
 import '../js/props.js';
 import '../js/iso.js'; // renderer Canvas -> window.IsoOffice (arte real via drawImage)
 import '../js/ui.js';
 import '../js/main.js';
+import './real/ui-real'; // painéis do Modo Empresa Real (só ativam com ?empresa=1) — por último
