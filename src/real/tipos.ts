@@ -77,12 +77,48 @@ export interface RelatorioStandupReal {
   criadoEm: string;
 }
 
+// ---- CRM leve (backlog 7) ----
+
+export interface ClienteCRMReal {
+  id: string;
+  nome: string;
+  contato?: string;
+  origem?: string;
+  observacoes?: string;
+  criadoEm: string;
+}
+
+export type EtapaFunilReal = 'lead' | 'proposta' | 'fechado' | 'perdido';
+
+export interface OportunidadeCRMReal {
+  id: string;
+  clienteId: string;
+  titulo: string;
+  valorEstimadoBRL: number;
+  etapa: EtapaFunilReal;
+  observacoes?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+// ---- conquistas reais (backlog 5) ----
+
+export interface ConquistaRealFront {
+  id: string;
+  emoji: string;
+  titulo: string;
+  descricao: string;
+  quando: string | null; // null = bloqueada (vira meta no painel)
+}
+
 export interface SnapshotReal {
   agora: string;
   funcionarios: FuncionarioReal[];
   projetos: ProjetoRealFront[];
   financeiro: ResumoFinanceiroReal;
   standups?: RelatorioStandupReal[]; // mais recente primeiro (F4b)
+  crm?: { clientes: ClienteCRMReal[]; oportunidades: OportunidadeCRMReal[] };
+  conquistas?: ConquistaRealFront[];
   config: {
     cambioUsdBrl: number;
     limiteDiarioUSD: number;

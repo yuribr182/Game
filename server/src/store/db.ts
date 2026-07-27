@@ -5,6 +5,7 @@ import { mkdir, readFile, rename, writeFile, appendFile } from 'node:fs/promises
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type {
+  ClienteCRM,
   ConfigPonte,
   ContaReceber,
   CustoFixo,
@@ -12,6 +13,7 @@ import type {
   EstadoStandup,
   FuncionarioAgente,
   Lancamento,
+  OportunidadeCRM,
   ProjetoReal,
   RelatorioStandup,
 } from './tipos.js';
@@ -204,6 +206,34 @@ export class Store {
 
   caminhoEntregas(projetoId: string): string {
     return this.db.caminho(path.join('entregas', projetoId));
+  }
+
+  // ---- CRM (backlog 7) ----
+
+  listarClientes(): Promise<ClienteCRM[]> {
+    return this.db.lerJson<ClienteCRM[]>('crm-clientes.json', []);
+  }
+
+  salvarClientes(itens: ClienteCRM[]): Promise<void> {
+    return this.enfileirar(() => this.db.gravarJson('crm-clientes.json', itens));
+  }
+
+  listarOportunidades(): Promise<OportunidadeCRM[]> {
+    return this.db.lerJson<OportunidadeCRM[]>('crm-oportunidades.json', []);
+  }
+
+  salvarOportunidades(itens: OportunidadeCRM[]): Promise<void> {
+    return this.enfileirar(() => this.db.gravarJson('crm-oportunidades.json', itens));
+  }
+
+  // ---- conquistas reais (backlog 5): id → ISO de quando desbloqueou ----
+
+  lerConquistas(): Promise<Record<string, string>> {
+    return this.db.lerJson<Record<string, string>>('conquistas.json', {});
+  }
+
+  salvarConquistas(mapa: Record<string, string>): Promise<void> {
+    return this.enfileirar(() => this.db.gravarJson('conquistas.json', mapa));
   }
 
   // ---- standup diário (F4b) ----

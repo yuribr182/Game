@@ -150,6 +150,28 @@ export function atualizarConfig(dados: unknown): Promise<unknown> {
   return chamar('/config', { method: 'PUT', body: JSON.stringify(dados) });
 }
 
+// ---- CRM (backlog 7) ----
+
+export function criarClienteCrm(dados: unknown): Promise<unknown> {
+  return chamar('/crm/clientes', { method: 'POST', body: JSON.stringify(dados) });
+}
+
+export function atualizarClienteCrm(id: string, dados: unknown): Promise<unknown> {
+  return chamar(`/crm/clientes/${id}`, { method: 'PUT', body: JSON.stringify(dados) });
+}
+
+export function criarOportunidade(dados: unknown): Promise<unknown> {
+  return chamar('/crm/oportunidades', { method: 'POST', body: JSON.stringify(dados) });
+}
+
+export function atualizarOportunidade(id: string, dados: unknown): Promise<unknown> {
+  return chamar(`/crm/oportunidades/${id}`, { method: 'PUT', body: JSON.stringify(dados) });
+}
+
+export function excluirOportunidade(id: string): Promise<unknown> {
+  return chamar(`/crm/oportunidades/${id}`, { method: 'DELETE' });
+}
+
 // ---- tempo real ----
 
 export interface CanaisStream {

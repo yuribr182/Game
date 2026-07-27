@@ -6,12 +6,14 @@ import { clienteAnthropic, temChaveApi } from './anthropic/cliente.js';
 import { GerenciadorSessoes } from './anthropic/sessoes.js';
 import { GerenciadorStandup } from './anthropic/standup.js';
 import { carregarEnv, dirDados, hojeISO, porta } from './config.js';
+import { verificarConquistas } from './conquistas.js';
 import { lancamentosCustosFixosDevidos, marcarAtrasadas } from './financeiro/motor.js';
 import { notificarCelular } from './notificar/telegram.js';
 import { montarSnapshot } from './snapshot.js';
 import { Store } from './store/db.js';
 import { TempoReal } from './tempoReal.js';
 import type { Contexto } from './rotas/contexto.js';
+import { rotasCrm } from './rotas/crm.js';
 import { rotasEstado } from './rotas/estado.js';
 import { rotasFinanceiro } from './rotas/financeiro.js';
 import { rotasFuncionarios } from './rotas/funcionarios.js';
@@ -25,6 +27,8 @@ async function principal(): Promise<void> {
   const tempoReal = new TempoReal();
 
   const aoMudarEstado = async (): Promise<void> => {
+    // conquistas antes do snapshot: o broadcast já sai com o troféu desbloqueado
+    await verificarConquistas(store, tempoReal).catch((erro) => console.warn('[conquistas]', erro));
     tempoReal.enviar('estado', await montarSnapshot(store));
   };
 
@@ -82,11 +86,14 @@ async function principal(): Promise<void> {
       rotasFuncionarios(api, ctx);
       rotasProjetos(api, ctx);
       rotasFinanceiro(api, ctx);
+      rotasCrm(api, ctx);
     },
     { prefix: '/api' },
   );
 
   await rodarRotinaDiaria();
+  // avalia conquistas do histórico já no boot (dados antigos podem destravar troféus)
+  await verificarConquistas(store, tempoReal).catch((erro) => app.log.warn(erro, 'conquistas no boot'));
 
   const intervaloRotina = setInterval(() => {
     void rodarRotinaDiaria().catch((erro) => app.log.error(erro, 'rotina diária falhou'));

@@ -261,10 +261,17 @@ concluídas em 2026-07-27**:
   horários reais + previsão de conclusão extrapolada vs prazo, no modal de
   Atividade) e **senioridade real** (nível por entregas + taxa de aprovação no
   QA + custo médio no card do funcionário). Suíte Playwright 20/20.
+- Backlog "insano" (2ª leva, 2026-07-27): **CRM leve com funil** (sub-aba 🧲
+  no Financeiro: clientes com LTV real derivado dos projetos, funil lead →
+  proposta → fechado/perdido, "Virar projeto" pré-preenche o wizard) e
+  **conquistas reais** (8 marcos de verdade avaliados pela ponte — primeira
+  entrega, selo do QA, 1º PR, R$ 10 mil, mês no azul, time de 3, meta batida,
+  cliente fiel — bloqueadas viram metas na aba Equipe; desbloqueio = toast
+  dourado + Telegram). Suíte Playwright 13/13.
 Guia de uso: **`EMPRESA-REAL.md`** na raiz. Rodar: **`npm run empresa`** e abrir
 `http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Próximo no
-backlog: gerente multiagente, propostas em PDF, conquistas reais, CRM com
-funil, monitor ao vivo no PC do boneco.
+backlog: gerente multiagente, propostas em PDF (a partir do CRM), monitor ao
+vivo no PC do boneco.
 
 **F1 (concluída):** `js/game.js` portado para `src/core/` tipado, validado no
 navegador (save real v3 preservado, zero erro de console, cena idêntica).

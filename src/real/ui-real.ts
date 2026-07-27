@@ -7,8 +7,10 @@
 
 import * as api from './api';
 import type {
+  ClienteCRMReal,
   EntradaAtividadeReal,
   FuncionarioReal,
+  OportunidadeCRMReal,
   ProjetoRealFront,
   SnapshotReal,
 } from './tipos';
@@ -387,10 +389,29 @@ function renderEquipe(): void {
   const s = snap();
   const alvo = $('#realEquipe');
   const ativos = s?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
+
+  // 🏆 conquistas reais (backlog 5): desbloqueadas com data; bloqueadas viram metas
+  const conquistas = s?.conquistas ?? [];
+  const desbloqueadas = conquistas.filter((c) => c.quando).length;
+  const blocoConquistas = conquistas.length
+    ? `<div class="pr-secao" style="margin-top:16px">🏆 Conquistas da agência (${desbloqueadas}/${conquistas.length})</div>
+       <div class="conq-grid">${conquistas
+         .map(
+           (c) => `<div class="conq ${c.quando ? 'ok' : 'trancada'}" title="${esc(c.descricao)}">
+             <span class="conq-emoji">${c.quando ? c.emoji : '🔒'}</span>
+             <div><b>${esc(c.titulo)}</b><br /><small>${
+               c.quando ? `em ${new Date(c.quando).toLocaleDateString('pt-BR')}` : esc(c.descricao)
+             }</small></div>
+           </div>`,
+         )
+         .join('')}</div>`
+    : '';
+
   alvo.innerHTML = `
     <div class="pr-topo"><h3>👥 Equipe (${ativos.length})</h3>
       <button class="btn btn-primary" data-acao-func="contratar">+ Contratar</button></div>
-    ${ativos.length ? ativos.map(cardFuncionario).join('') : '<p class="pr-sub">Ninguém contratado ainda. Seu primeiro funcionário-agente está a um clique.</p>'}`;
+    ${ativos.length ? ativos.map(cardFuncionario).join('') : '<p class="pr-sub">Ninguém contratado ainda. Seu primeiro funcionário-agente está a um clique.</p>'}
+    ${blocoConquistas}`;
 }
 
 async function agirFuncionario(acao: string, id: string): Promise<void> {
@@ -503,15 +524,18 @@ let wizardEditandoId: string | null = null;
 
 const PASSOS = ['1. Contrato', '2. Especificação', '3. Entrega', '4. Revisão'];
 
-function abrirWizard(projeto: ProjetoRealFront | null): void {
+function abrirWizard(
+  projeto: ProjetoRealFront | null,
+  prefill?: { nome?: string; cliente?: string; valor?: number }, // vindo do CRM (oportunidade fechada)
+): void {
   wizardEditandoId = projeto?.id ?? null;
   const spec = (projeto as unknown as { spec?: Record<string, string> })?.spec ?? {};
   wizardDados = {
-    nome: projeto?.nome ?? '',
-    cliente: projeto?.cliente ?? '',
+    nome: projeto?.nome ?? prefill?.nome ?? '',
+    cliente: projeto?.cliente ?? prefill?.cliente ?? '',
     emoji: projeto?.emoji ?? '📦',
     tipo: projeto?.tipo ?? 'entrega',
-    valorContratoBRL: projeto?.valorContratoBRL ?? 0,
+    valorContratoBRL: projeto?.valorContratoBRL ?? prefill?.valor ?? 0,
     forma: (projeto as unknown as { pagamento?: { forma: 'avista' | 'parcelado' } })?.pagamento?.forma ?? 'avista',
     parcelas: (projeto as unknown as { pagamento?: { parcelas?: number } })?.pagamento?.parcelas ?? 2,
     entradaBRL: (projeto as unknown as { pagamento?: { entradaBRL?: number } })?.pagamento?.entradaBRL ?? 0,
@@ -799,12 +823,13 @@ async function enviarMensagemAtividade(comoRetomar: boolean): Promise<void> {
 
 // ---------- financeiro (substitui a aba Empresa) ----------
 
-type SubAba = 'visao' | 'vendas' | 'contas' | 'custos' | 'relatorios' | 'livro';
+type SubAba = 'visao' | 'vendas' | 'crm' | 'contas' | 'custos' | 'relatorios' | 'livro';
 let subAbaAtual: SubAba = 'visao';
 
 const SUB_ABAS: { id: SubAba; rotulo: string }[] = [
   { id: 'visao', rotulo: '📊 Visão geral' },
   { id: 'vendas', rotulo: '🧾 Vendas' },
+  { id: 'crm', rotulo: '🧲 CRM' },
   { id: 'contas', rotulo: '💳 A receber' },
   { id: 'custos', rotulo: '📉 Custos' },
   { id: 'relatorios', rotulo: '📈 Relatórios' },
@@ -947,6 +972,124 @@ async function renderFinanceiro(): Promise<void> {
         <table class="fin-tabela" style="margin-top:10px"><tr><th>Cliente</th><th class="num">Contratos</th><th class="num">Total</th></tr>
         ${r.porCliente.map((c) => `<tr><td>${esc(c.cliente)}</td><td class="num">${c.quantidade}</td><td class="num">${brlCentavos(c.totalBRL)}</td></tr>`).join('') || '<tr><td colspan="3">sem vendas ainda</td></tr>'}
         </table>`;
+    } else if (subAbaAtual === 'crm') {
+      // CRM leve (backlog 7): funil lead → proposta → fechado + clientes com LTV real
+      const s = snap();
+      const clientes = s?.crm?.clientes ?? [];
+      const oportunidades = s?.crm?.oportunidades ?? [];
+      const projetos = s?.projetos ?? [];
+      const nomeCliente = (id: string) => clientes.find((c) => c.id === id)?.nome ?? '?';
+      const ETAPAS: { id: OportunidadeCRMReal['etapa']; rotulo: string }[] = [
+        { id: 'lead', rotulo: '🧲 Leads' },
+        { id: 'proposta', rotulo: '📄 Proposta enviada' },
+        { id: 'fechado', rotulo: '✅ Fechados' },
+        { id: 'perdido', rotulo: '❌ Perdidos' },
+      ];
+      const emAberto = oportunidades.filter((o) => o.etapa === 'lead' || o.etapa === 'proposta');
+      const totalFunil = emAberto.reduce((soma, o) => soma + o.valorEstimadoBRL, 0);
+
+      const cardOpp = (o: OportunidadeCRMReal): string => {
+        const b = (rotulo: string, attrs: string, classe = 'btn') =>
+          `<button class="btn ${classe}" style="padding:4px 9px;font-size:.75rem" ${attrs}>${rotulo}</button>`;
+        const acoes: string[] = [];
+        if (o.etapa === 'lead') acoes.push(b('📄 Mandei proposta', `data-opp-etapa="proposta" data-id="${o.id}"`));
+        if (o.etapa === 'proposta') acoes.push(b('✅ Fechou!', `data-opp-etapa="fechado" data-id="${o.id}"`, 'btn-primary'));
+        if (o.etapa === 'lead' || o.etapa === 'proposta') acoes.push(b('❌ Perdi', `data-opp-etapa="perdido" data-id="${o.id}"`));
+        if (o.etapa === 'fechado') acoes.push(b('📋 Virar projeto', `data-opp-projeto="${o.id}"`, 'btn-accent'));
+        if (o.etapa === 'perdido') {
+          acoes.push(b('🔁 Reabrir', `data-opp-etapa="lead" data-id="${o.id}"`), b('🗑', `data-opp-excluir="${o.id}"`));
+        }
+        return `<div class="crm-opp">
+          <div><b>${esc(o.titulo)}</b> <span class="pr-sub-inline">· ${esc(nomeCliente(o.clienteId))} · ${brlCentavos(o.valorEstimadoBRL)}</span></div>
+          <div class="pr-acoes">${acoes.join('')}</div>
+        </div>`;
+      };
+
+      const linhaCliente = (c: ClienteCRMReal): string => {
+        const dele = projetos.filter((p) => p.cliente.trim().toLowerCase() === c.nome.trim().toLowerCase());
+        const vendidos = dele.filter((p) => p.status !== 'rascunho');
+        const ltv = vendidos.reduce((soma, p) => soma + p.valorContratoBRL, 0);
+        const entregues = dele.filter((p) => p.status === 'entregue').length;
+        const noFunil = oportunidades.filter(
+          (o) => o.clienteId === c.id && (o.etapa === 'lead' || o.etapa === 'proposta'),
+        ).length;
+        return `<tr><td>${esc(c.nome)}${c.origem ? `<br /><small class="pr-sub-inline">via ${esc(c.origem)}</small>` : ''}</td>
+          <td>${esc(c.contato ?? '—')}</td>
+          <td class="num">${vendidos.length}${entregues ? ` (${entregues}✅)` : ''}</td>
+          <td class="num">${brlCentavos(ltv)}</td>
+          <td class="num">${noFunil || '—'}</td></tr>`;
+      };
+
+      corpo.innerHTML = `
+        <div class="fin-cards">
+          <div class="fin-card"><div class="rotulo">💼 No funil (em aberto)</div><div class="valor">${brlCentavos(totalFunil)}</div></div>
+          <div class="fin-card"><div class="rotulo">Oportunidades / clientes</div><div class="valor">${emAberto.length} / ${clientes.length}</div></div>
+        </div>
+        ${ETAPAS.map((e) => {
+          const da = oportunidades.filter((o) => o.etapa === e.id);
+          return `<div class="pr-secao">${e.rotulo} (${da.length})</div>${da.map(cardOpp).join('') || '<p class="pr-sub">vazio</p>'}`;
+        }).join('')}
+        <div class="pr-secao" style="margin-top:14px">Nova oportunidade</div>
+        ${
+          clientes.length
+            ? `<div class="wizard-corpo"><div class="wizard-linha">
+                <div><label>Cliente</label><select id="oppCliente">${clientes.map((c) => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></div>
+                <div><label>Valor estimado (R$)</label><input type="number" id="oppValor" min="0" /></div>
+              </div>
+              <label>O que é (ex.: "Site institucional + blog")</label><input type="text" id="oppTitulo" maxlength="120" />
+              <div class="pr-acoes" style="margin-top:8px"><button class="btn btn-primary" id="oppSalvar">➕ Entrar no funil</button></div></div>`
+            : '<p class="pr-sub">cadastre um cliente primeiro 👇</p>'
+        }
+        <div class="pr-secao" style="margin-top:14px">Clientes (${clientes.length})</div>
+        <table class="fin-tabela"><tr><th>Cliente</th><th>Contato</th><th class="num">Projetos</th><th class="num">LTV</th><th class="num">Funil</th></tr>
+        ${clientes.map(linhaCliente).join('') || '<tr><td colspan="5">nenhum cliente ainda</td></tr>'}</table>
+        <div class="pr-secao" style="margin-top:14px">Novo cliente</div>
+        <div class="wizard-corpo"><div class="wizard-linha">
+          <div><label>Nome</label><input type="text" id="cliNome" maxlength="80" /></div>
+          <div><label>Contato (e-mail / whats)</label><input type="text" id="cliContato" maxlength="160" /></div>
+        </div>
+        <label>Origem (indicação, site, instagram…)</label><input type="text" id="cliOrigem" maxlength="80" />
+        <div class="pr-acoes" style="margin-top:8px"><button class="btn btn-primary" id="cliSalvar">➕ Cadastrar cliente</button></div></div>`;
+
+      document.getElementById('cliSalvar')?.addEventListener('click', () => {
+        void (async () => {
+          try {
+            const nome = (document.getElementById('cliNome') as HTMLInputElement).value.trim();
+            if (!nome) {
+              toast('⚠️ Dê um nome ao cliente.', 'bad');
+              return;
+            }
+            const contato = (document.getElementById('cliContato') as HTMLInputElement).value.trim();
+            const origem = (document.getElementById('cliOrigem') as HTMLInputElement).value.trim();
+            await api.criarClienteCrm({ nome, ...(contato ? { contato } : {}), ...(origem ? { origem } : {}) });
+            toast(`🤝 ${nome} no CRM!`, 'good');
+            void renderFinanceiro();
+          } catch (erro) {
+            toast(`⚠️ ${(erro as Error).message}`, 'bad');
+          }
+        })();
+      });
+      document.getElementById('oppSalvar')?.addEventListener('click', () => {
+        void (async () => {
+          try {
+            const titulo = (document.getElementById('oppTitulo') as HTMLInputElement).value.trim();
+            const valor = Number((document.getElementById('oppValor') as HTMLInputElement).value);
+            if (!titulo || !(valor >= 0)) {
+              toast('⚠️ Preencha o título e o valor estimado.', 'bad');
+              return;
+            }
+            await api.criarOportunidade({
+              clienteId: (document.getElementById('oppCliente') as HTMLSelectElement).value,
+              titulo,
+              valorEstimadoBRL: valor,
+            });
+            toast('🧲 Oportunidade no funil!', 'good');
+            void renderFinanceiro();
+          } catch (erro) {
+            toast(`⚠️ ${(erro as Error).message}`, 'bad');
+          }
+        })();
+      });
     } else if (subAbaAtual === 'contas') {
       const contas = (await api.listarContas()) as {
         id: string; descricao: string; valorBRL: number; vencimento: string; status: string;
@@ -1125,6 +1268,33 @@ function iniciarPaineis(): void {
           void renderFinanceiro();
         })
         .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+      return;
+    }
+    const oppEtapa = (ev.target as HTMLElement).closest('[data-opp-etapa]') as HTMLElement | null;
+    if (oppEtapa) {
+      const etapa = oppEtapa.dataset.oppEtapa!;
+      void api
+        .atualizarOportunidade(oppEtapa.dataset.id!, { etapa })
+        .then(() => {
+          if (etapa === 'fechado') toast('✅ Contrato fechado — agora é só "Virar projeto"!', 'good');
+          void renderFinanceiro();
+        })
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+      return;
+    }
+    const oppExcluir = (ev.target as HTMLElement).closest('[data-opp-excluir]') as HTMLElement | null;
+    if (oppExcluir) {
+      void api
+        .excluirOportunidade(oppExcluir.dataset.oppExcluir!)
+        .then(() => void renderFinanceiro())
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+      return;
+    }
+    const oppProjeto = (ev.target as HTMLElement).closest('[data-opp-projeto]') as HTMLElement | null;
+    if (oppProjeto) {
+      const o = snap()?.crm?.oportunidades.find((x) => x.id === oppProjeto.dataset.oppProjeto);
+      const clienteNome = snap()?.crm?.clientes.find((c) => c.id === o?.clienteId)?.nome ?? '';
+      abrirWizard(null, { nome: o?.titulo, cliente: clienteNome, valor: o?.valorEstimadoBRL });
       return;
     }
     const aba = (ev.target as HTMLElement).closest('[data-fin]') as HTMLElement | null;

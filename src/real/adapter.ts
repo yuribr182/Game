@@ -265,17 +265,20 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
       },
       aoAlerta: (dados) => {
         const ev = dados as EventoAlerta;
-        // 'venda'/'meta' não têm som no sfxMap do legado — ui-real toca sino/fanfarra
+        // 'venda'/'meta' não têm som no sfxMap do legado — ui-real toca sino/fanfarra;
+        // 'conquista' vira 'achieve' (toast dourado + som de level do legado)
         const tipo =
           ev.tipo === 'venda'
             ? 'venda'
             : ev.tipo === 'meta_batida'
               ? 'meta'
-              : ev.tipo === 'aguardando_revisao' || ev.tipo === 'standup'
-                ? 'info'
-                : ev.tipo === 'falha'
-                  ? 'fail'
-                  : 'warn';
+              : ev.tipo === 'conquista'
+                ? 'achieve'
+                : ev.tipo === 'aguardando_revisao' || ev.tipo === 'standup'
+                  ? 'info'
+                  : ev.tipo === 'falha'
+                    ? 'fail'
+                    : 'warn';
         avisar({ type: tipo, msg: `🏢 ${ev.mensagem}` });
         emitirReal('alerta', ev);
       },

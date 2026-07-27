@@ -171,6 +171,40 @@ export interface EntradaAtividade {
   meta?: Record<string, unknown>;
 }
 
+// ---- CRM leve com funil comercial (backlog 7) ----
+
+export interface ClienteCRM {
+  id: string;
+  nome: string; // liga com projeto.cliente por nome (case-insensitive)
+  contato?: string; // e-mail / telefone / whatsapp
+  origem?: string; // indicação, site, instagram…
+  observacoes?: string;
+  criadoEm: string;
+}
+
+export type EtapaFunil = 'lead' | 'proposta' | 'fechado' | 'perdido';
+
+export interface OportunidadeCRM {
+  id: string;
+  clienteId: string;
+  titulo: string;
+  valorEstimadoBRL: number;
+  etapa: EtapaFunil;
+  observacoes?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+// ---- conquistas reais (backlog 5) ----
+
+export interface ConquistaReal {
+  id: string;
+  emoji: string;
+  titulo: string;
+  descricao: string;
+  quando: string | null; // ISO quando desbloqueou; null = ainda bloqueada (vira meta)
+}
+
 /** Relatório matinal consolidado (F4b) — publicado pelo agente gerente. */
 export interface RelatorioStandup {
   data: string; // yyyy-mm-dd

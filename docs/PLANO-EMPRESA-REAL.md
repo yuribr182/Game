@@ -286,6 +286,8 @@ Nada muda em `src/core/` — fronteira e save preservados.
 **Já incorporadas ao escopo (F3/F4):** balões de fala + nome sobre o boneco, chat direto com o funcionário, standup diário automático, QA com segundo agente, notificações no celular (Telegram).
 
 **✅ Entregues do backlog (2026-07-27):**
+- **5. Conquistas reais** — 8 marcos avaliados sobre os dados reais (`server/src/conquistas.ts`, `avaliarConquistas` puro): primeira entrega, selo do QA, 1º PR, R$ 10 mil recebidos, mês no azul (via `fluxoMensal`), time de 3, meta batida, cliente fiel. Persistência 1x (`conquistas.json`), reavaliação em todo `aoMudarEstado` + boot; desbloqueio = alerta `conquista` (toast dourado/som de level do legado) + Telegram; painel no fim da aba Equipe com bloqueadas viradas metas 🔒.
+- **7. CRM leve com funil** — entidades `ClienteCRM` + `OportunidadeCRM` (rotas `/api/crm/*`, zod), sub-aba **🧲 CRM** no Financeiro: funil lead → proposta → fechado | perdido (avançar/perder/reabrir/excluir), formulários inline de cliente e oportunidade, tabela de clientes com **LTV real** derivado dos projetos (join por nome) e contagem no funil; oportunidade fechada tem **📋 Virar projeto** (wizard pré-preenchido com título/cliente/valor).
 - **2. Senioridade real** — o card do funcionário mostra nível real por projetos entregues (🌱 Novato → 🏆 Lenda), taxa de aprovação no QA e custo médio de API por projeto (tudo derivado do snapshot; a memória — F4e — já acumula as lições).
 - **6. Sino de vendas + metas mensais** — `metaMensalBRL` na config (edição pelo card 🎯 da Visão geral); iniciar projeto emite alerta `venda` (sino `Sfx.bell` + cliente entra na cena via `spawnClient`); cruzar a meta emite `meta_batida` 1x/mês (`metaFoiBatida` puro + `metaBatidaMes` de dedupe) → fanfarra + confete DOM + 🎉 dos bonecos (`popMoney`) + Telegram.
 - **8. Modo TV** — overlay tela cheia (`#modoTv`) com relógio, 4 KPIs grandes, barra da meta, projetos com barras ao vivo (SSE) e a manchete do standup; abre pelo botão 📺 do Financeiro ou direto com `?empresa=1&tv=1`; fecha no Esc.
@@ -293,10 +295,8 @@ Nada muda em `src/core/` — fronteira e save preservados.
 
 **Médio prazo:**
 1. **Gerente de IA (multiagente)** — um agente coordenador (`multiagent: coordinator`) recebe o projeto, quebra em tarefas e delega para os funcionários do roster; você vira o "dono" que só aprova. Threads por subagente aparecem como funcionários colaborando.
-3. **Propostas e orçamentos** — um agente comercial gera proposta em PDF a partir de um briefing (skill `pdf`/`docx`), com precificação sugerida baseada no histórico de custo por tipo de projeto.
+3. **Propostas e orçamentos** — um agente comercial gera proposta em PDF a partir de um briefing (skill `pdf`/`docx`), com precificação sugerida baseada no histórico de custo por tipo de projeto; nasce das oportunidades do CRM (etapa proposta).
 4. **Monitor "ao vivo" no PC do boneco** — mini-tela no monitor do personagem com o texto da sessão correndo (efeito terminal) quando ele está trabalhando.
-5. **Conquistas reais** — reusar o sistema de conquistas com marcos de verdade: primeiro projeto entregue, R$ 10k faturados, primeiro PR mergeado, mês no lucro.
-7. **CRM leve com funil comercial** — cadastro de clientes (histórico, LTV, recorrência) e funil lead → proposta → fechado, integrado ao agente de propostas (ideia 3); a aba Vendas passa a ler daqui.
 
 **Longe (visão):**
 10. **Acesso remoto** — expor a ponte via Tailscale/túnel para acompanhar a agência do celular (o PWA já existe); ou migrar a ponte para um VPS e a agência roda 24/7 mesmo com seu Mac desligado.

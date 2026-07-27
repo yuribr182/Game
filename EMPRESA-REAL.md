@@ -127,6 +127,16 @@ dois modos não se misturam e o save do jogo não é tocado.
 - **📊 Senioridade real** — o card do funcionário mostra o nível dele pela
   carreira de verdade (🌱 Novato → 🥉 Batalhador → 🥈 Referência → 🥇 Veterano
   → 🏆 Lenda), a taxa de aprovação no QA e o custo médio por projeto.
+- **🧲 CRM com funil comercial** — sub-aba **CRM** do Financeiro: cadastre
+  clientes (contato, origem) e oportunidades que andam no funil **lead →
+  proposta → fechado** (ou perdido/reabrir). Cada cliente mostra o **LTV real**
+  (soma dos contratos dos projetos dele) e quantos projetos já entregou. Uma
+  oportunidade fechada tem o botão **📋 Virar projeto**, que abre o wizard já
+  pré-preenchido.
+- **🏆 Conquistas reais** — no fim da aba Equipe: 8 marcos de verdade
+  (primeira entrega, selo do QA, 1º Pull Request, R$ 10 mil recebidos, mês no
+  azul, time de 3, meta batida, cliente fiel). As bloqueadas aparecem como
+  metas 🔒; desbloquear é toast dourado na cena + aviso no Telegram.
 
 ## Financeiro
 

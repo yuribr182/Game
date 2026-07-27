@@ -611,3 +611,20 @@ body.modo-real .tab[data-tab="shop"] { display: none; }
 .lt-bar > div { height: 100%; background: #2e7dd7; }
 .lt-info { color: var(--muted, #8fa1bd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lt-eta { margin-top: 7px; color: #ffca4b; }
+
+/* CRM (funil) e conquistas */
+.crm-opp {
+  background: var(--panel-2, #16202f); border: 1px solid var(--line, #2a3750);
+  border-radius: 10px; padding: 9px 11px; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+}
+.pr-sub-inline { color: var(--muted, #8fa1bd); font-size: .8rem; }
+.conq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.conq {
+  display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 10px;
+  background: var(--panel-2, #16202f); border: 1px solid var(--line, #2a3750); font-size: .78rem;
+}
+.conq small { color: var(--muted, #8fa1bd); }
+.conq-emoji { font-size: 1.3rem; }
+.conq.ok { border-color: rgba(255,202,75,.5); background: rgba(255,202,75,.07); }
+.conq.trancada { opacity: .62; }
