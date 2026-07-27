@@ -144,6 +144,12 @@ export function rodarStandupAgora(): Promise<unknown> {
   return chamar('/standup/rodar', { method: 'POST' });
 }
 
+// ---- config (meta mensal, limites) ----
+
+export function atualizarConfig(dados: unknown): Promise<unknown> {
+  return chamar('/config', { method: 'PUT', body: JSON.stringify(dados) });
+}
+
 // ---- tempo real ----
 
 export interface CanaisStream {

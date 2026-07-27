@@ -89,6 +89,8 @@ export interface SnapshotReal {
     limitePorProjetoUSD: number;
     standupAtivo?: boolean;
     standupHora?: string;
+    metaMensalBRL?: number;
+    metaBatidaMes?: string | null;
   };
 }
 

@@ -111,6 +111,23 @@ dois modos não se misturam e o save do jogo não é tocado.
   anteriores antes de começar e registra novas ao concluir. Quanto mais
   projetos, melhor ele fica.
 
+## Vida de agência
+
+- **🎯 Meta de vendas do mês** — defina no card da **Visão geral** do
+  Financeiro. Cada projeto iniciado é uma venda: **toca o sino** e um cliente
+  entra na cena fechar negócio. Bateu a meta? **Fanfarra, chuva de confete e a
+  equipe comemora** (1 vez por mês) — e chega no Telegram.
+- **📺 Modo TV** — botão no topo do Financeiro (ou abra direto
+  `…?empresa=1&tv=1` num monitor dedicado): tela cheia com relógio, caixa, a
+  receber, vendas × meta, custo de API de hoje, os projetos com barras ao vivo
+  e a manchete do standup. `Esc` sai.
+- **📈 Linha do tempo do projeto** — no modal de Atividade: cada etapa
+  reportada vira uma linha com horário real e duração, e o ritmo é extrapolado
+  numa **previsão de conclusão** comparada ao prazo (✅ dentro / ⚠️ estoura).
+- **📊 Senioridade real** — o card do funcionário mostra o nível dele pela
+  carreira de verdade (🌱 Novato → 🥉 Batalhador → 🥈 Referência → 🥇 Veterano
+  → 🏆 Lenda), a taxa de aprovação no QA e o custo médio por projeto.
+
 ## Financeiro
 
 A aba **💰 Financeiro** (substitui a aba Empresa no modo real) tem:
@@ -134,6 +151,7 @@ Em `server/data/config.json` (ou via `PUT /api/config`):
 | `limitePorProjetoUSD` | 50 | estourou num projeto → **pausa aquele projeto** |
 | `standupAtivo` | true | liga/desliga o cron do relatório matinal |
 | `standupHora` | "09:00" | horário local do standup (mudar recria o cron na nuvem) |
+| `metaMensalBRL` | 0 | meta de vendas do mês (0 = desligada) — editável pelo card 🎯 da Visão geral |
 
 ## Onde ficam os dados
 

@@ -10,8 +10,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type Anthropic from '@anthropic-ai/sdk';
-import { agoraISO, arredondarBRL, hojeISO } from '../config.js';
-import { gerarContasReceber, lancamentoVenda } from '../financeiro/motor.js';
+import { agoraISO, arredondarBRL, hojeISO, mesDe } from '../config.js';
+import { gerarContasReceber, lancamentoVenda, metaFoiBatida, resumoFinanceiro } from '../financeiro/motor.js';
 import { notificarCelular } from '../notificar/telegram.js';
 import type { Store } from '../store/db.js';
 import type {
@@ -181,6 +181,7 @@ export class GerenciadorSessoes {
 
     // venda registrada no contrato fechado (não afeta o caixa — regime de caixa)
     await store.anexarLancamento(lancamentoVenda(projeto, hojeISO()));
+    await this.tocarSinoDeVenda(projeto);
 
     await this.atualizarProjeto(projeto.id, (p) => {
       p.sessionId = sessao.id;
@@ -191,6 +192,30 @@ export class GerenciadorSessoes {
     await this.registrarAtividade(projeto.id, 'sistema', `Sessão criada (${sessao.id}) — ${funcionario.nome} assumiu o projeto.`);
     this.ligarLoop(projeto.id);
     await this.deps.aoMudarEstado();
+  }
+
+  /** Sino de vendas + meta mensal (backlog 6): toca o sino na cena e, se a meta
+   *  do mês acabou de ser cruzada, dispara a comemoração (1x por mês). */
+  private async tocarSinoDeVenda(projeto: ProjetoReal): Promise<void> {
+    const { store, tempoReal } = this.deps;
+    const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    tempoReal.enviar('alerta', {
+      tipo: 'venda',
+      projetoId: projeto.id,
+      mensagem: `🔔 Venda fechada: ${projeto.emoji} ${projeto.nome} — ${brl(projeto.valorContratoBRL)} (${projeto.cliente})`,
+    });
+    const cfg = await store.lerConfig();
+    if (cfg.metaMensalBRL <= 0) return;
+    const hoje = hojeISO();
+    const [lancamentos, contas] = await Promise.all([store.listarLancamentos(), store.listarContasReceber()]);
+    const resumo = resumoFinanceiro(lancamentos, contas, hoje);
+    if (metaFoiBatida(resumo.vendasMesBRL, cfg.metaMensalBRL, cfg.metaBatidaMes, mesDe(hoje))) {
+      cfg.metaBatidaMes = mesDe(hoje);
+      await store.salvarConfig(cfg);
+      const msg = `🎯 META DO MÊS BATIDA! ${brl(resumo.vendasMesBRL)} vendidos (meta: ${brl(cfg.metaMensalBRL)}).`;
+      tempoReal.enviar('alerta', { tipo: 'meta_batida', mensagem: msg });
+      notificarCelular(`🎉 ${msg}`);
+    }
   }
 
   /** Pausa manual (ou automática por limite de custo): user.interrupt + status 'pausado'. */

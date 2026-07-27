@@ -41,6 +41,14 @@
     fail() { tone(220, 0, 0.25, 'sawtooth', 0.07); tone(174, 0.16, 0.3, 'sawtooth', 0.07); },
     error() { tone(160, 0, 0.12, 'square', 0.05); },
     click() { tone(1200, 0, 0.03, 'sine', 0.04); },
+    bell() {  // sino de venda (modo real): parciais inarmônicas + 2ª batida
+      tone(1567, 0, 0.55, 'sine', 0.1); tone(2349, 0, 0.42, 'sine', 0.05); tone(3951, 0, 0.3, 'sine', 0.028);
+      tone(1567, 0.3, 0.65, 'sine', 0.09); tone(2349, 0.3, 0.5, 'sine', 0.045);
+    },
+    fanfare() {  // meta do mês batida: arpejo maior + acorde final
+      [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.09, 0.18, 'triangle', 0.09));
+      [1046, 1318, 1568].forEach((f) => tone(f, 0.42, 0.5, 'triangle', 0.07));
+    },
   };
 
   function play(name) {

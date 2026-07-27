@@ -227,6 +227,7 @@
   <div id="modalAtividade" class="overlay hidden">
     <div class="modal modal-grande">
       <h2 id="atvTitulo">📡 Atividade</h2>
+      <div id="atvLinhaTempo"></div>
       <div id="atvLog" class="atv-log"></div>
       <div class="atv-chat">
         <input id="atvMensagem" class="name-input" type="text" maxlength="2000"
@@ -238,6 +239,12 @@
         <button id="atvFechar" class="btn">Fechar</button>
       </div>
     </div>
+  </div>
+
+  <!-- ===== Modo Empresa Real: Modo TV (dashboard de parede) ===== -->
+  <div id="modoTv" class="hidden">
+    <button id="tvFechar" title="Sair (Esc)">✕</button>
+    <div id="tvConteudo"></div>
   </div>
 
   <!-- ===== Modo Empresa Real: ponte local desligada ===== -->

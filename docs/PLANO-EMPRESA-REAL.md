@@ -285,16 +285,18 @@ Nada muda em `src/core/` — fronteira e save preservados.
 
 **Já incorporadas ao escopo (F3/F4):** balões de fala + nome sobre o boneco, chat direto com o funcionário, standup diário automático, QA com segundo agente, notificações no celular (Telegram).
 
+**✅ Entregues do backlog (2026-07-27):**
+- **2. Senioridade real** — o card do funcionário mostra nível real por projetos entregues (🌱 Novato → 🏆 Lenda), taxa de aprovação no QA e custo médio de API por projeto (tudo derivado do snapshot; a memória — F4e — já acumula as lições).
+- **6. Sino de vendas + metas mensais** — `metaMensalBRL` na config (edição pelo card 🎯 da Visão geral); iniciar projeto emite alerta `venda` (sino `Sfx.bell` + cliente entra na cena via `spawnClient`); cruzar a meta emite `meta_batida` 1x/mês (`metaFoiBatida` puro + `metaBatidaMes` de dedupe) → fanfarra + confete DOM + 🎉 dos bonecos (`popMoney`) + Telegram.
+- **8. Modo TV** — overlay tela cheia (`#modoTv`) com relógio, 4 KPIs grandes, barra da meta, projetos com barras ao vivo (SSE) e a manchete do standup; abre pelo botão 📺 do Financeiro ou direto com `?empresa=1&tv=1`; fecha no Esc.
+- **9. Linha do tempo do projeto** — no modal de Atividade: as etapas reportadas (`tipo progresso`) viram linhas com horário real e duração (barras proporcionais) + previsão de conclusão extrapolada do ritmo, comparada ao prazo (✅ dentro / ⚠️ estoura em Nd).
+
 **Médio prazo:**
 1. **Gerente de IA (multiagente)** — um agente coordenador (`multiagent: coordinator`) recebe o projeto, quebra em tarefas e delega para os funcionários do roster; você vira o "dono" que só aprova. Threads por subagente aparecem como funcionários colaborando.
-2. **Senioridade real** — funcionário "evolui" com projetos entregues: a memória (memory store) acumula lições, e o painel mostra nível/experiência real (projetos, taxa de aprovação no QA, custo médio).
 3. **Propostas e orçamentos** — um agente comercial gera proposta em PDF a partir de um briefing (skill `pdf`/`docx`), com precificação sugerida baseada no histórico de custo por tipo de projeto.
 4. **Monitor "ao vivo" no PC do boneco** — mini-tela no monitor do personagem com o texto da sessão correndo (efeito terminal) quando ele está trabalhando.
 5. **Conquistas reais** — reusar o sistema de conquistas com marcos de verdade: primeiro projeto entregue, R$ 10k faturados, primeiro PR mergeado, mês no lucro.
-6. **Sino de vendas + metas mensais** — meta de faturamento do mês no painel; fechar contrato toca um sino na cena e bater a meta dispara comemoração dos bonecos (confete + som — WebAudio procedural, como todo o áudio).
 7. **CRM leve com funil comercial** — cadastro de clientes (histórico, LTV, recorrência) e funil lead → proposta → fechado, integrado ao agente de propostas (ideia 3); a aba Vendas passa a ler daqui.
-8. **Modo TV (dashboard de parede)** — tela cheia com os KPIs ao vivo (caixa, a receber, projetos em andamento, custo de API do dia) para deixar aberta num monitor dedicado.
-9. **Linha do tempo do projeto** — Gantt simples por projeto: as etapas reportadas pelo agente numa linha do tempo com horários reais e estimativa de conclusão extrapolada do ritmo.
 
 **Longe (visão):**
 10. **Acesso remoto** — expor a ponte via Tailscale/túnel para acompanhar a agência do celular (o PWA já existe); ou migrar a ponte para um VPS e a agência roda 24/7 mesmo com seu Mac desligado.

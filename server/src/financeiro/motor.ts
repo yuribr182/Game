@@ -354,3 +354,16 @@ export function custoPorFuncionario(
     custoApiBRL: arredondarBRL(porFuncionario.get(f.id) ?? 0),
   }));
 }
+
+/**
+ * Sino de vendas + meta mensal (backlog 6): a meta só é comemorada UMA vez por
+ * mês — `metaBatidaMes` guarda o yyyy-mm já festejado. Meta 0 = desligada.
+ */
+export function metaFoiBatida(
+  vendasMesBRL: number,
+  metaMensalBRL: number,
+  metaBatidaMes: string | null | undefined,
+  mesAtual: string,
+): boolean {
+  return metaMensalBRL > 0 && vendasMesBRL >= metaMensalBRL && metaBatidaMes !== mesAtual;
+}

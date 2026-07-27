@@ -106,6 +106,104 @@ function hojeLocalISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** Pontes com o legado (áudio procedural e cena isométrica). */
+function sfx(nome: string): void {
+  (window as unknown as { Sfx?: { play: (n: string) => void } }).Sfx?.play(nome);
+}
+
+function cena(): { popMoney?: (t: string) => void; spawnClient?: () => void } {
+  return (window as unknown as { IsoOffice?: { popMoney?: (t: string) => void; spawnClient?: () => void } }).IsoOffice ?? {};
+}
+
+/** Confete em DOM sobre a tela inteira (meta do mês batida). */
+function soltarConfete(): void {
+  const caixa = document.createElement('div');
+  caixa.className = 'confete';
+  const cores = ['#ffca4b', '#43c56e', '#7db4e8', '#e08a8a', '#c8aef0'];
+  for (let i = 0; i < 90; i++) {
+    const p = document.createElement('i');
+    p.style.left = `${Math.random() * 100}%`;
+    p.style.background = cores[i % cores.length]!;
+    p.style.animationDelay = `${Math.random() * 0.9}s`;
+    p.style.animationDuration = `${2.2 + Math.random() * 1.6}s`;
+    caixa.appendChild(p);
+  }
+  document.body.appendChild(caixa);
+  setTimeout(() => caixa.remove(), 4800);
+}
+
+/** Senioridade real: nível derivado dos projetos ENTREGUES de verdade. */
+const NIVEIS: [number, string][] = [
+  [10, '🏆 Lenda da agência'],
+  [6, '🥇 Veterano'],
+  [3, '🥈 Referência'],
+  [1, '🥉 Batalhador'],
+  [0, '🌱 Novato'],
+];
+
+function nivelDe(entregues: number): { rotulo: string; proximoEm: number | null } {
+  for (const [minimo, rotulo] of NIVEIS) {
+    if (entregues >= minimo) {
+      const acima = NIVEIS.filter(([m]) => m > entregues).map(([m]) => m);
+      return { rotulo, proximoEm: acima.length ? Math.min(...acima) : null };
+    }
+  }
+  return { rotulo: NIVEIS[NIVEIS.length - 1]![1], proximoEm: 1 };
+}
+
+/** Linha do tempo do projeto (backlog 9): etapas reportadas em horários reais + previsão. */
+function montarLinhaTempo(entradas: EntradaAtividadeReal[], projeto: ProjetoRealFront): string {
+  const pontos: { etapa: number; total: number; ts: number; resumo: string }[] = [];
+  for (const e of entradas) {
+    if (e.tipo !== 'progresso') continue;
+    const m = /^Etapa (\d+)\/(\d+)\s*(?:—\s*)?(.*)$/.exec(e.texto);
+    if (!m) continue;
+    const ts = Date.parse(e.ts);
+    if (Number.isFinite(ts)) pontos.push({ etapa: Number(m[1]), total: Number(m[2]), ts, resumo: m[3] ?? '' });
+  }
+  if (!pontos.length) return '';
+  const inicio = projeto.iniciadoEm ? Date.parse(projeto.iniciadoEm) : pontos[0]!.ts;
+  const duracoes = pontos.map((p, i) => Math.max(0, p.ts - (i === 0 ? inicio : pontos[i - 1]!.ts)));
+  const maior = Math.max(1, ...duracoes);
+  const fmtHora = (ts: number) =>
+    new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const fmtDur = (ms: number): string => {
+    const min = Math.round(ms / 60000);
+    if (min < 60) return `${min}min`;
+    const h = Math.floor(min / 60);
+    return h < 48 ? `${h}h${String(min % 60).padStart(2, '0')}` : `${Math.round(h / 24)}d`;
+  };
+  const linhas = pontos
+    .map(
+      (p, i) => `<div class="lt-linha">
+        <span class="lt-etapa">${p.etapa}/${p.total}</span>
+        <div class="lt-bar"><div style="width:${Math.max(4, Math.round((duracoes[i]! / maior) * 100))}%"></div></div>
+        <span class="lt-info">${fmtHora(p.ts)} · ${fmtDur(duracoes[i]!)}${p.resumo ? ` · ${esc(p.resumo.slice(0, 60))}` : ''}</span>
+      </div>`,
+    )
+    .join('');
+  const ultimo = pontos[pontos.length - 1]!;
+  let previsao = '';
+  if (ultimo.etapa >= ultimo.total) {
+    previsao = '✅ Todas as etapas concluídas.';
+  } else if (ultimo.etapa > 0) {
+    const mediaPorEtapa = (ultimo.ts - inicio) / ultimo.etapa;
+    const eta = ultimo.ts + mediaPorEtapa * (ultimo.total - ultimo.etapa);
+    const prazoMs = projeto.iniciadoEm ? Date.parse(projeto.iniciadoEm) + projeto.prazoDias * 86400000 : null;
+    const situacao =
+      prazoMs == null
+        ? ''
+        : eta <= prazoMs
+          ? ' — ✅ dentro do prazo'
+          : ` — ⚠️ estoura o prazo em ~${Math.ceil((eta - prazoMs) / 86400000)}d`;
+    previsao = `🔮 No ritmo atual, conclui ~ ${fmtHora(eta)}${situacao}`;
+  }
+  return `<details class="linha-tempo" open>
+    <summary>📈 Linha do tempo (${ultimo.etapa}/${ultimo.total} etapas)</summary>
+    ${linhas}${previsao ? `<div class="lt-eta">${previsao}</div>` : ''}
+  </details>`;
+}
+
 // ---------- projetos ----------
 
 function nomeFuncionario(id: string): string {
@@ -246,7 +344,8 @@ function cardFuncionario(f: FuncionarioReal): string {
   const projetoAtivo = s?.projetos.find(
     (p) => p.funcionarioId === f.id && p.status === 'em_andamento',
   );
-  const entregues = s?.projetos.filter((p) => p.funcionarioId === f.id && p.status === 'entregue').length ?? 0;
+  const entreguesDele = s?.projetos.filter((p) => p.funcionarioId === f.id && p.status === 'entregue') ?? [];
+  const entregues = entreguesDele.length;
   const chips = f.skills
     .map((k) => SKILLS_BLOCO[k] ?? SKILLS_ANTHROPIC[k] ?? k)
     .map((r) => `<span class="pr-chip">${esc(r)}</span>`)
@@ -254,10 +353,24 @@ function cardFuncionario(f: FuncionarioReal): string {
   const status = projetoAtivo
     ? `<span class="pr-badge andamento">💼 em ${esc(projetoAtivo.emoji)} ${esc(projetoAtivo.nome)}</span>`
     : '<span class="pr-badge entregue">☕ disponível</span>';
+
+  // senioridade REAL (backlog 2): nível por entregas, aprovação no QA e custo médio
+  const nivel = nivelDe(entregues);
+  const comQa = entreguesDele.filter((p) => p.qaAtivo);
+  const aprovados = comQa.filter((p) => p.qaResultado === 'aprovado').length;
+  const taxaQa = comQa.length ? `${Math.round((aprovados / comQa.length) * 100)}%` : '—';
+  const custoMedio = entregues ? (entreguesDele.reduce((soma, p) => soma + p.custoUSD, 0) / entregues) * cambio() : 0;
+  const senioridade = `<div class="pr-metricas senioridade">
+      <span class="pr-chip qa" title="${nivel.proximoEm != null ? `próximo nível com ${nivel.proximoEm} entregas` : 'nível máximo!'}">${nivel.rotulo}</span>
+      <span>🔎 aprovação no QA <b>${taxaQa}</b></span>
+      ${entregues ? `<span>💵 custo médio <b>${brlCentavos(custoMedio)}</b>/projeto</span>` : ''}
+    </div>`;
+
   return `<div class="pr-card">
     <h4>${esc(f.nome)} ${status}</h4>
     <div class="pr-sub">${CARGOS[f.cargoVisual] ?? f.cargoVisual} · ${esc(f.modelo)}</div>
     <div>${chips || '<span class="pr-sub">sem skills marcadas</span>'}</div>
+    ${senioridade}
     <div class="pr-metricas">
       <span>📆 salário do dia <b>${brlCentavos(f.custoHojeUSD * cambio())}</b></span>
       <span>Σ API <b>${brlCentavos(f.custoTotalUSD * cambio())}</b></span>
@@ -653,9 +766,11 @@ async function abrirAtividade(projetoId: string): Promise<void> {
     !['pausado', 'aguardando_revisao'].includes(projeto.status),
   );
   $('#atvLog').innerHTML = '<div class="atv-linha">carregando…</div>';
+  $('#atvLinhaTempo').innerHTML = '';
   $('#modalAtividade').classList.remove('hidden');
   try {
     const entradas = await api.obterAtividade(projetoId, 300);
+    $('#atvLinhaTempo').innerHTML = montarLinhaTempo(entradas, projeto); // backlog 9
     $('#atvLog').innerHTML = entradas.map(linhaAtividade).join('') || '<div class="atv-linha">sem atividade ainda.</div>';
     $('#atvLog').scrollTop = $('#atvLog').scrollHeight;
   } catch (erro) {
@@ -698,11 +813,89 @@ const SUB_ABAS: { id: SubAba; rotulo: string }[] = [
 
 function moldeFinanceiro(): void {
   $('#realFinanceiro').innerHTML = `
-    <div class="pr-topo"><h3>💰 Financeiro</h3></div>
+    <div class="pr-topo"><h3>💰 Financeiro</h3>
+      <button class="btn" id="btnModoTv" title="Dashboard de parede — KPIs ao vivo em tela cheia">📺 Modo TV</button></div>
     <div class="fin-abas">${SUB_ABAS.map(
       (a) => `<button class="fin-aba ${a.id === subAbaAtual ? 'ativa' : ''}" data-fin="${a.id}">${a.rotulo}<span data-badge="${a.id}"></span></button>`,
     ).join('')}</div>
     <div id="finCorpo"><p class="pr-sub">carregando…</p></div>`;
+}
+
+// ---------- Modo TV (backlog 8): dashboard de parede em tela cheia ----------
+
+let tvAberto = false;
+let tvRelogio: number | null = null;
+
+function tvKpi(rotulo: string, valor: string, classe = ''): string {
+  return `<div class="tv-kpi"><div class="rotulo">${rotulo}</div><div class="valor ${classe}">${valor}</div></div>`;
+}
+
+function renderTv(): void {
+  if (!tvAberto) return;
+  const alvo = document.getElementById('tvConteudo');
+  if (!alvo) return;
+  const s = snap();
+  if (!s) {
+    alvo.innerHTML = '<p class="pr-sub">conectando à ponte…</p>';
+    return;
+  }
+  const f = s.financeiro;
+  const meta = s.config.metaMensalBRL ?? 0;
+  const pctMeta = meta > 0 ? Math.min(100, Math.round((f.vendasMesBRL / meta) * 100)) : 0;
+  const custoHoje =
+    s.funcionarios.filter((x) => x.status === 'ativo').reduce((soma, x) => soma + x.custoHojeUSD, 0) *
+    (s.config.cambioUsdBrl ?? 5.4);
+  const abertos = s.projetos.filter((p) => ['em_andamento', 'pausado', 'aguardando_revisao'].includes(p.status));
+  const agora = new Date();
+  const manchete = s.standups?.[0]?.texto.split('\n').find((l) => l.trim()) ?? '';
+  alvo.innerHTML = `
+    <div class="tv-topo">
+      <span class="tv-hora">${agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="tv-titulo">🏢 Empresa Real</span>
+      <span class="tv-data">${agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+    </div>
+    <div class="tv-kpis">
+      ${tvKpi('Caixa', brlCentavos(f.caixaBRL), f.caixaBRL >= 0 ? 'pos' : 'neg')}
+      ${tvKpi('A receber', brlCentavos(f.totalAReceberBRL), f.atrasadasBRL > 0 ? 'neg' : '')}
+      ${tvKpi('Vendas no mês', brlCentavos(f.vendasMesBRL), 'pos')}
+      ${tvKpi('API hoje', brlCentavos(custoHoje), custoHoje > 0 ? 'neg' : '')}
+    </div>
+    ${
+      meta > 0
+        ? `<div class="tv-meta"><span>🎯 Meta do mês</span><div class="pr-barra"><div style="width:${pctMeta}%"></div></div><b>${pctMeta}%</b></div>`
+        : ''
+    }
+    <div class="tv-projetos">
+      ${
+        abertos
+          .map((p) => {
+            const pct = p.etapasTotais ? Math.round((p.etapasConcluidas / p.etapasTotais) * 100) : 0;
+            return `<div class="tv-projeto">
+              <div class="tv-projeto-nome">${esc(p.emoji)} ${esc(p.nome)} <small>👤 ${esc(nomeFuncionario(p.funcionarioId))}</small></div>
+              <div class="pr-barra"><div style="width:${pct}%"></div></div>
+              <div class="tv-projeto-sub">${p.etapasTotais ? `${p.etapasConcluidas}/${p.etapasTotais}` : 'planejando'} — ${esc((p.resumoAtual || '…').slice(0, 80))}</div>
+            </div>`;
+          })
+          .join('') || '<p class="pr-sub">nenhum projeto em produção agora</p>'
+      }
+    </div>
+    ${manchete ? `<div class="tv-standup">📋 ${esc(manchete.slice(0, 160))}</div>` : ''}`;
+}
+
+function abrirTv(): void {
+  tvAberto = true;
+  $('#modoTv').classList.remove('hidden');
+  renderTv();
+  tvRelogio = window.setInterval(renderTv, 30_000); // relógio e prazos se mantêm vivos
+}
+
+function fecharTv(): void {
+  tvAberto = false;
+  $('#modoTv').classList.add('hidden');
+  if (tvRelogio != null) {
+    clearInterval(tvRelogio);
+    tvRelogio = null;
+  }
 }
 
 async function renderFinanceiro(): Promise<void> {
@@ -713,7 +906,22 @@ async function renderFinanceiro(): Promise<void> {
       const r = (await api.financeiroResumo()) as Record<string, number>;
       const card = (rotulo: string, valor: number, classe = '') =>
         `<div class="fin-card"><div class="rotulo">${rotulo}</div><div class="valor ${classe}">${brlCentavos(valor)}</div></div>`;
+      // 🎯 meta de vendas do mês (backlog 6) — barra + sino/comemoração ao bater
+      const meta = snap()?.config.metaMensalBRL ?? 0;
+      const vendasMes = r.vendasMesBRL ?? 0;
+      const pctMeta = meta > 0 ? Math.min(100, Math.round((vendasMes / meta) * 100)) : 0;
+      const cardMeta = `<div class="fin-card fin-meta">
+        <div class="rotulo">🎯 Meta de vendas do mês${meta > 0 && vendasMes >= meta ? ' — BATIDA! 🎉' : ''}</div>
+        ${
+          meta > 0
+            ? `<div class="fin-meta-linha"><div class="pr-barra"><div style="width:${pctMeta}%"></div></div><b>${pctMeta}%</b></div>
+               <div class="fin-meta-numeros">${brlCentavos(vendasMes)} de ${brlCentavos(meta)}</div>`
+            : '<div class="fin-meta-numeros">sem meta definida — defina uma e o escritório comemora quando bater 🎉</div>'
+        }
+        <button class="btn" data-meta-editar style="margin-top:6px;padding:4px 9px;font-size:.75rem">🎯 ${meta > 0 ? 'Ajustar' : 'Definir'} meta</button>
+      </div>`;
       corpo.innerHTML = `<div class="fin-cards">
+        ${cardMeta}
         ${card('Caixa', r.caixaBRL!, r.caixaBRL! >= 0 ? 'pos' : 'neg')}
         ${card('A receber', r.totalAReceberBRL!)}
         ${card('Atrasadas', r.atrasadasBRL!, r.atrasadasBRL! > 0 ? 'neg' : '')}
@@ -871,6 +1079,7 @@ function agendarRender(): void {
     renderAgendado = false;
     renderProjetos();
     renderEquipe();
+    renderTv(); // no-op se o Modo TV estiver fechado
     const abaEmpresaAtiva = document.querySelector('.tab[data-tab="company"]')?.classList.contains('active');
     if (abaEmpresaAtiva && subAbaAtual === 'visao') void renderFinanceiro();
   }, 300);
@@ -895,6 +1104,29 @@ function iniciarPaineis(): void {
     if (alvo) void agirFuncionario(alvo.dataset.acaoFunc!, alvo.dataset.id ?? '');
   });
   $('#realFinanceiro').addEventListener('click', (ev) => {
+    if ((ev.target as HTMLElement).closest('#btnModoTv')) {
+      abrirTv();
+      return;
+    }
+    const metaBtn = (ev.target as HTMLElement).closest('[data-meta-editar]');
+    if (metaBtn) {
+      const atual = snap()?.config.metaMensalBRL ?? 0;
+      const resposta = prompt('🎯 Meta de faturamento do mês (R$) — 0 desliga:', atual ? String(atual) : '');
+      if (resposta === null) return;
+      const valor = Number(resposta.replace(/\./g, '').replace(',', '.'));
+      if (!Number.isFinite(valor) || valor < 0) {
+        toast('⚠️ Valor inválido.', 'bad');
+        return;
+      }
+      void api
+        .atualizarConfig({ metaMensalBRL: valor })
+        .then(() => {
+          toast(valor > 0 ? `🎯 Meta do mês: ${brlCentavos(valor)}.` : '🎯 Meta desligada.', 'good');
+          void renderFinanceiro();
+        })
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+      return;
+    }
     const aba = (ev.target as HTMLElement).closest('[data-fin]') as HTMLElement | null;
     if (aba) {
       subAbaAtual = aba.dataset.fin as SubAba;
@@ -962,10 +1194,31 @@ function iniciarPaineis(): void {
     void renderFinanceiro();
   });
 
+  // Modo TV: fechar (✕/Esc) e abrir direto com ?tv=1 (monitor dedicado)
+  document.getElementById('tvFechar')?.addEventListener('click', fecharTv);
+  document.addEventListener('keydown', (ev) => {
+    if (tvAberto && ev.key === 'Escape') fecharTv();
+  });
+  if (new URLSearchParams(location.search).get('tv') === '1') abrirTv();
+
   // eventos da ponte
   G.real!.on('snapshot', agendarRender);
   G.real!.on('progresso', agendarRender);
   G.real!.on('custo', agendarRender);
+  G.real!.on('alerta', (dados) => {
+    const ev = dados as { tipo: string };
+    if (ev.tipo === 'venda') {
+      // 🔔 sino de vendas: som + o cliente entra na cena fechar negócio
+      sfx('bell');
+      cena().spawnClient?.();
+    } else if (ev.tipo === 'meta_batida') {
+      // 🎉 meta do mês: fanfarra + confete + equipe comemora
+      sfx('fanfare');
+      soltarConfete();
+      cena().popMoney?.('🎯 META!');
+    }
+    agendarRender();
+  });
   G.real!.on('atividade', (dados) => {
     const ev = dados as { projetoId: string; entrada: EntradaAtividadeReal };
     if (ev.projetoId !== atividadeAberta) return;

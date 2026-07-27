@@ -253,10 +253,18 @@ concluídas em 2026-07-27**:
   card); **memória por funcionário** (memory store montado em toda sessão —
   lê lições no início, registra ao concluir). Ponte com 46 testes; suíte
   Playwright F4 22/22 verde (jogo normal intocado).
+- Backlog "insano" (1ª leva, 2026-07-27): **sino de vendas + meta mensal**
+  (🎯 card na Visão geral, sino procedural + cliente entra na cena a cada
+  venda; bater a meta = fanfarra + confete + 🎉 dos bonecos + Telegram, 1x/mês),
+  **Modo TV** (dashboard de parede em tela cheia com KPIs ao vivo — botão 📺 no
+  Financeiro ou `?empresa=1&tv=1`), **linha do tempo do projeto** (etapas em
+  horários reais + previsão de conclusão extrapolada vs prazo, no modal de
+  Atividade) e **senioridade real** (nível por entregas + taxa de aprovação no
+  QA + custo médio no card do funcionário). Suíte Playwright 20/20.
 Guia de uso: **`EMPRESA-REAL.md`** na raiz. Rodar: **`npm run empresa`** e abrir
-`http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Próximo:
-backlog "insano" do plano (gerente multiagente, senioridade real, propostas em
-PDF, sino de vendas/metas, CRM, Modo TV, linha do tempo).
+`http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Próximo no
+backlog: gerente multiagente, propostas em PDF, conquistas reais, CRM com
+funil, monitor ao vivo no PC do boneco.
 
 **F1 (concluída):** `js/game.js` portado para `src/core/` tipado, validado no
 navegador (save real v3 preservado, zero erro de console, cena idêntica).

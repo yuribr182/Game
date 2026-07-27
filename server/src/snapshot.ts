@@ -13,7 +13,13 @@ export interface Snapshot {
   standups: RelatorioStandup[]; // mais recente primeiro (F4b)
   config: Pick<
     ConfigPonte,
-    'cambioUsdBrl' | 'limiteDiarioUSD' | 'limitePorProjetoUSD' | 'standupAtivo' | 'standupHora'
+    | 'cambioUsdBrl'
+    | 'limiteDiarioUSD'
+    | 'limitePorProjetoUSD'
+    | 'standupAtivo'
+    | 'standupHora'
+    | 'metaMensalBRL'
+    | 'metaBatidaMes'
   >;
 }
 
@@ -40,6 +46,8 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
       limitePorProjetoUSD: config.limitePorProjetoUSD,
       standupAtivo: config.standupAtivo,
       standupHora: config.standupHora,
+      metaMensalBRL: config.metaMensalBRL,
+      metaBatidaMes: config.metaBatidaMes ?? null,
     },
   };
 }

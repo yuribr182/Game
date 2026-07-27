@@ -543,3 +543,71 @@ body.modo-real .tab[data-tab="shop"] { display: none; }
   border-radius: 8px; padding: 10px 12px; max-height: 320px; overflow-y: auto;
 }
 .standup-card .pr-acoes { margin-top: 8px; }
+
+/* Backlog: meta do mês, Modo TV, confete, linha do tempo e senioridade */
+.fin-meta { grid-column: 1 / -1; border-color: rgba(255,202,75,.45); }
+.fin-meta-linha { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.fin-meta-linha .pr-barra { flex: 1; height: 12px; }
+.fin-meta-linha .pr-barra > div { background: linear-gradient(90deg, #ffca4b, #43c56e); }
+.fin-meta-numeros { font-size: .8rem; color: var(--muted, #8fa1bd); margin-top: 4px; }
+
+.pr-metricas.senioridade { margin: 6px 0 2px; }
+
+.confete { position: fixed; inset: 0; pointer-events: none; z-index: 400; overflow: hidden; }
+.confete i {
+  position: absolute; top: -16px; width: 8px; height: 14px; border-radius: 2px; opacity: .95;
+  animation: confeteCai linear forwards;
+}
+@keyframes confeteCai {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: .85; }
+}
+
+#modoTv {
+  position: fixed; inset: 0; z-index: 300; background: #0a0f18;
+  padding: clamp(14px, 3vw, 44px); overflow-y: auto;
+}
+#modoTv.hidden { display: none; }
+#tvFechar {
+  position: absolute; top: 14px; right: 16px; z-index: 2; background: transparent;
+  border: 1px solid var(--line, #2a3750); color: var(--muted, #8fa1bd);
+  border-radius: 10px; padding: 6px 12px; font-size: 1rem; cursor: pointer;
+}
+.tv-topo { display: flex; align-items: baseline; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; }
+.tv-hora { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; color: var(--text, #e8eefb); }
+.tv-titulo { font-size: clamp(1.1rem, 2.4vw, 1.6rem); font-weight: 700; }
+.tv-data { color: var(--muted, #8fa1bd); font-size: clamp(.9rem, 1.6vw, 1.1rem); }
+.tv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.tv-kpi {
+  background: var(--panel-2, #16202f); border: 1px solid var(--line, #2a3750);
+  border-radius: 14px; padding: clamp(10px, 1.6vw, 20px);
+}
+.tv-kpi .rotulo { font-size: clamp(.72rem, 1.2vw, .9rem); color: var(--muted, #8fa1bd); text-transform: uppercase; letter-spacing: .06em; }
+.tv-kpi .valor { font-size: clamp(1.4rem, 3vw, 2.4rem); font-weight: 800; margin-top: 4px; }
+.tv-kpi .valor.pos { color: #7fd4a0; }
+.tv-kpi .valor.neg { color: #e08a8a; }
+.tv-meta { display: flex; align-items: center; gap: 14px; margin: 16px 0 4px; font-size: clamp(.95rem, 1.8vw, 1.25rem); }
+.tv-meta .pr-barra { flex: 1; height: 16px; }
+.tv-meta .pr-barra > div { background: linear-gradient(90deg, #ffca4b, #43c56e); }
+.tv-projetos { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 16px; }
+.tv-projeto { background: var(--panel-2, #16202f); border: 1px solid var(--line, #2a3750); border-radius: 14px; padding: 14px; }
+.tv-projeto-nome { font-size: clamp(1rem, 1.8vw, 1.25rem); font-weight: 700; margin-bottom: 8px; }
+.tv-projeto-nome small { color: var(--muted, #8fa1bd); font-weight: 500; font-size: .8em; }
+.tv-projeto .pr-barra { height: 12px; }
+.tv-projeto-sub { color: var(--muted, #8fa1bd); font-size: clamp(.8rem, 1.4vw, .95rem); margin-top: 8px; }
+.tv-standup {
+  margin-top: 18px; padding: 12px 16px; border-radius: 12px; font-size: clamp(.9rem, 1.6vw, 1.15rem);
+  background: rgba(46,125,215,.12); border: 1px solid rgba(46,125,215,.4);
+}
+
+.linha-tempo {
+  background: var(--panel-2, #16202f); border: 1px solid var(--line, #2a3750);
+  border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: .8rem;
+}
+.linha-tempo summary { cursor: pointer; font-weight: 600; }
+.lt-linha { display: grid; grid-template-columns: 44px 90px 1fr; gap: 8px; align-items: center; margin: 5px 0; }
+.lt-etapa { color: #7fd4a0; font-weight: 700; }
+.lt-bar { height: 8px; border-radius: 5px; background: var(--bg, #0d1420); overflow: hidden; }
+.lt-bar > div { height: 100%; background: #2e7dd7; }
+.lt-info { color: var(--muted, #8fa1bd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-eta { margin-top: 7px; color: #ffca4b; }

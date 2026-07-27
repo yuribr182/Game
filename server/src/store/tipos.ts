@@ -145,6 +145,9 @@ export interface ConfigPonte {
   standupAgentId?: string | null; // Agent "gerente de operações" (criado 1x)
   standupDeploymentId?: string | null; // deployment com o cron matinal
   standupHoraAplicada?: string | null; // hora usada no deployment atual (muda ⇒ recria)
+  // ---- sino de vendas + meta mensal (backlog 6) ----
+  metaMensalBRL: number; // 0 = sem meta
+  metaBatidaMes?: string | null; // yyyy-mm em que a meta já foi comemorada (dedupe)
 }
 
 export const CONFIG_PADRAO: ConfigPonte = {
@@ -157,6 +160,8 @@ export const CONFIG_PADRAO: ConfigPonte = {
   standupAgentId: null,
   standupDeploymentId: null,
   standupHoraAplicada: null,
+  metaMensalBRL: 0,
+  metaBatidaMes: null,
 };
 
 export interface EntradaAtividade {

@@ -258,6 +258,7 @@ export function rotasFinanceiro(app: FastifyInstance, ctx: Contexto): void {
           limitePorProjetoUSD: z.number().positive().max(100000).optional(),
           standupAtivo: z.boolean().optional(),
           standupHora: z.string().regex(/^\d{1,2}:\d{2}$/, 'use HH:MM').optional(),
+          metaMensalBRL: z.number().min(0).max(1_000_000_000).optional(),
         })
         .safeParse(req.body);
       if (!corpo.success) return reply.code(400).send({ erro: 'Config inválida', detalhes: corpo.error.issues });
