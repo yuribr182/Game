@@ -11,6 +11,10 @@ https://yuribr182.github.io/Game/ (o workflow builda e publica a cada push).
 
 - Instalar: `npm install` (Node 20+).
 - Rodar: `npm run dev` (Vite; abre em http://localhost:5173/Game/).
+- **Modo Empresa Real** (agentes de verdade): `npm run empresa` e abrir
+  `?empresa=1` — guia em `EMPRESA-REAL.md`; plano/arquitetura em
+  `docs/PLANO-EMPRESA-REAL.md`; ponte em `server/` (check próprio:
+  `npm --prefix server run check`).
 - Qualidade: `npm run check` = typecheck + lint + testes (Vitest) + build.
   Rode antes de todo push; o CI executa o mesmo e bloqueia o deploy se falhar.
 - Teste funcional: abrir o dev server no navegador, clicar em `#btnNewGame`,

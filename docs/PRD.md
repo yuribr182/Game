@@ -219,6 +219,32 @@ dia/noite). O renderer Pixi e a dependência `pixi.js` foram **removidos**
   pra Loja, (d) jogo em tela cheia + painel direito retrátil (gaveta sobreposta).
 - ⏳ (opcional) portar `js/iso.js`/`ui.js`/`main.js`/`audio.js` para TS.
 
+**Modo Empresa Real (novo trilho — plano completo em `docs/PLANO-EMPRESA-REAL.md`):**
+transformar o tycoon em espelho vivo da agência: funcionários = agentes de IA
+reais (Claude Managed Agents), projetos cadastrados pelo dono, financeiro de
+agência de verdade. Fases próprias (F0–F4) no plano. **F0 (plano), F1 (ponte
+`server/`), F2 (cena viva) e F3 (painéis reais) concluídas em 2026-07-27**:
+- F1 — servidor Fastify com cadastros, motor financeiro (regime de caixa),
+  driver de sessões (stream-first, dedupe, `reportar_progresso`, limites de
+  custo com pausa automática) e SSE — dirigível por curl, com check próprio
+  (`npm --prefix server run check`, 31 testes).
+- F2 — botão `🏢 Empresa Real` no start screen; `src/real/` (boot por
+  `?empresa=1`, api SSE, RealAdapter com a MESMA forma do Engine — contrato
+  mapeado campo a campo do que iso/ui/main leem); bonecos com nome sobre a
+  cabeça e **ocioso nunca senta no PC** no modo real; velocidade/salvar
+  escondidos por CSS; overlay "ponte desligada"; proxy `/api` no Vite.
+- F3 — painéis reais (`src/real/ui-real.ts`): wizard de projeto em 4 passos
+  (spec completa + preview + estimativa de custo), contratar/editar/arquivar
+  funcionário (skills → system do agente), painel **💰 Financeiro** no lugar da
+  aba Empresa (visão, vendas, a receber com Receber, custos fixos CRUD,
+  relatórios com DRE/margem/fluxo, livro-razão com CSV), modal de Atividade com
+  **chat com o agente** e Retomar-com-feedback; na cena, balão com a etapa
+  atual e clique no boneco abre a Atividade. Suíte Playwright 23/23 verde nos
+  dois modos (jogo normal intocado).
+Guia de uso: **`EMPRESA-REAL.md`** na raiz. Rodar: **`npm run empresa`** e abrir
+`http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Próxima fase:
+F4 (QA com segundo agente, standup diário, Telegram, PRs reais, memória).
+
 **F1 (concluída):** `js/game.js` portado para `src/core/` tipado, validado no
 navegador (save real v3 preservado, zero erro de console, cena idêntica).
 
