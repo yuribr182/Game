@@ -245,7 +245,7 @@ export function rotasFinanceiro(app: FastifyInstance, ctx: Contexto): void {
     }
   });
 
-  // ---- config (câmbio e limites de custo) ----
+  // ---- config (câmbio, limites de custo e standup) ----
 
   app.get('/config', async () => ctx.store.lerConfig());
 
@@ -256,14 +256,23 @@ export function rotasFinanceiro(app: FastifyInstance, ctx: Contexto): void {
           cambioUsdBrl: z.number().positive().max(100).optional(),
           limiteDiarioUSD: z.number().positive().max(100000).optional(),
           limitePorProjetoUSD: z.number().positive().max(100000).optional(),
+          standupAtivo: z.boolean().optional(),
+          standupHora: z.string().regex(/^\d{1,2}:\d{2}$/, 'use HH:MM').optional(),
         })
         .safeParse(req.body);
       if (!corpo.success) return reply.code(400).send({ erro: 'Config inválida', detalhes: corpo.error.issues });
       const cfg = await ctx.store.lerConfig();
+      const mexeuNoStandup =
+        (corpo.data.standupAtivo !== undefined && corpo.data.standupAtivo !== cfg.standupAtivo) ||
+        (corpo.data.standupHora !== undefined && corpo.data.standupHora !== cfg.standupHora);
       Object.assign(cfg, corpo.data);
       await ctx.store.salvarConfig(cfg);
+      // religa/pausa/recria o cron na nuvem conforme a config nova (best-effort)
+      if (mexeuNoStandup) {
+        await ctx.standup.garantir().catch((erro) => app.log.warn(erro, 'standup: reconfiguração falhou'));
+      }
       await ctx.aoMudarEstado();
-      return cfg;
+      return ctx.store.lerConfig();
     } catch (erro) {
       return responderErro(reply, erro);
     }

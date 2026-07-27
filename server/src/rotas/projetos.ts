@@ -36,6 +36,8 @@ const esquemaProjeto = z
     }),
     prazoDias: z.number().int().min(1).max(365),
     funcionarioId: z.string().min(1),
+    qaAtivo: z.boolean().optional(), // F4a — padrão true, aplicado na criação
+    abrirPR: z.boolean().optional(), // F4d — só faz sentido em tipo codigo
   })
   .superRefine((p, ctx) => {
     if (p.tipo === 'codigo') {
@@ -79,6 +81,8 @@ export function rotasProjetos(app: FastifyInstance, ctx: Contexto): void {
       const projeto: ProjetoReal = {
         id: randomUUID(),
         ...corpo.data,
+        qaAtivo: corpo.data.qaAtivo ?? true, // QA automático é o padrão (F4a)
+        abrirPR: corpo.data.tipo === 'codigo' ? (corpo.data.abrirPR ?? true) : false,
         criadoEm: agoraISO(),
         sessionId: null,
         etapasTotais: 0,

@@ -15,7 +15,8 @@ O plano completo com a arquitetura está em
 |---|---|
 | **Node 20+** e npm | rodar o front (Vite) e a ponte local (`server/`) |
 | **Chave da API da Anthropic** (`sk-ant-…`) | os funcionários-agentes trabalham em sessões na nuvem — [console.anthropic.com](https://console.anthropic.com) → API Keys |
-| **PAT do GitHub** (opcional) | só para projetos do tipo *código* (o agente clona, commita e faz push). Fine-grained, com `Contents: Read and write` no(s) repo(s) do projeto |
+| **PAT do GitHub** (opcional) | só para projetos do tipo *código* (o agente clona, commita, faz push e **abre PR**). Fine-grained, com `Contents: Read and write` — e `Pull requests: Read and write` para os PRs — no(s) repo(s) do projeto |
+| **Bot do Telegram** (opcional) | notificações no celular: projeto pronto, agente travado, conta vencendo, limite de custo e o standup matinal |
 
 > 💸 **Custo real:** cada projeto consome tokens da API (aparece em R$ nos
 > cards e no financeiro). Há limites com pausa automática — ver "Limites de
@@ -34,6 +35,8 @@ Edite `server/.env`:
 ```env
 ANTHROPIC_API_KEY=sk-ant-...   # obrigatória
 GITHUB_TOKEN=github_pat_...    # só para projetos de código
+TELEGRAM_BOT_TOKEN=...         # opcional — notificações no celular (crie com o @BotFather)
+TELEGRAM_CHAT_ID=...           # opcional — mande "oi" pro bot e pegue em /getUpdates
 PORTA=3777                     # porta da ponte (padrão)
 ```
 
@@ -62,21 +65,51 @@ dois modos não se misturam e o save do jogo não é tocado.
    escreva a persona. Salvar cria o **Agent na Anthropic** e o boneco entra na
    cena (fora do computador, porque ainda não tem projeto).
 2. **Cadastre um projeto** — aba **Projetos → + Novo Projeto**: wizard em 4
-   passos (contrato → especificação → entrega → revisão). No passo 4 você vê
+   passos (contrato → especificação → entrega → revisão). No passo 3 você
+   decide se liga o **🔎 QA automático** (padrão: ligado) e, em projetos de
+   código, se o agente **abre Pull Request** ao final. No passo 4 você vê
    exatamente o texto que o agente vai receber. Salvar cria um **rascunho**.
 3. **Inicie** — botão **🚀 Iniciar** no card. Isso registra a venda, cria a
-   sessão na nuvem e envia a spec. O boneco senta e começa a digitar; a barra
-   anda conforme ele reporta etapas; o balão mostra a etapa atual; o custo de
-   API sobe em tempo real no card.
+   sessão na nuvem e envia a spec (com QA ligado, ela vira uma **meta com
+   rubrica**: um revisor independente avalia cada rodada contra os critérios de
+   aceite e devolve o feedback ao funcionário — até 3 rodadas — antes de chegar
+   em você). O boneco senta e começa a digitar; a barra anda conforme ele
+   reporta etapas; o balão mostra a etapa atual; o custo de API sobe em tempo
+   real no card.
 4. **Acompanhe / converse** — clique no boneco (ou botão **📡 Atividade**) para
-   ver o log ao vivo e **mandar mensagem para o agente no meio do trabalho**.
-   Dá para **⏸ Pausar** e **▶️ Retomar com feedback**.
-5. **Entregue** — quando o projeto ficar *👀 aguardando revisão*, revise e
-   clique **📦 Entregar**: os arquivos produzidos são baixados para
+   ver o log ao vivo (as linhas roxas 🔎 são o QA) e **mandar mensagem para o
+   agente no meio do trabalho**. Dá para **⏸ Pausar** e **▶️ Retomar com
+   feedback** (com QA ligado, o feedback vira uma nova meta re-avaliada).
+5. **Entregue** — quando o projeto ficar *👀 aguardando revisão* (com o selo do
+   QA e, se for código, o link **🔀 Pull Request** no card), revise e clique
+   **📦 Entregar**: os arquivos produzidos são baixados para
    `server/data/entregas/<projeto>/`, a sessão é arquivada e as **contas a
    receber** são geradas (à vista ou entrada + parcelas).
 6. **Receba** — aba **💰 Financeiro → A receber → Receber**: só aí o caixa do
    HUD sobe (regime de caixa, como uma agência de verdade).
+
+## Automação (F4)
+
+- **🔎 QA automático por projeto** — os critérios de aceite do wizard viram a
+  rubrica de um revisor com contexto independente. Reprovou? O funcionário
+  recebe o feedback e revisa sozinho (o card mostra a rodada). O selo do card
+  ao chegar em *aguardando revisão* diz se foi **aprovado no QA**.
+- **📋 Standup matinal** — um agente "Gerente de Operações" roda todo dia no
+  horário configurado (padrão **09:00**, cron na nuvem — dispara mesmo com a
+  ponte desligada; ela sincroniza ao religar). Ele lê os dados reais de
+  ontem/hoje e publica o **Relatório matinal** no topo da aba Projetos (e no
+  Telegram). Teste na hora com o botão **▶️ Rodar standup agora**.
+- **📱 Telegram** — com o bot configurado, você recebe no celular: projeto
+  pronto para revisão (com link do PR), projeto falhou/travado esperando você,
+  conta a receber vencendo/atrasada, limite de custo estourado e o standup.
+- **🔀 Pull Request real** — em projetos de código o agente termina abrindo um
+  PR de verdade da branch de trabalho para a branch padrão (o token nunca sai
+  do proxy — o agente não vê credenciais). O link aparece no card e na
+  notificação.
+- **🧠 Memória por funcionário** — cada funcionário tem uma memória
+  profissional na nuvem, montada em toda sessão: ele lê as lições dos projetos
+  anteriores antes de começar e registra novas ao concluir. Quanto mais
+  projetos, melhor ele fica.
 
 ## Financeiro
 
@@ -97,8 +130,10 @@ Em `server/data/config.json` (ou via `PUT /api/config`):
 | Campo | Padrão | Efeito |
 |---|---|---|
 | `cambioUsdBrl` | 5.40 | conversão do custo de API para R$ |
-| `limiteDiarioUSD` | 25 | estourou a soma do dia → **pausa todos** os projetos |
+| `limiteDiarioUSD` | 25 | estourou a soma do dia (projetos + standup) → **pausa todos** os projetos |
 | `limitePorProjetoUSD` | 50 | estourou num projeto → **pausa aquele projeto** |
+| `standupAtivo` | true | liga/desliga o cron do relatório matinal |
+| `standupHora` | "09:00" | horário local do standup (mudar recria o cron na nuvem) |
 
 ## Onde ficam os dados
 
@@ -116,12 +151,15 @@ Backup = copiar a pasta.
 | Projeto de código não inicia | falta `GITHUB_TOKEN` no `server/.env`, ou o `repoUrl` não é `https://github.com/...` |
 | Projeto pausou sozinho | limite de custo estourado (veja o alerta/toast) — ajuste os limites e **Retomar** |
 | Ponte caiu no meio de um trabalho | pode religar sem medo: a sessão continua na nuvem e a ponte **reconcilia** os eventos sem duplicar nada |
+| Standup não apareceu no painel | o cron dispara na nuvem e a ponte detecta em até ~5 min; confira `standupAtivo`/`standupHora` em `GET /api/config` ou use **▶️ Rodar standup agora** |
+| Nada chega no Telegram | preencha `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` no `server/.env` e reinicie; mande um "oi" para o bot antes (ele não pode iniciar conversa) |
+| Agente não abriu o PR | o PAT precisa de `Pull requests: Read and write`; a branch de trabalho não pode ser a branch padrão (o agente cria `entrega/...` sozinho se for) |
 
 ## Checks e testes
 
 ```bash
 npm run check                  # jogo (typecheck + lint + 55 testes + build)
-npm --prefix server run check  # ponte (typecheck + 31 testes)
+npm --prefix server run check  # ponte (typecheck + 46 testes)
 ```
 
 O modo real roda 100% em dev local. O GitHub Pages continua servindo só o jogo

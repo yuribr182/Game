@@ -3,6 +3,7 @@
 import type { FastifyReply } from 'fastify';
 import Anthropic from '@anthropic-ai/sdk';
 import type { GerenciadorSessoes } from '../anthropic/sessoes.js';
+import type { GerenciadorStandup } from '../anthropic/standup.js';
 import { ErroPonte } from '../anthropic/cliente.js';
 import type { Store } from '../store/db.js';
 import type { TempoReal } from '../tempoReal.js';
@@ -11,6 +12,7 @@ export interface Contexto {
   store: Store;
   tempoReal: TempoReal;
   sessoes: GerenciadorSessoes;
+  standup: GerenciadorStandup;
   aoMudarEstado: () => Promise<void>;
   rodarRotinaDiaria: () => Promise<void>;
 }

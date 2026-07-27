@@ -92,6 +92,20 @@ const BADGE_STATUS: Record<string, { classe: string; rotulo: string }> = {
   rascunho: { classe: 'entregue', rotulo: '📝 rascunho' },
 };
 
+const QA_ROTULO: Record<string, string> = {
+  avaliando: '🔎 QA avaliando',
+  revisar: '🔧 ajustes do QA',
+  aprovado: '✅ QA aprovou',
+  max_iteracoes: '⚠️ QA no limite de rodadas',
+  reprovado: '⚠️ QA reprovou a rubrica',
+  interrompido: '⏸ QA interrompido',
+};
+
+function hojeLocalISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // ---------- projetos ----------
 
 function nomeFuncionario(id: string): string {
@@ -136,6 +150,15 @@ function cardProjeto(p: ProjetoRealFront): string {
         }</div>
          <div class="pr-barra"><div style="width:${pct}%"></div></div>`;
 
+  const chipQa = p.qaResultado
+    ? `<span class="pr-chip qa" title="${esc((p.qaFeedback ?? '').slice(0, 400))}">${QA_ROTULO[p.qaResultado] ?? ''}${p.qaIteracao ? ` (rodada ${p.qaIteracao})` : ''}</span>`
+    : p.qaAtivo && p.status !== 'rascunho'
+      ? '<span class="pr-chip qa">🧪 QA automático ligado</span>'
+      : '';
+  const linkPr = p.prUrl
+    ? `<a class="pr-link" href="${esc(p.prUrl)}" target="_blank" rel="noopener">🔀 Pull Request</a>`
+    : '';
+
   return `<div class="pr-card">
     <h4>${esc(p.emoji)} ${esc(p.nome)} <span class="pr-badge ${badge.classe}">${badge.rotulo}</span></h4>
     <div class="pr-sub">${esc(p.cliente)} · ${p.tipo === 'codigo' ? '💻 código' : '📦 entrega'} · 👤 ${esc(nomeFuncionario(p.funcionarioId))} · 📅 ${prazo}</div>
@@ -144,8 +167,26 @@ function cardProjeto(p: ProjetoRealFront): string {
       <span>💰 contrato <b>${brl(p.valorContratoBRL)}</b></span>
       <span>🔌 API <b>${brlCentavos(custoBRL)}</b> (US$ ${p.custoUSD.toFixed(2)})</span>
       <span>🧮 <b>${G.fmt(tokensK)}k</b> tokens</span>
+      ${chipQa}${linkPr}
     </div>
     <div class="pr-acoes">${acoes.join('')}</div>
+  </div>`;
+}
+
+/** Relatório matinal (F4b) — card no topo do painel de Projetos. */
+function cardStandup(): string {
+  const s = snap();
+  const ultimo = s?.standups?.[0];
+  const ativo = s?.config.standupAtivo !== false;
+  const hora = s?.config.standupHora ?? '09:00';
+  const corpo = ultimo
+    ? `<details class="standup" ${ultimo.data === hojeLocalISO() ? 'open' : ''}>
+        <summary>📋 Relatório matinal — ${ultimo.data.split('-').reverse().join('/')}</summary>
+        <div class="standup-texto">${esc(ultimo.texto)}</div>
+      </details>`
+    : `<p class="pr-sub">📋 Sem relatório matinal ainda${ativo ? ` — o gerente publica todo dia às ${esc(hora)}` : ' (standup desativado na config)'}.</p>`;
+  return `<div class="pr-card standup-card">${corpo}
+    <div class="pr-acoes"><button class="btn" data-acao="standup-agora">▶️ Rodar standup agora</button></div>
   </div>`;
 }
 
@@ -165,6 +206,7 @@ function renderProjetos(): void {
   alvo.innerHTML = `
     <div class="pr-topo"><h3>📋 Projetos</h3>
       <button class="btn btn-primary" data-acao="novo">+ Novo Projeto</button></div>
+    ${cardStandup()}
     ${abertos.length ? `<div class="pr-secao">Em produção</div>${abertos.map(cardProjeto).join('')}` : ''}
     ${rascunhos.length ? `<div class="pr-secao">Rascunhos</div>${rascunhos.map(cardProjeto).join('')}` : ''}
     ${!abertos.length && !rascunhos.length ? '<p class="pr-sub">Nenhum projeto ainda — cadastre o primeiro!</p>' : ''}
@@ -187,6 +229,10 @@ async function agirProjeto(acao: string, id: string): Promise<void> {
       if (!confirm('Marcar como ENTREGUE? Isso gera as contas a receber e encerra a sessão.')) return;
       const r = (await api.entregarProjeto(id)) as { contasGeradas: number; arquivosBaixados: string[] };
       toast(`📦 Entregue! ${r.contasGeradas} conta(s) a receber; ${r.arquivosBaixados.length} arquivo(s) baixado(s).`, 'good');
+    } else if (acao === 'standup-agora') {
+      toast('📋 Chamando o gerente para o standup — leva 1–2 minutos…');
+      await api.rodarStandupAgora();
+      toast('📋 Standup publicado!', 'good');
     } else if (acao === 'atividade' && projeto) abrirAtividade(projeto.id);
   } catch (erro) {
     toast(`⚠️ ${(erro as Error).message}`, 'bad');
@@ -334,6 +380,8 @@ interface DadosWizard {
   observacoes: string;
   repoUrl: string;
   branch: string;
+  qaAtivo: boolean;
+  abrirPR: boolean;
 }
 
 let wizardPasso = 1;
@@ -366,6 +414,8 @@ function abrirWizard(projeto: ProjetoRealFront | null): void {
     observacoes: spec.observacoes ?? '',
     repoUrl: (projeto as unknown as { repoUrl?: string })?.repoUrl ?? '',
     branch: (projeto as unknown as { branch?: string })?.branch ?? '',
+    qaAtivo: projeto?.qaAtivo ?? true,
+    abrirPR: projeto?.abrirPR ?? true,
   };
   wizardPasso = 1;
   $('#wizardTitulo').textContent = projeto ? `✏️ Editar ${projeto.nome}` : '📋 Novo projeto';
@@ -440,15 +490,21 @@ function renderWizard(): void {
     corpo.innerHTML = `
       <label>Entregáveis exatos</label>
       <textarea id="wEntregaveis">${esc(d.entregaveis)}</textarea>
-      <label>Critérios de aceite (um por linha — viram o checklist da revisão)</label>
+      <label>Critérios de aceite (um por linha — viram o checklist da revisão e a rubrica do QA)</label>
       <textarea id="wCriterios">${esc(d.criteriosAceite)}</textarea>
       <label>Observações (opcional)</label>
       <textarea id="wObs">${esc(d.observacoes)}</textarea>
+      <div class="wizard-checks solo" style="margin-top:6px">
+        <label><input type="checkbox" id="wQa" ${d.qaAtivo ? 'checked' : ''} /> 🔎 QA automático — um revisor independente avalia contra os critérios de aceite (até 3 rodadas) antes de te entregar. Consome um pouco mais de API.</label>
+      </div>
       <div id="wRepoCampos" style="${d.tipo === 'codigo' ? '' : 'display:none'}">
         <label>Repositório GitHub (https://github.com/…)</label>
         <input type="text" id="wRepo" value="${esc(d.repoUrl)}" placeholder="https://github.com/voce/projeto" />
         <label>Branch de trabalho</label>
         <input type="text" id="wBranch" value="${esc(d.branch)}" placeholder="main" />
+        <div class="wizard-checks solo">
+          <label><input type="checkbox" id="wPr" ${d.abrirPR ? 'checked' : ''} /> 🔀 Abrir Pull Request real ao final (em vez de só dar push na branch)</label>
+        </div>
       </div>`;
   } else {
     const custoEstimado = estimarCusto(d.tipo);
@@ -459,6 +515,8 @@ function renderWizard(): void {
         <span>💰 contrato <b>${brl(d.valorContratoBRL)}</b></span>
         <span>👤 <b>${esc(nomeFuncionario(d.funcionarioId))}</b></span>
         <span>🔌 custo de API estimado <b>${custoEstimado}</b></span>
+        <span>${d.qaAtivo ? '🔎 <b>com QA automático</b>' : 'sem QA automático'}</span>
+        ${d.tipo === 'codigo' && d.abrirPR ? '<span>🔀 <b>abre Pull Request</b></span>' : ''}
       </div>`;
   }
 }
@@ -520,6 +578,8 @@ function colherPasso(): string | null {
     d.observacoes = v('wObs').trim();
     d.repoUrl = v('wRepo').trim();
     d.branch = v('wBranch').trim();
+    d.qaAtivo = (document.getElementById('wQa') as HTMLInputElement | null)?.checked ?? true;
+    d.abrirPR = (document.getElementById('wPr') as HTMLInputElement | null)?.checked ?? true;
     if (!d.entregaveis || !d.criteriosAceite) return 'Entregáveis e critérios de aceite são obrigatórios.';
     if (d.tipo === 'codigo' && !d.repoUrl.startsWith('https://github.com/')) return 'Projeto de código exige o repositório do GitHub.';
   }
@@ -560,7 +620,8 @@ async function avancarWizard(): Promise<void> {
       criteriosAceite: d.criteriosAceite,
       ...(d.observacoes ? { observacoes: d.observacoes } : {}),
     },
-    ...(d.tipo === 'codigo' ? { repoUrl: d.repoUrl, branch: d.branch || 'main' } : {}),
+    qaAtivo: d.qaAtivo,
+    ...(d.tipo === 'codigo' ? { repoUrl: d.repoUrl, branch: d.branch || 'main', abrirPR: d.abrirPR } : {}),
   };
   $('#wizardErro').textContent = 'Salvando…';
   try {

@@ -25,6 +25,14 @@ export type StatusProjetoReal =
   | 'entregue'
   | 'falhou';
 
+export type ResultadoQAReal =
+  | 'avaliando'
+  | 'revisar'
+  | 'aprovado'
+  | 'max_iteracoes'
+  | 'reprovado'
+  | 'interrompido';
+
 export interface ProjetoRealFront {
   id: string;
   nome: string;
@@ -42,6 +50,13 @@ export interface ProjetoRealFront {
   status: StatusProjetoReal;
   custoUSD: number;
   tokens: { input: number; output: number; cacheRead: number; cacheWrite: number };
+  // F4
+  qaAtivo?: boolean;
+  qaIteracao?: number;
+  qaResultado?: ResultadoQAReal | null;
+  qaFeedback?: string;
+  abrirPR?: boolean;
+  prUrl?: string;
 }
 
 export interface ResumoFinanceiroReal {
@@ -56,12 +71,25 @@ export interface ResumoFinanceiroReal {
   lucroMesBRL: number;
 }
 
+export interface RelatorioStandupReal {
+  data: string; // yyyy-mm-dd
+  texto: string;
+  criadoEm: string;
+}
+
 export interface SnapshotReal {
   agora: string;
   funcionarios: FuncionarioReal[];
   projetos: ProjetoRealFront[];
   financeiro: ResumoFinanceiroReal;
-  config: { cambioUsdBrl: number; limiteDiarioUSD: number; limitePorProjetoUSD: number };
+  standups?: RelatorioStandupReal[]; // mais recente primeiro (F4b)
+  config: {
+    cambioUsdBrl: number;
+    limiteDiarioUSD: number;
+    limitePorProjetoUSD: number;
+    standupAtivo?: boolean;
+    standupHora?: string;
+  };
 }
 
 export interface EventoProgresso {
@@ -86,7 +114,7 @@ export interface EventoAlerta {
 
 export interface EntradaAtividadeReal {
   ts: string;
-  tipo: 'mensagem' | 'ferramenta' | 'progresso' | 'custo' | 'sistema';
+  tipo: 'mensagem' | 'ferramenta' | 'progresso' | 'custo' | 'sistema' | 'qa';
   texto: string;
 }
 

@@ -266,7 +266,11 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
       aoAlerta: (dados) => {
         const ev = dados as EventoAlerta;
         const tipo =
-          ev.tipo === 'aguardando_revisao' ? 'info' : ev.tipo === 'falha' ? 'fail' : 'warn';
+          ev.tipo === 'aguardando_revisao' || ev.tipo === 'standup'
+            ? 'info'
+            : ev.tipo === 'falha'
+              ? 'fail'
+              : 'warn';
         avisar({ type: tipo, msg: `🏢 ${ev.mensagem}` });
         emitirReal('alerta', ev);
       },

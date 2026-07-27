@@ -138,6 +138,12 @@ export function enviarMensagemProjeto(id: string, texto: string): Promise<unknow
   return chamar(`/projetos/${id}/mensagem`, { method: 'POST', body: JSON.stringify({ texto }) });
 }
 
+// ---- standup diário (F4b) ----
+
+export function rodarStandupAgora(): Promise<unknown> {
+  return chamar('/standup/rodar', { method: 'POST' });
+}
+
 // ---- tempo real ----
 
 export interface CanaisStream {

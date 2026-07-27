@@ -39,7 +39,11 @@ const INSTRUCOES_FIXAS = `## Como trabalhar (obrigatório)
 - Entregáveis:
   - Projeto de ENTREGA: escreva os arquivos finais em /mnt/session/outputs/ — essa pasta é o que o cliente recebe.
   - Projeto de CÓDIGO: trabalhe no repositório montado, faça commits pequenos e descritivos em pt-BR e push na branch de trabalho indicada.
-- Ao terminar tudo: chame \`${FERRAMENTA_PROGRESSO}\` com etapasConcluidas = etapasTotais e encerre com um resumo do que foi entregue e como conferir cada critério de aceite.`;
+- Ao terminar tudo: chame \`${FERRAMENTA_PROGRESSO}\` com etapasConcluidas = etapasTotais e encerre com um resumo do que foi entregue e como conferir cada critério de aceite.
+
+## Memória profissional
+- Se houver uma pasta de memória montada (procure em /mnt/memory/), LEIA suas notas no início de cada projeto — elas são suas lições de projetos anteriores.
+- Ao concluir (ou falhar) um projeto, registre lá um arquivo curto de lições aprendidas: o que funcionou, o que evitar, padrões do dono da agência. Muitos arquivos pequenos, nomes claros.`;
 
 export function montarSystem(f: FuncionarioAgente): string {
   const partes: string[] = [];
@@ -121,6 +125,33 @@ export async function atualizarAgenteAnthropic(
   return { agentVersion: Number(agente.version) };
 }
 
+/**
+ * Memory store por funcionário (F4e) — criado no 1º projeto dele e montado em
+ * toda sessão: o agente lê lições passadas e registra novas ao concluir.
+ */
+export async function garantirMemoria(
+  cliente: Anthropic,
+  store: Store,
+  funcionario: FuncionarioAgente,
+): Promise<string> {
+  if (funcionario.memoryStoreId) return funcionario.memoryStoreId;
+  const memoria = await cliente.beta.memoryStores.create({
+    name: `Memória — ${funcionario.nome}`,
+    description:
+      `Memória profissional de ${funcionario.nome} (${CARGO_ROTULO[funcionario.cargoVisual] ?? funcionario.cargoVisual}): ` +
+      'lições aprendidas, padrões que funcionaram e preferências do dono da agência, acumuladas entre projetos. ' +
+      'Leia no início de cada projeto; registre aprendizados ao concluir.',
+  } as Parameters<typeof cliente.beta.memoryStores.create>[0]);
+  const todos = await store.listarFuncionarios();
+  const alvo = todos.find((f) => f.id === funcionario.id);
+  if (alvo) {
+    alvo.memoryStoreId = memoria.id;
+    await store.salvarFuncionarios(todos);
+  }
+  funcionario.memoryStoreId = memoria.id;
+  return memoria.id;
+}
+
 /** Environment global (criado 1x e persistido na config). */
 export async function garantirEnvironment(cliente: Anthropic, store: Store): Promise<string> {
   const cfg: ConfigPonte = await store.lerConfig();
@@ -154,6 +185,17 @@ export function montarKickoff(projeto: ProjetoReal): string {
     linhas.push(
       `## Repositório\nO repositório já está montado no seu workspace. Trabalhe na branch \`${projeto.branch ?? 'main'}\` e faça push dos commits nela.`,
     );
+    if (projeto.abrirPR) {
+      const alvo = ownerRepoDe(projeto.repoUrl);
+      linhas.push(
+        [
+          '## Pull Request (obrigatório ao final)',
+          `Com todas as etapas concluídas e o push feito, abra um Pull Request REAL da branch de trabalho para a branch padrão do repositório usando a API REST do GitHub via curl${alvo ? ` (POST https://api.github.com/repos/${alvo}/pulls)` : ''}. A autenticação já é injetada automaticamente pelo proxy do repositório — NÃO peça token nem tente configurar credenciais.`,
+          `Se a branch de trabalho for a própria branch padrão, crie antes uma branch nova (ex.: \`entrega/${slugDe(projeto.nome)}\`), faça push nela e abra o PR a partir dela.`,
+          'Título e descrição do PR em pt-BR (o que foi feito + como testar). Ao encerrar, escreva o LINK COMPLETO do PR (https://github.com/…/pull/N) na sua mensagem final.',
+        ].join('\n'),
+      );
+    }
   } else {
     linhas.push('## Onde entregar\nEscreva os arquivos finais em /mnt/session/outputs/.');
   }
@@ -164,4 +206,58 @@ export function montarKickoff(projeto: ProjetoReal): string {
     `\nComece agora: quebre este projeto em etapas e chame \`${FERRAMENTA_PROGRESSO}\` com o plano antes de qualquer outra coisa.`,
   );
   return linhas.join('\n\n');
+}
+
+/**
+ * Rubrica do QA automático (F4a): os critérios de aceite do wizard viram itens
+ * graduáveis pelo revisor independente (grader de outcomes, contexto separado).
+ */
+export function montarRubric(projeto: ProjetoReal): string {
+  const criterios = projeto.spec.criteriosAceite
+    .split('\n')
+    .map((l) => l.trim().replace(/^[-*•]\s*/, ''))
+    .filter(Boolean);
+  return [
+    `# Rubrica de aceite — ${projeto.nome}`,
+    'O trabalho SÓ está pronto quando TODOS os critérios abaixo forem verificáveis no resultado entregue' +
+      (projeto.tipo === 'codigo'
+        ? ' (commits com push feito na branch de trabalho do repositório).'
+        : ' (arquivos escritos em /mnt/session/outputs/).'),
+    '',
+    '## Critérios de aceite do cliente',
+    ...criterios.map((c) => `- ${c}`),
+    '',
+    '## Critérios gerais (sempre valem)',
+    `- Todos os entregáveis combinados existem de fato: ${umaLinha(projeto.spec.entregaveis)}`,
+    '- Todo texto voltado ao cliente está em português do Brasil.',
+    '- Nada do que foi pedido ficou pela metade ou apenas descrito sem ser produzido.',
+  ].join('\n');
+}
+
+/** Extrai "owner/repo" de uma URL do GitHub (instruções de PR). */
+export function ownerRepoDe(repoUrl: string | undefined): string | null {
+  const m = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/.*)?$/.exec(repoUrl ?? '');
+  return m ? `${m[1]}/${m[2]}` : null;
+}
+
+/** Acha o primeiro link de Pull Request do GitHub num texto (F4d — captura para o card). */
+export function extrairLinkPR(texto: string): string | null {
+  const m = /https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/.exec(texto);
+  return m ? m[0] : null;
+}
+
+function slugDe(nome: string): string {
+  return (
+    nome
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 30) || 'projeto'
+  );
+}
+
+function umaLinha(texto: string): string {
+  return texto.replace(/\s+/g, ' ').trim().slice(0, 300);
 }

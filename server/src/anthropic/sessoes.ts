@@ -12,17 +12,22 @@ import path from 'node:path';
 import type Anthropic from '@anthropic-ai/sdk';
 import { agoraISO, arredondarBRL, hojeISO } from '../config.js';
 import { gerarContasReceber, lancamentoVenda } from '../financeiro/motor.js';
+import { notificarCelular } from '../notificar/telegram.js';
 import type { Store } from '../store/db.js';
 import type {
   EventoSessao,
   FuncionarioAgente,
   ProjetoReal,
+  ResultadoQA,
 } from '../store/tipos.js';
 import type { TempoReal } from '../tempoReal.js';
 import {
+  extrairLinkPR,
   FERRAMENTA_PROGRESSO,
   garantirEnvironment,
+  garantirMemoria,
   montarKickoff,
+  montarRubric,
 } from './agentes.js';
 import { ErroPonte } from './cliente.js';
 import { custoUsd, lancamentoCustoApiDiario, type UsoModelo } from './custos.js';
@@ -83,6 +88,33 @@ export function lerProgresso(entrada: unknown): ProgressoReportado | null {
   };
 }
 
+/** Leitura de um span.outcome_evaluation_end do QA automático (F4a). Pura, testável. */
+export interface AvaliacaoQA {
+  resultado: ResultadoQA;
+  explicacao: string;
+  iteracao: number; // 1-based, para exibir
+  final: boolean; // terminal para este outcome (só needs_revision continua)
+}
+
+export function interpretarAvaliacaoQA(ev: EventoSessao): AvaliacaoQA | null {
+  if (ev.type !== 'span.outcome_evaluation_end') return null;
+  const mapa: Record<string, ResultadoQA> = {
+    satisfied: 'aprovado',
+    needs_revision: 'revisar',
+    max_iterations_reached: 'max_iteracoes',
+    failed: 'reprovado',
+    interrupted: 'interrompido',
+  };
+  const resultado = mapa[String(ev.result ?? '')];
+  if (!resultado) return null;
+  return {
+    resultado,
+    explicacao: typeof ev.explanation === 'string' ? ev.explanation : '',
+    iteracao: Number(ev.iteration ?? 0) + 1,
+    final: resultado !== 'revisar',
+  };
+}
+
 // ---------- gerenciador ----------
 
 interface Dependencias {
@@ -96,6 +128,7 @@ const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class GerenciadorSessoes {
   private ativos = new Map<string, { abortar: boolean }>();
+  private avisosTravado = new Map<string, NodeJS.Timeout>(); // F4c: requires_action parado
 
   constructor(private deps: Dependencias) {}
 
@@ -115,6 +148,18 @@ export class GerenciadorSessoes {
     const environmentId = await garantirEnvironment(cliente, store);
 
     const recursos: Record<string, unknown>[] = [];
+    // memória profissional (F4e): criada no 1º projeto do funcionário; acessório — sem ela a sessão sai igual
+    try {
+      const memoryStoreId = await garantirMemoria(cliente, store, funcionario);
+      recursos.push({
+        type: 'memory_store',
+        memory_store_id: memoryStoreId,
+        access: 'read_write',
+        instructions: `Memória profissional de ${funcionario.nome}. Leia as notas antes de começar; registre as lições aprendidas ao concluir o projeto.`,
+      });
+    } catch (erro) {
+      console.warn(`[memória] não consegui criar/montar a memória de ${funcionario.nome}: ${mensagem(erro)}`);
+    }
     if (projeto.tipo === 'codigo' && projeto.repoUrl) {
       recursos.push({
         type: 'github_repository',
@@ -171,18 +216,28 @@ export class GerenciadorSessoes {
     await this.deps.aoMudarEstado();
   }
 
-  /** Retoma (aceita feedback do dono, que vira user.message). */
+  /** Retoma (aceita feedback do dono). Com QA ativo, o feedback vira um NOVO outcome
+   *  (o anterior morreu na pausa/encerramento) — assim a re-avaliação continua valendo. */
   async retomar(projetoId: string, feedback?: string): Promise<void> {
     const projeto = await this.obterProjeto(projetoId);
     if (!projeto?.sessionId) throw new ErroPonte('Projeto sem sessão para retomar.');
     await this.atualizarProjeto(projetoId, (p) => {
       p.status = 'em_andamento';
       p.motivoPausa = null;
+      if (p.qaAtivo) {
+        p.qaResultado = null;
+        p.qaIteracao = 0;
+        p.qaFeedback = '';
+      }
     });
     const texto = feedback?.trim()
       ? `Feedback do dono da agência:\n\n${feedback.trim()}\n\nContinue o trabalho levando isso em conta e siga reportando o progresso.`
       : 'Pode continuar o trabalho de onde parou. Siga reportando o progresso.';
-    await this.enviarMensagem(projeto.sessionId, texto);
+    if (projeto.qaAtivo && projeto.kickoffEnviado) {
+      await this.enviarOutcome(projeto.sessionId, texto, projeto);
+    } else {
+      await this.enviarMensagem(projeto.sessionId, texto);
+    }
     await this.registrarAtividade(projetoId, 'sistema', feedback?.trim() ? `Retomado com feedback: ${feedback.trim().slice(0, 200)}` : 'Retomado.');
     this.ligarLoop(projetoId);
     await this.deps.aoMudarEstado();
@@ -192,6 +247,21 @@ export class GerenciadorSessoes {
   async enviarMensagem(sessionId: string, texto: string): Promise<void> {
     await this.deps.cliente().beta.sessions.events.send(sessionId, {
       events: [{ type: 'user.message', content: [{ type: 'text', text: texto }] }],
+    } as Parameters<Anthropic['beta']['sessions']['events']['send']>[1]);
+  }
+
+  /** F4a — meta com QA: user.define_outcome com a rubrica dos critérios de aceite.
+   *  O grader (contexto independente) avalia cada rodada e devolve o feedback ao executor. */
+  private async enviarOutcome(sessionId: string, descricao: string, projeto: ProjetoReal): Promise<void> {
+    await this.deps.cliente().beta.sessions.events.send(sessionId, {
+      events: [
+        {
+          type: 'user.define_outcome',
+          description: descricao,
+          rubric: { type: 'text', content: montarRubric(projeto) },
+          max_iterations: 3,
+        },
+      ],
     } as Parameters<Anthropic['beta']['sessions']['events']['send']>[1]);
   }
 
@@ -261,6 +331,37 @@ export class GerenciadorSessoes {
   desligarTodos(): void {
     for (const [, controle] of this.ativos) controle.abortar = true;
     this.ativos.clear();
+    for (const [, timer] of this.avisosTravado) clearTimeout(timer);
+    this.avisosTravado.clear();
+  }
+
+  /**
+   * F4c — aviso de "travado esperando você": requires_action normalmente é transitório
+   * (a ponte responde reportar_progresso na hora). Se a sessão ficar parada nele por
+   * 2 minutos sem NENHUM evento novo, o dono é avisado (painel + celular). Qualquer
+   * evento posterior desarma o aviso.
+   */
+  private vigiarTravado(projetoId: string, ev: EventoSessao): void {
+    const armado = this.avisosTravado.get(projetoId);
+    if (armado) {
+      clearTimeout(armado);
+      this.avisosTravado.delete(projetoId);
+    }
+    const stop = ev.stop_reason as { type?: string } | undefined;
+    if (ev.type !== 'session.status_idle' || stop?.type !== 'requires_action') return;
+    const timer = setTimeout(() => {
+      this.avisosTravado.delete(projetoId);
+      void (async () => {
+        const projeto = await this.obterProjeto(projetoId);
+        if (!projeto || projeto.status !== 'em_andamento') return;
+        const texto = `✋ ${projeto.emoji} ${projeto.nome}: o funcionário está parado esperando uma ação sua — abra a Atividade no painel.`;
+        await this.registrarAtividade(projetoId, 'sistema', 'Sessão parada em requires_action há 2 min — dono avisado.');
+        this.deps.tempoReal.enviar('alerta', { tipo: 'travado', projetoId, mensagem: texto });
+        notificarCelular(texto);
+      })();
+    }, 120_000);
+    timer.unref();
+    this.avisosTravado.set(projetoId, timer);
   }
 
   // ---- loop de eventos ----
@@ -278,6 +379,9 @@ export class GerenciadorSessoes {
     const controle = this.ativos.get(projetoId);
     if (controle) controle.abortar = true;
     this.ativos.delete(projetoId);
+    const timer = this.avisosTravado.get(projetoId);
+    if (timer) clearTimeout(timer);
+    this.avisosTravado.delete(projetoId);
   }
 
   private async rodarLoop(projetoId: string, controle: { abortar: boolean }): Promise<void> {
@@ -330,11 +434,19 @@ export class GerenciadorSessoes {
     // kickoff só depois do stream aberto — e só uma vez
     const atual = await this.obterProjeto(projeto.id);
     if (atual && !atual.kickoffEnviado) {
-      await this.enviarMensagem(sessionId, montarKickoff(atual));
+      // com QA ativo a spec vira user.define_outcome (grader = revisor); sem QA, user.message
+      if (atual.qaAtivo) await this.enviarOutcome(sessionId, montarKickoff(atual), atual);
+      else await this.enviarMensagem(sessionId, montarKickoff(atual));
       await this.atualizarProjeto(projeto.id, (p) => {
         p.kickoffEnviado = true;
       });
-      await this.registrarAtividade(projeto.id, 'sistema', 'Especificação enviada ao funcionário.');
+      await this.registrarAtividade(
+        projeto.id,
+        'sistema',
+        atual.qaAtivo
+          ? 'Especificação enviada como meta com QA automático (rubrica = critérios de aceite, até 3 rodadas).'
+          : 'Especificação enviada ao funcionário.',
+      );
       ultimoStatus = null; // acabamos de acordar a sessão
     }
 
@@ -345,6 +457,7 @@ export class GerenciadorSessoes {
         await this.aplicarDecisao(projeto.id, decisao);
         return 'fim';
       }
+      this.vigiarTravado(projeto.id, ultimoStatus); // reconectou com a sessão já esperando ação
     }
 
     // 3) stream ao vivo — checagem terminal roda para TODO evento (visto ou não)
@@ -354,6 +467,7 @@ export class GerenciadorSessoes {
       const novo = !ev.id || !vistos.has(ev.id);
       if (ev.id) vistos.add(ev.id);
       if (novo) await this.efeitosDoEvento(projeto.id, ev, respondidos);
+      this.vigiarTravado(projeto.id, ev); // F4c: arma/desarma o aviso de "esperando você"
       desdeSalvo += 1;
       if (desdeSalvo >= 20) {
         desdeSalvo = 0;
@@ -383,9 +497,27 @@ export class GerenciadorSessoes {
     switch (ev.type) {
       case 'agent.message': {
         const texto = textoDoEvento(ev);
-        if (texto) await this.registrarAtividade(projetoId, 'mensagem', texto.slice(0, 2000));
+        if (texto) {
+          await this.registrarAtividade(projetoId, 'mensagem', texto.slice(0, 2000));
+          await this.capturarLinkPR(projetoId, texto); // F4d
+        }
         return;
       }
+      case 'span.outcome_evaluation_start': {
+        // F4a — o QA começou uma rodada; também serve de fallback de progresso na cena
+        const iteracao = Number(ev.iteration ?? 0) + 1;
+        await this.atualizarProjeto(projetoId, (p) => {
+          p.qaResultado = 'avaliando';
+          p.qaIteracao = iteracao;
+          p.resumoAtual = `QA avaliando a entrega (rodada ${iteracao})…`;
+        });
+        await this.registrarAtividade(projetoId, 'qa', `🔎 QA começou a avaliar a entrega (rodada ${iteracao}).`);
+        await this.emitirProgressoAtual(projetoId);
+        return;
+      }
+      case 'span.outcome_evaluation_end':
+        await this.tratarAvaliacaoQA(projetoId, ev);
+        return;
       case 'agent.tool_use':
       case 'agent.mcp_tool_use': {
         const nome = typeof ev.name === 'string' ? ev.name : 'ferramenta';
@@ -411,6 +543,70 @@ export class GerenciadorSessoes {
       default:
         return;
     }
+  }
+
+  /** F4a — resultado de uma rodada do QA: atualiza o projeto, loga e devolve ao front. */
+  private async tratarAvaliacaoQA(projetoId: string, ev: EventoSessao): Promise<void> {
+    const avaliacao = interpretarAvaliacaoQA(ev);
+    if (!avaliacao) return;
+    const resumos: Record<ResultadoQA, string> = {
+      avaliando: '',
+      aprovado: 'aprovado no QA ✅',
+      revisar: `ajustando após o feedback do QA (rodada ${avaliacao.iteracao})`,
+      max_iteracoes: 'QA esgotou as rodadas — revise com atenção',
+      reprovado: 'QA não validou a rubrica — revise manualmente',
+      interrompido: '',
+    };
+    const textos: Record<ResultadoQA, string> = {
+      avaliando: '',
+      aprovado: `✅ QA aprovou a entrega (rodada ${avaliacao.iteracao}).`,
+      revisar: `🔧 QA pediu ajustes (rodada ${avaliacao.iteracao}) — o funcionário recebeu o feedback e já está revisando.`,
+      max_iteracoes: '⚠️ QA esgotou as rodadas sem aprovar tudo — confira com atenção na revisão.',
+      reprovado: '⚠️ QA não conseguiu aplicar a rubrica a esta tarefa — revise manualmente.',
+      interrompido: '⏸ Ciclo de QA interrompido (pausa/nova instrução).',
+    };
+    await this.atualizarProjeto(projetoId, (p) => {
+      p.qaResultado = avaliacao.resultado;
+      p.qaIteracao = avaliacao.iteracao;
+      if (avaliacao.explicacao) p.qaFeedback = avaliacao.explicacao.slice(0, 2000);
+      const resumo = resumos[avaliacao.resultado];
+      if (resumo) p.resumoAtual = resumo; // fallback de progresso na cena
+    });
+    const texto = textos[avaliacao.resultado];
+    if (texto) {
+      await this.registrarAtividade(
+        projetoId,
+        'qa',
+        avaliacao.explicacao ? `${texto} — ${avaliacao.explicacao.slice(0, 600)}` : texto,
+      );
+    }
+    await this.emitirProgressoAtual(projetoId);
+  }
+
+  /** F4d — guarda o link do Pull Request assim que o agente o menciona. */
+  private async capturarLinkPR(projetoId: string, texto: string): Promise<void> {
+    const link = extrairLinkPR(texto);
+    if (!link) return;
+    const projeto = await this.obterProjeto(projetoId);
+    if (!projeto || projeto.tipo !== 'codigo' || projeto.prUrl === link) return;
+    await this.atualizarProjeto(projetoId, (p) => {
+      p.prUrl = link;
+    });
+    await this.registrarAtividade(projetoId, 'sistema', `🔀 Pull Request aberto: ${link}`);
+    await this.deps.aoMudarEstado();
+  }
+
+  /** Reemite o progresso persistido (balão/barra) — usado pelos eventos de QA. */
+  private async emitirProgressoAtual(projetoId: string): Promise<void> {
+    const p = await this.obterProjeto(projetoId);
+    if (!p) return;
+    this.deps.tempoReal.enviar('progresso', {
+      projetoId,
+      etapasConcluidas: p.etapasConcluidas,
+      etapasTotais: p.etapasTotais,
+      resumoAtual: p.resumoAtual,
+    });
+    await this.deps.aoMudarEstado();
   }
 
   /** Regra 4 — reportar_progresso: atualiza o projeto, avisa o front e responde a tool. */
@@ -524,13 +720,11 @@ export class GerenciadorSessoes {
       custoHojeFuncionarioUSD: funcionario?.custoHojeUSD ?? 0,
     });
 
-    // limites → pausa automática + alerta
+    // limites → pausa automática + alerta (painel + celular)
     if ((projetoAtualizado?.custoUSD ?? 0) > cfg.limitePorProjetoUSD && projetoAtualizado?.status === 'em_andamento') {
-      tempoReal.enviar('alerta', {
-        tipo: 'limite_projeto',
-        projetoId,
-        mensagem: `Limite de custo do projeto estourado (US$ ${cfg.limitePorProjetoUSD}). Pausando.`,
-      });
+      const aviso = `Limite de custo do projeto estourado (US$ ${cfg.limitePorProjetoUSD}). Pausando.`;
+      tempoReal.enviar('alerta', { tipo: 'limite_projeto', projetoId, mensagem: aviso });
+      notificarCelular(`💸 ${projeto.emoji} ${projeto.nome}: ${aviso}`);
       await this.pausar(projetoId, 'limite_custo');
       return;
     }
@@ -539,10 +733,9 @@ export class GerenciadorSessoes {
       if (chave.endsWith(`:${hoje}`)) totalDia += valor;
     }
     if (totalDia > cfg.limiteDiarioUSD) {
-      tempoReal.enviar('alerta', {
-        tipo: 'limite_diario',
-        mensagem: `Limite de custo diário estourado (US$ ${cfg.limiteDiarioUSD}). Pausando projetos ativos.`,
-      });
+      const aviso = `Limite de custo diário estourado (US$ ${cfg.limiteDiarioUSD}). Pausando projetos ativos.`;
+      tempoReal.enviar('alerta', { tipo: 'limite_diario', mensagem: aviso });
+      notificarCelular(`💸 ${aviso}`);
       const projetos = await store.listarProjetos();
       for (const p of projetos) {
         if (p.status === 'em_andamento') await this.pausar(p.id, 'limite_custo');
@@ -554,18 +747,30 @@ export class GerenciadorSessoes {
     const projeto = await this.obterProjeto(projetoId);
     if (!projeto) return;
     if (projeto.status === 'pausado' || projeto.status === 'entregue') return; // pausa/entrega mandam
+    const aprovadoQA = projeto.qaAtivo && projeto.qaResultado === 'aprovado';
+    const rotulo = `${projeto.emoji} ${projeto.nome}`;
     if (decisao.tipo === 'revisao') {
       await this.atualizarProjeto(projetoId, (p) => {
         p.status = 'aguardando_revisao';
       });
-      await this.registrarAtividade(projetoId, 'sistema', 'O funcionário encerrou o turno — projeto aguardando a sua revisão.');
+      await this.registrarAtividade(
+        projetoId,
+        'sistema',
+        aprovadoQA
+          ? 'O funcionário encerrou o turno com o QA aprovado — projeto aguardando a sua revisão.'
+          : 'O funcionário encerrou o turno — projeto aguardando a sua revisão.',
+      );
       this.deps.tempoReal.enviar('alerta', { tipo: 'aguardando_revisao', projetoId, mensagem: 'Projeto pronto para revisão.' });
+      notificarCelular(
+        `✅ ${rotulo} terminou${aprovadoQA ? ' (aprovado no QA)' : ''} — aguardando sua revisão.${projeto.prUrl ? `\n🔀 ${projeto.prUrl}` : ''}`,
+      );
     } else if (decisao.tipo === 'falha') {
       await this.atualizarProjeto(projetoId, (p) => {
         p.status = 'falhou';
       });
       await this.registrarAtividade(projetoId, 'sistema', `Projeto marcado como falho: ${decisao.motivo}`);
       this.deps.tempoReal.enviar('alerta', { tipo: 'falha', projetoId, mensagem: decisao.motivo });
+      notificarCelular(`🛑 ${rotulo} falhou: ${decisao.motivo}`);
     } else if (decisao.tipo === 'terminado') {
       const completo = projeto.etapasTotais > 0 && projeto.etapasConcluidas >= projeto.etapasTotais;
       await this.atualizarProjeto(projetoId, (p) => {
@@ -575,6 +780,11 @@ export class GerenciadorSessoes {
         projetoId,
         'sistema',
         completo ? 'Sessão terminada com as etapas completas — aguardando revisão.' : 'Sessão terminada antes do fim — projeto marcado como falho.',
+      );
+      notificarCelular(
+        completo
+          ? `✅ ${rotulo} terminou — aguardando sua revisão.`
+          : `🛑 ${rotulo}: a sessão terminou antes do fim — projeto marcado como falho.`,
       );
     }
     await this.deps.aoMudarEstado();
@@ -641,7 +851,7 @@ export class GerenciadorSessoes {
 
   private async registrarAtividade(
     projetoId: string,
-    tipo: 'mensagem' | 'ferramenta' | 'progresso' | 'custo' | 'sistema',
+    tipo: 'mensagem' | 'ferramenta' | 'progresso' | 'custo' | 'sistema' | 'qa',
     texto: string,
   ): Promise<void> {
     const entrada = { ts: agoraISO(), tipo, texto };

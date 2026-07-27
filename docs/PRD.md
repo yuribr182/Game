@@ -223,7 +223,8 @@ dia/noite). O renderer Pixi e a dependência `pixi.js` foram **removidos**
 transformar o tycoon em espelho vivo da agência: funcionários = agentes de IA
 reais (Claude Managed Agents), projetos cadastrados pelo dono, financeiro de
 agência de verdade. Fases próprias (F0–F4) no plano. **F0 (plano), F1 (ponte
-`server/`), F2 (cena viva) e F3 (painéis reais) concluídas em 2026-07-27**:
+`server/`), F2 (cena viva), F3 (painéis reais) e F4 (automação e qualidade)
+concluídas em 2026-07-27**:
 - F1 — servidor Fastify com cadastros, motor financeiro (regime de caixa),
   driver de sessões (stream-first, dedupe, `reportar_progresso`, limites de
   custo com pausa automática) e SSE — dirigível por curl, com check próprio
@@ -241,9 +242,21 @@ agência de verdade. Fases próprias (F0–F4) no plano. **F0 (plano), F1 (ponte
   **chat com o agente** e Retomar-com-feedback; na cena, balão com a etapa
   atual e clique no boneco abre a Atividade. Suíte Playwright 23/23 verde nos
   dois modos (jogo normal intocado).
+- F4 — automação e qualidade: **QA automático** por projeto (kickoff vira
+  `user.define_outcome` com rubrica = critérios de aceite; grader independente
+  avalia até 3 rodadas e devolve feedback ao executor; selo/rodada no card e
+  linhas 🔎 no log); **standup diário** (Agent gerente + deployment com cron —
+  relatório matinal no topo da aba Projetos, botão ▶️ Rodar agora, custo no
+  livro); **Telegram** (projeto pronto/falhou, travado em `requires_action` por
+  2 min, contas vencendo, limites de custo, standup); **PR real** em projeto de
+  código via proxy git (REST injetado — sem credencial no sandbox; link 🔀 no
+  card); **memória por funcionário** (memory store montado em toda sessão —
+  lê lições no início, registra ao concluir). Ponte com 46 testes; suíte
+  Playwright F4 22/22 verde (jogo normal intocado).
 Guia de uso: **`EMPRESA-REAL.md`** na raiz. Rodar: **`npm run empresa`** e abrir
-`http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Próxima fase:
-F4 (QA com segundo agente, standup diário, Telegram, PRs reais, memória).
+`http://localhost:5173/Game/?empresa=1` (chave em `server/.env`). Próximo:
+backlog "insano" do plano (gerente multiagente, senioridade real, propostas em
+PDF, sino de vendas/metas, CRM, Modo TV, linha do tempo).
 
 **F1 (concluída):** `js/game.js` portado para `src/core/` tipado, validado no
 navegador (save real v3 preservado, zero erro de console, cena idêntica).

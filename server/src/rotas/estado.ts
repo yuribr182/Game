@@ -28,4 +28,18 @@ export function rotasEstado(app: FastifyInstance, ctx: Contexto): void {
       /* remoção acontece no 'close' do response dentro do TempoReal */
     });
   });
+
+  // ---- standup diário (F4b) ----
+
+  app.get('/standups', async () => ctx.store.listarStandups(15));
+
+  // dispara um standup agora (teste/botão do painel) — cria a sessão na hora
+  app.post('/standup/rodar', async (_req, reply) => {
+    try {
+      const relatorio = await ctx.standup.rodarAgora();
+      return relatorio ?? { erro: 'A sessão terminou sem publicar relatório.' };
+    } catch (erro) {
+      return responderErro(reply, erro);
+    }
+  });
 }

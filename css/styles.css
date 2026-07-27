@@ -526,5 +526,20 @@ body.modo-real .tab[data-tab="shop"] { display: none; }
 .atv-linha.tipo-progresso { color: #7fd4a0; }
 .atv-linha.tipo-sistema { color: #ecc35f; }
 .atv-linha.tipo-ferramenta { color: #8fa1bd; }
+.atv-linha.tipo-qa { color: #b993e8; }
 .atv-chat { display: flex; gap: 6px; margin-top: 8px; }
 .atv-chat input { flex: 1; margin: 0; }
+
+/* F4: QA automático, Pull Request e relatório matinal */
+.pr-chip.qa { background: rgba(150,100,220,.15); border-color: rgba(150,100,220,.45); color: #c8aef0; }
+.pr-link { color: #7db4e8; text-decoration: none; }
+.pr-link:hover { text-decoration: underline; }
+.wizard-checks.solo { grid-template-columns: 1fr; }
+.standup-card { border-color: rgba(46,125,215,.45); }
+.standup summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
+.standup-texto {
+  margin-top: 8px; font-size: .82rem; line-height: 1.45; white-space: pre-wrap;
+  background: var(--bg, #0d1420); border: 1px solid var(--line, #2a3750);
+  border-radius: 8px; padding: 10px 12px; max-height: 320px; overflow-y: auto;
+}
+.standup-card .pr-acoes { margin-top: 8px; }

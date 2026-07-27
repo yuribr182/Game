@@ -9,9 +9,11 @@ import type {
   ContaReceber,
   CustoFixo,
   EntradaAtividade,
+  EstadoStandup,
   FuncionarioAgente,
   Lancamento,
   ProjetoReal,
+  RelatorioStandup,
 } from './tipos.js';
 import { CONFIG_PADRAO } from './tipos.js';
 
@@ -139,8 +141,10 @@ export class Store {
     return this.enfileirar(() => this.db.gravarJson('custos-fixos.json', itens));
   }
 
-  lerConfig(): Promise<ConfigPonte> {
-    return this.db.lerJson<ConfigPonte>('config.json', { ...CONFIG_PADRAO });
+  async lerConfig(): Promise<ConfigPonte> {
+    // merge com os padrões: configs gravadas antes de um campo existir continuam válidas
+    const salvo = await this.db.lerJson<Partial<ConfigPonte>>('config.json', {});
+    return { ...CONFIG_PADRAO, ...salvo };
   }
 
   salvarConfig(cfg: ConfigPonte): Promise<void> {
@@ -200,5 +204,26 @@ export class Store {
 
   caminhoEntregas(projetoId: string): string {
     return this.db.caminho(path.join('entregas', projetoId));
+  }
+
+  // ---- standup diário (F4b) ----
+
+  lerStandup(): Promise<EstadoStandup> {
+    return this.db.lerJson<EstadoStandup>('standup.json', { relatorios: [], runsProcessados: [] });
+  }
+
+  /** Anexa um relatório matinal (mantém os últimos 60) e/ou marca runs processados (últimos 200). */
+  async salvarStandup(mudar: (estado: EstadoStandup) => void): Promise<EstadoStandup> {
+    const estado = await this.lerStandup();
+    mudar(estado);
+    estado.relatorios = estado.relatorios.slice(-60);
+    estado.runsProcessados = estado.runsProcessados.slice(-200);
+    await this.enfileirar(() => this.db.gravarJson('standup.json', estado));
+    return estado;
+  }
+
+  async listarStandups(limite = 15): Promise<RelatorioStandup[]> {
+    const { relatorios } = await this.lerStandup();
+    return relatorios.slice(-limite).reverse(); // mais recente primeiro
   }
 }

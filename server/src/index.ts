@@ -4,8 +4,10 @@
 import Fastify from 'fastify';
 import { clienteAnthropic, temChaveApi } from './anthropic/cliente.js';
 import { GerenciadorSessoes } from './anthropic/sessoes.js';
+import { GerenciadorStandup } from './anthropic/standup.js';
 import { carregarEnv, dirDados, hojeISO, porta } from './config.js';
 import { lancamentosCustosFixosDevidos, marcarAtrasadas } from './financeiro/motor.js';
+import { notificarCelular } from './notificar/telegram.js';
 import { montarSnapshot } from './snapshot.js';
 import { Store } from './store/db.js';
 import { TempoReal } from './tempoReal.js';
@@ -33,6 +35,13 @@ async function principal(): Promise<void> {
     aoMudarEstado,
   });
 
+  const standup = new GerenciadorStandup({
+    store,
+    tempoReal,
+    cliente: clienteAnthropic,
+    aoMudarEstado,
+  });
+
   /** Rotina diária: contas atrasadas + custos fixos recorrentes (idempotente; com catch-up). */
   const rodarRotinaDiaria = async (): Promise<void> => {
     const hoje = hojeISO();
@@ -45,14 +54,26 @@ async function principal(): Promise<void> {
     const novos = lancamentosCustosFixosDevidos(custos, lancamentos, hoje);
     for (const l of novos) await store.anexarLancamento(l);
     const cfg = await store.lerConfig();
-    if (cfg.ultimaRotinaDiaria !== hoje || novos.length) {
+    const primeiraDoDia = cfg.ultimaRotinaDiaria !== hoje;
+    if (primeiraDoDia || novos.length) {
       cfg.ultimaRotinaDiaria = hoje;
       await store.salvarConfig(cfg);
       await aoMudarEstado();
     }
+    // F4c — 1x por dia: contas vencendo hoje/atrasadas no celular do dono
+    if (primeiraDoDia) {
+      const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const vencemHoje = contas.filter((c) => c.status === 'aberta' && c.vencimento === hoje);
+      const atrasadas = contas.filter((c) => c.status === 'atrasada');
+      for (const c of vencemHoje) notificarCelular(`💰 Conta a receber vence HOJE: ${c.descricao} — ${brl(c.valorBRL)}.`);
+      if (atrasadas.length) {
+        const total = atrasadas.reduce((s, c) => s + c.valorBRL, 0);
+        notificarCelular(`⚠️ ${atrasadas.length} conta(s) a receber atrasada(s), total ${brl(total)} — cobre o cliente!`);
+      }
+    }
   };
 
-  const ctx: Contexto = { store, tempoReal, sessoes, aoMudarEstado, rodarRotinaDiaria };
+  const ctx: Contexto = { store, tempoReal, sessoes, standup, aoMudarEstado, rodarRotinaDiaria };
 
   const app = Fastify({ logger: { level: 'info' } });
   await app.register(
@@ -75,8 +96,16 @@ async function principal(): Promise<void> {
   await app.listen({ port: porta(), host: '127.0.0.1' });
   app.log.info(`Ponte do Modo Empresa Real em http://127.0.0.1:${porta()}/api/saude (dados em ${store.dir})`);
 
+  let intervaloStandup: NodeJS.Timeout | null = null;
   if (temChaveApi()) {
     await sessoes.reconciliar().catch((erro) => app.log.error(erro, 'reconciliação falhou'));
+    // standup (F4b): garante o cron na nuvem e fica de olho nos disparos
+    await standup.garantir().catch((erro) => app.log.error(erro, 'standup: garantir falhou'));
+    await standup.verificarRuns().catch((erro) => app.log.error(erro, 'standup: verificação falhou'));
+    intervaloStandup = setInterval(() => {
+      void standup.verificarRuns().catch((erro) => app.log.error(erro, 'standup: verificação falhou'));
+    }, 5 * 60_000);
+    intervaloStandup.unref();
   } else {
     app.log.warn('ANTHROPIC_API_KEY ausente — cadastros funcionam, mas criar agente/iniciar projeto vai falhar. Preencha server/.env.');
   }
@@ -84,6 +113,7 @@ async function principal(): Promise<void> {
   const encerrar = async (): Promise<void> => {
     sessoes.desligarTodos();
     clearInterval(intervaloRotina);
+    if (intervaloStandup) clearInterval(intervaloStandup);
     await app.close();
     process.exit(0);
   };
