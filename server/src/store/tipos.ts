@@ -199,6 +199,53 @@ export function idDoTime(funcionarioId: string): string {
   return funcionarioId.slice(PREFIXO_TIME.length);
 }
 
+// ---- Rotinas 24/7 (PLANO-TIMES-FLUXOS T2) ----
+
+/** Blocos de dados reais que a ponte fornece à rotina via custom tool. */
+export type ContextoRotina = 'crm' | 'projetos' | 'financeiro';
+
+/** Ações estruturadas que a rotina PODE executar no sistema (guard-rails:
+ *  criar/anotar é permitido; iniciar projeto e mover dinheiro é sempre humano). */
+export type AcaoRotina = 'criar_oportunidade' | 'registrar_nota_cliente' | 'criar_rascunho_projeto';
+
+/** Trabalho recorrente sem projeto: "toda manhã, qualificar os leads do CRM". */
+export interface Rotina {
+  id: string;
+  nome: string;
+  emoji: string;
+  responsavelTipo: 'funcionario' | 'time';
+  responsavelId: string;
+  hora: string; // HH:MM local
+  dias: 'todos' | 'uteis';
+  briefing: string; // instrução fixa do trabalho
+  contexto: ContextoRotina[];
+  acoes: AcaoRotina[];
+  ativa: boolean;
+  agentId: string | null; // Agent próprio da rotina (briefing + tools; multiagente se time)
+  deploymentId: string | null; // cron na nuvem (mesmo mecanismo do standup)
+  agendaAplicada?: string | null; // "HH:MM|dias" usada no deployment atual (muda ⇒ recria)
+  rosterAplicado?: string[]; // agentIds no Agent atual (muda ⇒ update)
+  ultimaExecucao: string | null; // ISO
+  criadoEm: string;
+}
+
+/** Uma execução publicada da rotina (item do feed). */
+export interface ExecucaoRotina {
+  id: string;
+  rotinaId: string;
+  data: string; // yyyy-mm-dd
+  texto: string;
+  acoesFeitas: string[]; // descrições das ações estruturadas executadas
+  criadoEm: string;
+  sessionId?: string;
+}
+
+/** Persistência das rotinas: execuções (feed) + runs já processados. */
+export interface EstadoRotinas {
+  execucoes: ExecucaoRotina[];
+  runsProcessados: string[];
+}
+
 export interface EntradaAtividade {
   ts: string; // ISO completo
   tipo: 'mensagem' | 'ferramenta' | 'progresso' | 'custo' | 'sistema' | 'qa';

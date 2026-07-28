@@ -9,9 +9,11 @@ import type {
   ConfigPonte,
   ConquistaReal,
   FuncionarioAgente,
+  ExecucaoRotina,
   OportunidadeCRM,
   ProjetoReal,
   RelatorioStandup,
+  Rotina,
   Time,
 } from './store/tipos.js';
 
@@ -22,6 +24,8 @@ export interface Snapshot {
   projetos: ProjetoReal[];
   financeiro: ResumoFinanceiro;
   standups: RelatorioStandup[]; // mais recente primeiro (F4b)
+  rotinas: Omit<Rotina, 'agentId' | 'deploymentId' | 'agendaAplicada' | 'rosterAplicado'>[]; // T2
+  execucoesRotinas: ExecucaoRotina[]; // feed, mais recente primeiro (T2)
   crm: { clientes: ClienteCRM[]; oportunidades: OportunidadeCRM[] }; // backlog 7
   conquistas: ConquistaReal[]; // backlog 5 — bloqueadas viram metas
   config: Pick<
@@ -51,6 +55,10 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
       store.listarOportunidades(),
       store.lerConquistas(),
     ]);
+  const [rotinas, execucoesRotinas] = await Promise.all([
+    store.listarRotinas(),
+    store.listarExecucoesRotinas(15),
+  ]);
   if (marcarAtrasadas(contas, hoje)) await store.salvarContasReceber(contas);
   return {
     agora: new Date().toISOString(),
@@ -59,6 +67,10 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
     projetos,
     financeiro: resumoFinanceiro(lancamentos, contas, hoje),
     standups,
+    rotinas: rotinas.map(
+      ({ agentId: _a, deploymentId: _d, agendaAplicada: _g, rosterAplicado: _r, ...r }) => r,
+    ),
+    execucoesRotinas,
     crm: { clientes, oportunidades },
     conquistas: listaConquistas(conquistas),
     config: {

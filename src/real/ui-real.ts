@@ -12,6 +12,7 @@ import type {
   FuncionarioReal,
   OportunidadeCRMReal,
   ProjetoRealFront,
+  RotinaReal,
   SnapshotReal,
   TimeReal,
 } from './tipos';
@@ -321,7 +322,189 @@ function renderProjetos(): void {
     ${abertos.length ? `<div class="pr-secao">Em produção</div>${abertos.map(cardProjeto).join('')}` : ''}
     ${rascunhos.length ? `<div class="pr-secao">Rascunhos</div>${rascunhos.map(cardProjeto).join('')}` : ''}
     ${!abertos.length && !rascunhos.length ? '<p class="pr-sub">Nenhum projeto ainda — cadastre o primeiro!</p>' : ''}
+    ${blocoRotinas()}
     ${passados.length ? `<div class="pr-secao">Histórico</div>${passados.map(cardProjeto).join('')}` : ''}`;
+}
+
+// ---------- rotinas 24/7 (T2) ----------
+
+let rotinaFormAberto = false;
+let rotinaEmEdicao: RotinaReal | null = null;
+
+const CONTEXTOS_ROTINA: Record<string, string> = {
+  crm: '🧲 CRM (clientes + funil)',
+  projetos: '📋 Projetos (status real)',
+  financeiro: '💰 Financeiro (resumo)',
+};
+
+const ACOES_ROTINA_ROTULO: Record<string, string> = {
+  criar_oportunidade: '🧲 Criar oportunidade no CRM',
+  registrar_nota_cliente: '📝 Anotar em cliente',
+  criar_rascunho_projeto: '📋 Criar rascunho de projeto',
+};
+
+function nomeResponsavelRotina(r: RotinaReal): string {
+  if (r.responsavelTipo === 'time') {
+    const t = snap()?.times?.find((x) => x.id === r.responsavelId);
+    return t ? `${t.emoji} Time ${t.nome}` : '👥 Time';
+  }
+  return snap()?.funcionarios.find((f) => f.id === r.responsavelId)?.nome ?? '?';
+}
+
+function cardRotina(r: RotinaReal): string {
+  const ultima = r.ultimaExecucao
+    ? new Date(r.ultimaExecucao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : 'nunca';
+  return `<div class="pr-card">
+    <h4>${esc(r.emoji)} ${esc(r.nome)} ${r.ativa ? '<span class="pr-badge andamento">⏰ agendada</span>' : '<span class="pr-badge pausado">⏸ pausada</span>'}</h4>
+    <div class="pr-sub">👤 ${esc(nomeResponsavelRotina(r))} · ⏰ ${esc(r.hora)} ${r.dias === 'uteis' ? '(seg–sex)' : '(todo dia)'} · última: ${ultima}</div>
+    <div>${r.acoes.map((a) => `<span class="pr-chip">${ACOES_ROTINA_ROTULO[a] ?? a}</span>`).join('') || '<span class="pr-sub">só análise (sem ações no sistema)</span>'}</div>
+    <div class="pr-acoes">
+      <button class="btn" data-acao-rotina="rodar" data-id="${r.id}">▶️ Rodar agora</button>
+      <button class="btn" data-acao-rotina="alternar" data-id="${r.id}">${r.ativa ? '⏸ Pausar' : '▶️ Reativar'}</button>
+      <button class="btn" data-acao-rotina="editar" data-id="${r.id}">✏️ Editar</button>
+      <button class="btn" data-acao-rotina="excluir" data-id="${r.id}">🗑 Excluir</button>
+    </div>
+  </div>`;
+}
+
+function formRotina(): string {
+  const s = snap();
+  const r = rotinaEmEdicao;
+  const funcionarios = s?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
+  const times = timesAtivos();
+  const respValor = r ? `${r.responsavelTipo}:${r.responsavelId}` : '';
+  const marcadoCtx = (k: string) => (r?.contexto.includes(k as RotinaReal['contexto'][number]) ? 'checked' : '');
+  const marcadoAcao = (k: string) => (r?.acoes.includes(k as RotinaReal['acoes'][number]) ? 'checked' : '');
+  return `<div class="pr-card">
+    <h4>${r ? `✏️ Editar rotina ${esc(r.nome)}` : '🔁 Nova rotina'}</h4>
+    <div class="wizard-linha">
+      <div><label>Nome</label>
+        <input type="text" id="rNome" maxlength="80" value="${esc(r?.nome ?? '')}" placeholder="ex.: Caçador de leads" /></div>
+      <div><label>Emoji</label>
+        <input type="text" id="rEmoji" maxlength="8" value="${esc(r?.emoji ?? '🔁')}" /></div>
+    </div>
+    <div class="wizard-linha">
+      <div><label>Responsável</label>
+        <select id="rResp">
+          <option value="">— escolha —</option>
+          ${funcionarios.map((f) => `<option value="funcionario:${f.id}" ${respValor === `funcionario:${f.id}` ? 'selected' : ''}>${esc(f.nome)}</option>`).join('')}
+          ${times.map((t) => `<option value="time:${t.id}" ${respValor === `time:${t.id}` ? 'selected' : ''}>${esc(t.emoji)} Time ${esc(t.nome)}</option>`).join('')}
+        </select></div>
+      <div><label>Horário</label>
+        <input type="time" id="rHora" value="${esc(r?.hora ?? '08:00')}" /></div>
+      <div><label>Dias</label>
+        <select id="rDias">
+          <option value="uteis" ${(r?.dias ?? 'uteis') === 'uteis' ? 'selected' : ''}>Seg–sex</option>
+          <option value="todos" ${r?.dias === 'todos' ? 'selected' : ''}>Todo dia</option>
+        </select></div>
+    </div>
+    <label>Briefing — o que fazer em cada execução</label>
+    <textarea id="rBriefing" placeholder="ex.: Analise os leads e oportunidades do CRM. Qualifique cada um (quente/morno/frio), anote o racional no cliente e crie oportunidades para os quentes.">${esc(r?.briefing ?? '')}</textarea>
+    <label>Contexto real fornecido ao agente</label>
+    <div class="wizard-checks">${Object.entries(CONTEXTOS_ROTINA)
+      .map(([k, rot]) => `<label><input type="checkbox" data-ctx-rotina="${k}" ${marcadoCtx(k)} /> ${rot}</label>`)
+      .join('')}</div>
+    <label>Ações que o agente PODE executar (criar/anotar apenas — iniciar projeto e dinheiro são sempre seus)</label>
+    <div class="wizard-checks">${Object.entries(ACOES_ROTINA_ROTULO)
+      .map(([k, rot]) => `<label><input type="checkbox" data-acao-check-rotina="${k}" ${marcadoAcao(k)} /> ${rot}</label>`)
+      .join('')}</div>
+    <div class="pr-acoes" style="margin-top:8px">
+      <button class="btn btn-primary" data-acao-rotina="salvar">${r ? 'Salvar rotina' : 'Criar rotina'}</button>
+      <button class="btn" data-acao-rotina="cancelar">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function blocoRotinas(): string {
+  const s = snap();
+  const rotinas = s?.rotinas ?? [];
+  const feed = s?.execucoesRotinas ?? [];
+  const itensFeed = feed
+    .slice(0, 6)
+    .map((e) => {
+      const rotina = rotinas.find((r) => r.id === e.rotinaId);
+      const quando = new Date(e.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return `<details class="standup-card pr-card"><summary>${esc(rotina?.emoji ?? '🔁')} <b>${esc(rotina?.nome ?? 'Rotina')}</b> · ${quando}${e.acoesFeitas.length ? ` · ⚡ ${e.acoesFeitas.length} ação(ões)` : ''}</summary>
+        <div class="standup-texto">${esc(e.texto)}</div>
+        ${e.acoesFeitas.length ? `<div class="pr-sub">⚡ ${e.acoesFeitas.map(esc).join(' · ')}</div>` : ''}
+      </details>`;
+    })
+    .join('');
+  return `
+    <div class="pr-topo" style="margin-top:16px"><h3>🔁 Rotinas (${rotinas.length})</h3>
+      <button class="btn" data-acao-rotina="nova">+ Nova rotina</button></div>
+    ${rotinaFormAberto ? formRotina() : ''}
+    ${
+      rotinas.length
+        ? rotinas.map(cardRotina).join('')
+        : rotinaFormAberto
+          ? ''
+          : '<p class="pr-sub">Trabalhos recorrentes 24/7: qualificar leads toda manhã, relatório semanal… O agente roda sozinho no horário (na nuvem) e publica o resultado aqui.</p>'
+    }
+    ${itensFeed ? `<div class="pr-secao">Feed das rotinas</div>${itensFeed}` : ''}`;
+}
+
+async function agirRotina(acao: string, id: string): Promise<void> {
+  const r = snap()?.rotinas?.find((x) => x.id === id) ?? null;
+  try {
+    if (acao === 'nova') {
+      rotinaFormAberto = true;
+      rotinaEmEdicao = null;
+      renderProjetos();
+    } else if (acao === 'editar' && r) {
+      rotinaFormAberto = true;
+      rotinaEmEdicao = r;
+      renderProjetos();
+    } else if (acao === 'cancelar') {
+      rotinaFormAberto = false;
+      rotinaEmEdicao = null;
+      renderProjetos();
+    } else if (acao === 'salvar') {
+      const valor = (sel: string) => (document.getElementById(sel) as HTMLInputElement | null)?.value ?? '';
+      const resp = valor('rResp').split(':');
+      const dados = {
+        nome: valor('rNome').trim(),
+        emoji: valor('rEmoji').trim() || '🔁',
+        responsavelTipo: resp[0] as 'funcionario' | 'time',
+        responsavelId: resp.slice(1).join(':'),
+        hora: valor('rHora') || '08:00',
+        dias: valor('rDias') as 'todos' | 'uteis',
+        briefing: (document.getElementById('rBriefing') as HTMLTextAreaElement | null)?.value.trim() ?? '',
+        contexto: [...document.querySelectorAll('[data-ctx-rotina]:checked')].map(
+          (el) => (el as HTMLElement).dataset.ctxRotina!,
+        ),
+        acoes: [...document.querySelectorAll('[data-acao-check-rotina]:checked')].map(
+          (el) => (el as HTMLElement).dataset.acaoCheckRotina!,
+        ),
+      };
+      if (!dados.nome) return toast('⚠️ Dê um nome à rotina.', 'bad');
+      if (!dados.responsavelId) return toast('⚠️ Escolha o responsável.', 'bad');
+      if (dados.briefing.length < 10) return toast('⚠️ Escreva o briefing (o que fazer).', 'bad');
+      if (rotinaEmEdicao) {
+        await api.atualizarRotina(rotinaEmEdicao.id, dados);
+        toast(`✅ Rotina ${dados.nome} atualizada.`);
+      } else {
+        await api.criarRotina(dados);
+        toast(`🔁 Rotina ${dados.nome} criada! O cron é agendado na nuvem em instantes.`);
+      }
+      rotinaFormAberto = false;
+      rotinaEmEdicao = null;
+    } else if (acao === 'alternar' && r) {
+      await api.atualizarRotina(id, { ativa: !r.ativa });
+      toast(r.ativa ? '⏸ Rotina pausada.' : '▶️ Rotina reativada.');
+    } else if (acao === 'rodar') {
+      toast('▶️ Rodando a rotina agora — o resultado chega no feed em 1–3 minutos…');
+      await api.rodarRotinaAgora(id);
+      toast('✅ Rotina executada — veja o feed.', 'good');
+    } else if (acao === 'excluir' && r) {
+      if (!confirm(`Excluir a rotina ${r.nome}? O cron na nuvem é arquivado.`)) return;
+      await api.excluirRotina(id);
+      toast(`🗑 Rotina ${r.nome} excluída.`);
+    }
+  } catch (erro) {
+    toast(`⚠️ ${(erro as Error).message}`, 'bad');
+  }
 }
 
 async function agirProjeto(acao: string, id: string): Promise<void> {
@@ -1400,6 +1583,8 @@ function iniciarPaineis(): void {
 
   // delegação de cliques nos painéis
   $('#realProjetos').addEventListener('click', (ev) => {
+    const alvoRotina = (ev.target as HTMLElement).closest('[data-acao-rotina]') as HTMLElement | null;
+    if (alvoRotina) return void agirRotina(alvoRotina.dataset.acaoRotina!, alvoRotina.dataset.id ?? '');
     const alvo = (ev.target as HTMLElement).closest('[data-acao]') as HTMLElement | null;
     if (alvo) void agirProjeto(alvo.dataset.acao!, alvo.dataset.id ?? '');
   });

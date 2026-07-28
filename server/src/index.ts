@@ -4,6 +4,7 @@
 import Fastify from 'fastify';
 import { clienteAnthropic, temChaveApi } from './anthropic/cliente.js';
 import { GerenciadorPropostas } from './anthropic/propostas.js';
+import { GerenciadorRotinas } from './anthropic/rotinas.js';
 import { GerenciadorSessoes } from './anthropic/sessoes.js';
 import { GerenciadorStandup } from './anthropic/standup.js';
 import { carregarEnv, dirDados, hojeISO, porta } from './config.js';
@@ -19,6 +20,7 @@ import { rotasEstado } from './rotas/estado.js';
 import { rotasFinanceiro } from './rotas/financeiro.js';
 import { rotasFuncionarios } from './rotas/funcionarios.js';
 import { rotasProjetos } from './rotas/projetos.js';
+import { rotasRotinas } from './rotas/rotinas.js';
 import { rotasTimes } from './rotas/times.js';
 
 async function principal(): Promise<void> {
@@ -49,6 +51,13 @@ async function principal(): Promise<void> {
   });
 
   const propostas = new GerenciadorPropostas({
+    store,
+    tempoReal,
+    cliente: clienteAnthropic,
+    aoMudarEstado,
+  });
+
+  const rotinas = new GerenciadorRotinas({
     store,
     tempoReal,
     cliente: clienteAnthropic,
@@ -86,7 +95,7 @@ async function principal(): Promise<void> {
     }
   };
 
-  const ctx: Contexto = { store, tempoReal, sessoes, standup, propostas, aoMudarEstado, rodarRotinaDiaria };
+  const ctx: Contexto = { store, tempoReal, sessoes, standup, propostas, rotinas, aoMudarEstado, rodarRotinaDiaria };
 
   const app = Fastify({ logger: { level: 'info' } });
   await app.register(
@@ -95,6 +104,7 @@ async function principal(): Promise<void> {
       rotasFuncionarios(api, ctx);
       rotasProjetos(api, ctx);
       rotasTimes(api, ctx);
+      rotasRotinas(api, ctx);
       rotasFinanceiro(api, ctx);
       rotasCrm(api, ctx);
     },
@@ -119,8 +129,12 @@ async function principal(): Promise<void> {
     // standup (F4b): garante o cron na nuvem e fica de olho nos disparos
     await standup.garantir().catch((erro) => app.log.error(erro, 'standup: garantir falhou'));
     await standup.verificarRuns().catch((erro) => app.log.error(erro, 'standup: verificação falhou'));
+    // rotinas 24/7 (T2): mesmo padrão do standup, uma por cadastro
+    await rotinas.garantirTodas().catch((erro) => app.log.error(erro, 'rotinas: garantir falhou'));
+    await rotinas.verificarRuns().catch((erro) => app.log.error(erro, 'rotinas: verificação falhou'));
     intervaloStandup = setInterval(() => {
       void standup.verificarRuns().catch((erro) => app.log.error(erro, 'standup: verificação falhou'));
+      void rotinas.verificarRuns().catch((erro) => app.log.error(erro, 'rotinas: verificação falhou'));
     }, 5 * 60_000);
     intervaloStandup.unref();
   } else {

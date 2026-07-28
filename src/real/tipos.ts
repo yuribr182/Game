@@ -37,6 +37,36 @@ export function idDoTime(funcionarioId: string): string {
   return funcionarioId.slice(PREFIXO_TIME.length);
 }
 
+// ---- Rotinas 24/7 (T2) ----
+
+export type ContextoRotinaReal = 'crm' | 'projetos' | 'financeiro';
+export type AcaoRotinaReal = 'criar_oportunidade' | 'registrar_nota_cliente' | 'criar_rascunho_projeto';
+
+export interface RotinaReal {
+  id: string;
+  nome: string;
+  emoji: string;
+  responsavelTipo: 'funcionario' | 'time';
+  responsavelId: string;
+  hora: string; // HH:MM
+  dias: 'todos' | 'uteis';
+  briefing: string;
+  contexto: ContextoRotinaReal[];
+  acoes: AcaoRotinaReal[];
+  ativa: boolean;
+  ultimaExecucao: string | null;
+  criadoEm: string;
+}
+
+export interface ExecucaoRotinaReal {
+  id: string;
+  rotinaId: string;
+  data: string;
+  texto: string;
+  acoesFeitas: string[];
+  criadoEm: string;
+}
+
 export type StatusProjetoReal =
   | 'rascunho'
   | 'em_andamento'
@@ -141,6 +171,8 @@ export interface SnapshotReal {
   agora: string;
   funcionarios: FuncionarioReal[];
   times?: TimeReal[]; // squads dinâmicos (T1)
+  rotinas?: RotinaReal[]; // rotinas 24/7 (T2)
+  execucoesRotinas?: ExecucaoRotinaReal[]; // feed, mais recente primeiro (T2)
   projetos: ProjetoRealFront[];
   financeiro: ResumoFinanceiroReal;
   standups?: RelatorioStandupReal[]; // mais recente primeiro (F4b)

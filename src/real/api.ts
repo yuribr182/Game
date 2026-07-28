@@ -72,6 +72,24 @@ export function arquivarTime(id: string): Promise<unknown> {
   return chamar(`/times/${id}`, { method: 'DELETE' });
 }
 
+// ---- rotinas 24/7 (T2) ----
+
+export function criarRotina(dados: unknown): Promise<unknown> {
+  return chamar('/rotinas', { method: 'POST', body: JSON.stringify(dados) });
+}
+
+export function atualizarRotina(id: string, dados: unknown): Promise<unknown> {
+  return chamar(`/rotinas/${id}`, { method: 'PUT', body: JSON.stringify(dados) });
+}
+
+export function excluirRotina(id: string): Promise<unknown> {
+  return chamar(`/rotinas/${id}`, { method: 'DELETE' });
+}
+
+export function rodarRotinaAgora(id: string): Promise<unknown> {
+  return chamar(`/rotinas/${id}/rodar`, { method: 'POST' });
+}
+
 // ---- financeiro ----
 
 export function financeiroResumo(): Promise<unknown> {

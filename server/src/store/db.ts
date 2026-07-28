@@ -13,9 +13,12 @@ import type {
   EstadoStandup,
   FuncionarioAgente,
   Lancamento,
+  EstadoRotinas,
+  ExecucaoRotina,
   OportunidadeCRM,
   ProjetoReal,
   RelatorioStandup,
+  Rotina,
   Time,
 } from './tipos.js';
 import { CONFIG_PADRAO } from './tipos.js';
@@ -221,6 +224,35 @@ export class Store {
 
   salvarTimes(itens: Time[]): Promise<void> {
     return this.enfileirar(() => this.db.gravarJson('times.json', itens));
+  }
+
+  // ---- rotinas 24/7 (PLANO-TIMES-FLUXOS T2) ----
+
+  listarRotinas(): Promise<Rotina[]> {
+    return this.db.lerJson<Rotina[]>('rotinas.json', []);
+  }
+
+  salvarRotinas(itens: Rotina[]): Promise<void> {
+    return this.enfileirar(() => this.db.gravarJson('rotinas.json', itens));
+  }
+
+  lerEstadoRotinas(): Promise<EstadoRotinas> {
+    return this.db.lerJson<EstadoRotinas>('rotinas-estado.json', { execucoes: [], runsProcessados: [] });
+  }
+
+  /** Anexa execuções ao feed (mantém as últimas 200) e/ou marca runs (últimos 500). */
+  async salvarEstadoRotinas(mudar: (estado: EstadoRotinas) => void): Promise<EstadoRotinas> {
+    const estado = await this.lerEstadoRotinas();
+    mudar(estado);
+    estado.execucoes = estado.execucoes.slice(-200);
+    estado.runsProcessados = estado.runsProcessados.slice(-500);
+    await this.enfileirar(() => this.db.gravarJson('rotinas-estado.json', estado));
+    return estado;
+  }
+
+  async listarExecucoesRotinas(limite = 20): Promise<ExecucaoRotina[]> {
+    const { execucoes } = await this.lerEstadoRotinas();
+    return execucoes.slice(-limite).reverse(); // mais recente primeiro
   }
 
   // ---- CRM (backlog 7) ----
