@@ -40,7 +40,11 @@ export function idDoTime(funcionarioId: string): string {
 // ---- Rotinas 24/7 (T2) ----
 
 export type ContextoRotinaReal = 'crm' | 'projetos' | 'financeiro';
-export type AcaoRotinaReal = 'criar_oportunidade' | 'registrar_nota_cliente' | 'criar_rascunho_projeto';
+export type AcaoRotinaReal =
+  | 'criar_oportunidade'
+  | 'registrar_nota_cliente'
+  | 'criar_rascunho_projeto'
+  | 'disparar_fluxo';
 
 export interface RotinaReal {
   id: string;

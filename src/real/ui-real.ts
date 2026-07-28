@@ -571,6 +571,7 @@ const ACOES_ROTINA_ROTULO: Record<string, string> = {
   criar_oportunidade: '🧲 Criar oportunidade no CRM',
   registrar_nota_cliente: '📝 Anotar em cliente',
   criar_rascunho_projeto: '📋 Criar rascunho de projeto',
+  disparar_fluxo: '🔗 Disparar fluxo (esteira)',
 };
 
 function nomeResponsavelRotina(r: RotinaReal): string {
@@ -1562,6 +1563,9 @@ async function renderFinanceiro(): Promise<void> {
         if (o.etapa === 'proposta') acoes.push(b('✅ Fechou!', `data-opp-etapa="fechado" data-id="${o.id}"`, 'btn-primary'));
         if (o.etapa === 'lead' || o.etapa === 'proposta') acoes.push(b('❌ Perdi', `data-opp-etapa="perdido" data-id="${o.id}"`));
         if (o.etapa === 'fechado') acoes.push(b('📋 Virar projeto', `data-opp-projeto="${o.id}"`, 'btn-accent'));
+        if (o.etapa !== 'perdido' && (snap()?.fluxos?.length ?? 0) > 0) {
+          acoes.push(b('🔗 Disparar fluxo', `data-opp-fluxo="${o.id}"`));
+        }
         if (o.etapa === 'perdido') {
           acoes.push(b('🔁 Reabrir', `data-opp-etapa="lead" data-id="${o.id}"`), b('🗑', `data-opp-excluir="${o.id}"`));
         }
@@ -1901,6 +1905,39 @@ function iniciarPaineis(): void {
       const o = snap()?.crm?.oportunidades.find((x) => x.id === oppProjeto.dataset.oppProjeto);
       const clienteNome = snap()?.crm?.clientes.find((c) => c.id === o?.clienteId)?.nome ?? '';
       abrirWizard(null, { nome: o?.titulo, cliente: clienteNome, valor: o?.valorEstimadoBRL });
+      return;
+    }
+    // 🔗 disparar fluxo a partir da oportunidade (entrada pré-preenchida do CRM)
+    const oppFluxo = (ev.target as HTMLElement).closest('[data-opp-fluxo]') as HTMLElement | null;
+    if (oppFluxo) {
+      const o = snap()?.crm?.oportunidades.find((x) => x.id === oppFluxo.dataset.oppFluxo);
+      const fluxos = snap()?.fluxos ?? [];
+      if (!o || !fluxos.length) return;
+      let fluxo = fluxos[0]!;
+      if (fluxos.length > 1) {
+        const escolha = prompt(
+          `Qual fluxo disparar?\n${fluxos.map((f, i) => `${i + 1}. ${f.emoji} ${f.nome}`).join('\n')}\n\nDigite o número:`,
+          '1',
+        );
+        const idx = Number(escolha) - 1;
+        if (!Number.isInteger(idx) || !fluxos[idx]) return;
+        fluxo = fluxos[idx]!;
+      }
+      const cli = snap()?.crm?.clientes.find((c) => c.id === o.clienteId);
+      const entrada = [
+        `Oportunidade do CRM: ${o.titulo}`,
+        `Cliente: ${cli?.nome ?? '?'}${cli?.contato ? ` (${cli.contato})` : ''}`,
+        `Valor estimado: ${brlCentavos(o.valorEstimadoBRL)}`,
+        o.observacoes ? `Observações: ${o.observacoes}` : '',
+        cli?.observacoes ? `Notas do cliente: ${cli.observacoes}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      toast(`🚀 Disparando o fluxo ${fluxo.nome}…`);
+      void api
+        .dispararFluxo(fluxo.id, o.titulo, entrada)
+        .then(() => toast('🔗 Fluxo disparado — acompanhe na aba Projetos.', 'good'))
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
       return;
     }
     const aba = (ev.target as HTMLElement).closest('[data-fin]') as HTMLElement | null;

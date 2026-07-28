@@ -18,7 +18,9 @@ const esquemaRotina = z.object({
   dias: z.enum(['todos', 'uteis']).default('uteis'),
   briefing: z.string().min(10).max(6000),
   contexto: z.array(z.enum(['crm', 'projetos', 'financeiro'])).default([]),
-  acoes: z.array(z.enum(['criar_oportunidade', 'registrar_nota_cliente', 'criar_rascunho_projeto'])).default([]),
+  acoes: z
+    .array(z.enum(['criar_oportunidade', 'registrar_nota_cliente', 'criar_rascunho_projeto', 'disparar_fluxo']))
+    .default([]),
 });
 
 async function validarResponsavel(

@@ -1,5 +1,10 @@
 # 💻 App Agency Tycoon
 
+> 📘 **Novo por aqui? Leia o [TUTORIAL.md](TUTORIAL.md)** — o guia completo de
+> como trabalhar no projeto: o que depende de você (chaves, tokens,
+> aprovações), como operar o **Modo Empresa Real** (agentes de IA de verdade,
+> times, rotinas 24/7 e fluxos) e como desenvolver/publicar.
+
 Jogo web no estilo **tycoon** para empreendedores. Você comanda uma agência de
 desenvolvimento de aplicativos: começa com **uma mesa numa garagem** e faz a
 empresa crescer até virar um campus de tecnologia.

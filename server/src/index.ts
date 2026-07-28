@@ -59,18 +59,19 @@ async function principal(): Promise<void> {
     aoMudarEstado,
   });
 
-  const rotinas = new GerenciadorRotinas({
+  const fluxos = new GerenciadorFluxos({
     store,
     tempoReal,
     cliente: clienteAnthropic,
     aoMudarEstado,
   });
 
-  const fluxos = new GerenciadorFluxos({
+  const rotinas = new GerenciadorRotinas({
     store,
     tempoReal,
     cliente: clienteAnthropic,
     aoMudarEstado,
+    fluxos, // ação disparar_fluxo: rotina encaminha um caso para a esteira
   });
 
   /** Rotina diária: contas atrasadas + custos fixos recorrentes (idempotente; com catch-up). */

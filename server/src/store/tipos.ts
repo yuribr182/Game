@@ -205,8 +205,12 @@ export function idDoTime(funcionarioId: string): string {
 export type ContextoRotina = 'crm' | 'projetos' | 'financeiro';
 
 /** Ações estruturadas que a rotina PODE executar no sistema (guard-rails:
- *  criar/anotar é permitido; iniciar projeto e mover dinheiro é sempre humano). */
-export type AcaoRotina = 'criar_oportunidade' | 'registrar_nota_cliente' | 'criar_rascunho_projeto';
+ *  criar/anotar/disparar-esteira é permitido; iniciar projeto e mover dinheiro é sempre humano). */
+export type AcaoRotina =
+  | 'criar_oportunidade'
+  | 'registrar_nota_cliente'
+  | 'criar_rascunho_projeto'
+  | 'disparar_fluxo';
 
 /** Trabalho recorrente sem projeto: "toda manhã, qualificar os leads do CRM". */
 export interface Rotina {

@@ -78,6 +78,19 @@ export const ACOES_ROTINA: Record<AcaoRotina, { descricao: string; schema: Recor
       required: ['nome', 'cliente', 'objetivo', 'escopo', 'entregaveis', 'criteriosAceite'],
     },
   },
+  disparar_fluxo: {
+    descricao:
+      'Dispara uma execução de um FLUXO existente (esteira de estágios). Use para encaminhar um caso quente para a esteira certa — os estágios com aprovação manual continuam esperando o dono.',
+    schema: {
+      type: 'object',
+      properties: {
+        fluxoNome: { type: 'string', description: 'Nome (ou parte do nome) do fluxo cadastrado' },
+        titulo: { type: 'string', description: 'Título desta execução (ex.: "Lead: Padaria do João")' },
+        entrada: { type: 'string', description: 'Contexto inicial completo para o 1º estágio' },
+      },
+      required: ['fluxoNome', 'titulo', 'entrada'],
+    },
+  },
 };
 
 // ---------- helpers puros (testáveis) ----------
@@ -164,6 +177,8 @@ interface Dependencias {
   tempoReal: TempoReal;
   cliente: () => Anthropic;
   aoMudarEstado: () => Promise<void>;
+  /** Injetado para a ação disparar_fluxo (opcional: sem ele a ação é negada). */
+  fluxos?: { disparar: (fluxoId: string, titulo: string, entrada: string, origem: { tipo: 'rotina'; refId?: string }) => Promise<unknown> };
 }
 
 export class GerenciadorRotinas {
@@ -531,6 +546,23 @@ export class GerenciadorRotinas {
     const { store } = this.deps;
     const dados = (entrada ?? {}) as Record<string, unknown>;
     const texto = (chave: string): string => String(dados[chave] ?? '').trim();
+
+    if (acao === 'disparar_fluxo') {
+      if (!this.deps.fluxos) return 'erro: disparo de fluxo indisponível nesta ponte';
+      const busca = texto('fluxoNome').toLowerCase();
+      const titulo = texto('titulo');
+      const entradaFluxo = texto('entrada');
+      if (!busca || !titulo || !entradaFluxo) return 'erro: fluxoNome, titulo e entrada são obrigatórios';
+      const fluxos = await store.listarFluxos();
+      const alvo =
+        fluxos.find((f) => f.nome.toLowerCase() === busca) ??
+        fluxos.find((f) => f.nome.toLowerCase().includes(busca));
+      if (!alvo) {
+        return `erro: nenhum fluxo com o nome "${texto('fluxoNome')}" — existem: ${fluxos.map((f) => f.nome).join(', ') || '(nenhum)'}`;
+      }
+      await this.deps.fluxos.disparar(alvo.id, titulo, entradaFluxo, { tipo: 'rotina', refId: rotina.id });
+      return `fluxo "${alvo.nome}" disparado com a execução "${titulo}"`;
+    }
 
     if (acao === 'criar_oportunidade' || acao === 'registrar_nota_cliente') {
       const nomeCliente = texto('clienteNome');
