@@ -13,7 +13,9 @@ import type {
   OportunidadeCRMReal,
   ProjetoRealFront,
   SnapshotReal,
+  TimeReal,
 } from './tipos';
+import { ehResponsavelTime, idDoTime, PREFIXO_TIME } from './tipos';
 
 const G = window.Game;
 
@@ -50,6 +52,10 @@ function cambio(): number {
 
 function snap(): SnapshotReal | null {
   return G.real?.snapshot() ?? null;
+}
+
+function timesAtivos(): TimeReal[] {
+  return (snap()?.times ?? []).filter((t) => t.status === 'ativo');
 }
 
 const CARGOS: Record<string, string> = {
@@ -210,6 +216,10 @@ function montarLinhaTempo(entradas: EntradaAtividadeReal[], projeto: ProjetoReal
 
 function nomeFuncionario(id: string): string {
   if (id === 'equipe') return '👥 Equipe (Gerente de IA)';
+  if (ehResponsavelTime(id)) {
+    const time = snap()?.times?.find((t) => t.id === idDoTime(id));
+    return time ? `${time.emoji} Time ${time.nome}` : '👥 Time';
+  }
   return snap()?.funcionarios.find((f) => f.id === id)?.nome ?? '?';
 }
 
@@ -408,10 +418,25 @@ function renderEquipe(): void {
          .join('')}</div>`
     : '';
 
+  // 🧩 times dinâmicos (T1): squads por demanda com coordenador próprio
+  const times = timesAtivos();
+  const blocoTimes = `
+    <div class="pr-topo" style="margin-top:16px"><h3>🧩 Times (${times.length})</h3>
+      <button class="btn" data-acao-time="novo">+ Novo time</button></div>
+    ${timeFormAberto ? formTime() : ''}
+    ${
+      times.length
+        ? times.map(cardTime).join('')
+        : timeFormAberto
+          ? ''
+          : '<p class="pr-sub">Monte times por demanda: um para cada projeto grande, um para a operação de Mercado Livre… O coordenador do time delega o trabalho entre os membros.</p>'
+    }`;
+
   alvo.innerHTML = `
     <div class="pr-topo"><h3>👥 Equipe (${ativos.length})</h3>
       <button class="btn btn-primary" data-acao-func="contratar">+ Contratar</button></div>
     ${ativos.length ? ativos.map(cardFuncionario).join('') : '<p class="pr-sub">Ninguém contratado ainda. Seu primeiro funcionário-agente está a um clique.</p>'}
+    ${blocoTimes}
     ${blocoConquistas}`;
 }
 
@@ -424,6 +449,114 @@ async function agirFuncionario(acao: string, id: string): Promise<void> {
       if (!confirm(`Arquivar ${f.nome}? O boneco sai da cena (o histórico fica).`)) return;
       await api.arquivarFuncionario(id);
       toast(`🗄 ${f.nome} arquivado.`);
+    }
+  } catch (erro) {
+    toast(`⚠️ ${(erro as Error).message}`, 'bad');
+  }
+}
+
+// ---------- times dinâmicos (T1) ----------
+
+let timeFormAberto = false;
+let timeEmEdicao: TimeReal | null = null;
+
+function cardTime(t: TimeReal): string {
+  const s = snap();
+  const membros = t.membros
+    .map((id) => s?.funcionarios.find((f) => f.id === id))
+    .filter((f): f is FuncionarioReal => Boolean(f && f.status === 'ativo'));
+  const emAberto =
+    s?.projetos.filter(
+      (p) => p.funcionarioId === `${PREFIXO_TIME}${t.id}` && !['entregue', 'falhou', 'rascunho'].includes(p.status),
+    ) ?? [];
+  const entregues =
+    s?.projetos.filter((p) => p.funcionarioId === `${PREFIXO_TIME}${t.id}` && p.status === 'entregue') ?? [];
+  return `<div class="pr-card">
+    <h4>${esc(t.emoji)} Time ${esc(t.nome)} ${emAberto.length ? '<span class="pr-badge andamento">💼 em projeto</span>' : '<span class="pr-badge entregue">☕ disponível</span>'}</h4>
+    ${t.missao ? `<div class="pr-sub">${esc(t.missao)}</div>` : ''}
+    <div>${membros.map((m) => `<span class="pr-chip">${esc(m.nome)}</span>`).join('') || '<span class="pr-sub">sem membros ativos</span>'}</div>
+    <div class="pr-metricas">
+      <span>👥 <b>${membros.length}</b> membro${membros.length === 1 ? '' : 's'}</span>
+      <span>💼 em aberto <b>${emAberto.length}</b></span>
+      <span>✅ entregues <b>${entregues.length}</b></span>
+    </div>
+    <div class="pr-acoes">
+      <button class="btn" data-acao-time="editar" data-id="${t.id}">✏️ Editar</button>
+      <button class="btn" data-acao-time="arquivar" data-id="${t.id}">🗄 Arquivar</button>
+    </div>
+  </div>`;
+}
+
+function formTime(): string {
+  const s = snap();
+  const ativos = s?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
+  const t = timeEmEdicao;
+  const marcado = (id: string) => (t?.membros.includes(id) ? 'checked' : '');
+  return `<div class="pr-card">
+    <h4>${t ? `✏️ Editar time ${esc(t.nome)}` : '🧩 Novo time'}</h4>
+    <div class="wizard-linha">
+      <div><label>Nome do time</label>
+        <input type="text" id="tNome" maxlength="80" value="${esc(t?.nome ?? '')}" placeholder="ex.: Mercado Livre, App do Cliente X" /></div>
+      <div><label>Emoji</label>
+        <input type="text" id="tEmoji" maxlength="8" value="${esc(t?.emoji ?? '🧩')}" /></div>
+    </div>
+    <label>Missão — o que esse time faz (vira o contexto do coordenador)</label>
+    <textarea id="tMissao" placeholder="ex.: Operar a conta do Mercado Livre: anúncios, preços e atendimento.">${esc(t?.missao ?? '')}</textarea>
+    <label>Membros (o coordenador delega só entre eles)</label>
+    <div class="wizard-checks">${
+      ativos.length
+        ? ativos
+            .map(
+              (f) =>
+                `<label><input type="checkbox" data-membro="${f.id}" ${marcado(f.id)} /> ${esc(f.nome)} (${CARGOS[f.cargoVisual] ?? f.cargoVisual})</label>`,
+            )
+            .join('')
+        : '<span class="pr-sub">Contrate funcionários antes de montar um time.</span>'
+    }</div>
+    <div class="pr-acoes" style="margin-top:8px">
+      <button class="btn btn-primary" data-acao-time="salvar">${t ? 'Salvar time' : 'Criar time'}</button>
+      <button class="btn" data-acao-time="cancelar">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+async function agirTime(acao: string, id: string): Promise<void> {
+  const t = timesAtivos().find((x) => x.id === id) ?? null;
+  try {
+    if (acao === 'novo') {
+      timeFormAberto = true;
+      timeEmEdicao = null;
+      renderEquipe();
+    } else if (acao === 'editar' && t) {
+      timeFormAberto = true;
+      timeEmEdicao = t;
+      renderEquipe();
+    } else if (acao === 'cancelar') {
+      timeFormAberto = false;
+      timeEmEdicao = null;
+      renderEquipe();
+    } else if (acao === 'salvar') {
+      const nome = (document.getElementById('tNome') as HTMLInputElement | null)?.value.trim() ?? '';
+      const emoji = (document.getElementById('tEmoji') as HTMLInputElement | null)?.value.trim() || '🧩';
+      const missao = (document.getElementById('tMissao') as HTMLTextAreaElement | null)?.value.trim() ?? '';
+      const membros = [...document.querySelectorAll('[data-membro]:checked')].map(
+        (el) => (el as HTMLElement).dataset.membro!,
+      );
+      if (!nome) return toast('⚠️ Dê um nome ao time.', 'bad');
+      if (!membros.length) return toast('⚠️ Escolha pelo menos 1 membro.', 'bad');
+      if (timeEmEdicao) {
+        await api.atualizarTime(timeEmEdicao.id, { nome, emoji, missao, membros });
+        toast(`✅ Time ${nome} atualizado.`);
+      } else {
+        await api.criarTime({ nome, emoji, missao, membros });
+        toast(`🧩 Time ${nome} criado! Escolha-o como responsável no próximo projeto.`);
+      }
+      timeFormAberto = false;
+      timeEmEdicao = null;
+    } else if (acao === 'arquivar' && t) {
+      if (!confirm(`Arquivar o time ${t.nome}? (os funcionários continuam na equipe)`)) return;
+      await api.arquivarTime(id);
+      toast(`🗄 Time ${t.nome} arquivado.`);
     }
   } catch (erro) {
     toast(`⚠️ ${(erro as Error).message}`, 'bad');
@@ -602,10 +735,20 @@ function renderWizard(): void {
           </div>
         </div>
       </div>
-      <label>Funcionário responsável</label>
+      <label>Responsável (funcionário ou time)</label>
       <select id="wFuncionario">
         <option value="">— escolha —</option>
         ${funcionarios.map((f) => `<option value="${f.id}" ${d.funcionarioId === f.id ? 'selected' : ''}>${esc(f.nome)} (${CARGOS[f.cargoVisual] ?? f.cargoVisual})</option>`).join('')}
+        ${
+          timesAtivos().length
+            ? `<optgroup label="Times (o coordenador do time delega)">${timesAtivos()
+                .map(
+                  (t) =>
+                    `<option value="${PREFIXO_TIME}${t.id}" ${d.funcionarioId === `${PREFIXO_TIME}${t.id}` ? 'selected' : ''}>${esc(t.emoji)} Time ${esc(t.nome)} (${t.membros.length} membro${t.membros.length > 1 ? 's' : ''})</option>`,
+                )
+                .join('')}</optgroup>`
+            : ''
+        }
         ${funcionarios.length ? `<option value="equipe" ${d.funcionarioId === 'equipe' ? 'selected' : ''}>👥 Equipe toda — o Gerente de IA delega as tarefas</option>` : ''}
       </select>
       ${funcionarios.length ? '' : '<p class="modal-hint">⚠️ Contrate um funcionário na aba Equipe antes.</p>'}`;
@@ -1263,6 +1406,8 @@ function iniciarPaineis(): void {
   $('#realEquipe').addEventListener('click', (ev) => {
     const alvo = (ev.target as HTMLElement).closest('[data-acao-func]') as HTMLElement | null;
     if (alvo) void agirFuncionario(alvo.dataset.acaoFunc!, alvo.dataset.id ?? '');
+    const alvoTime = (ev.target as HTMLElement).closest('[data-acao-time]') as HTMLElement | null;
+    if (alvoTime) void agirTime(alvoTime.dataset.acaoTime!, alvoTime.dataset.id ?? '');
   });
   $('#realFinanceiro').addEventListener('click', (ev) => {
     if ((ev.target as HTMLElement).closest('#btnModoTv')) {

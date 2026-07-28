@@ -174,6 +174,31 @@ export const CONFIG_PADRAO: ConfigPonte = {
 /** Responsável especial: o Gerente de IA delega para o roster inteiro (backlog 1). */
 export const FUNCIONARIO_EQUIPE = 'equipe';
 
+// ---- Times dinâmicos (PLANO-TIMES-FLUXOS T1) ----
+
+/** Squad montado por demanda: coordenador multiagente com roster = membros. */
+export interface Time {
+  id: string;
+  nome: string; // "Time App do Cliente X", "Mercado Livre", "Comercial"
+  emoji: string;
+  missao: string; // o que esse time faz — entra no system do coordenador
+  membros: string[]; // funcionarioIds (um funcionário pode estar em N times)
+  coordenadorAgentId: string | null; // Agent multiagente criado pela ponte (1x)
+  coordenadorVersion: number | null;
+  coordenadorRoster?: string[]; // agentIds usados na última atualização (dedupe de update)
+  status: 'ativo' | 'arquivado';
+  criadoEm: string;
+}
+
+/** Prefixo do responsável quando um projeto é de um time ("time:<id>"). */
+export const PREFIXO_TIME = 'time:';
+export function ehResponsavelTime(funcionarioId: string): boolean {
+  return funcionarioId.startsWith(PREFIXO_TIME);
+}
+export function idDoTime(funcionarioId: string): string {
+  return funcionarioId.slice(PREFIXO_TIME.length);
+}
+
 export interface EntradaAtividade {
   ts: string; // ISO completo
   tipo: 'mensagem' | 'ferramenta' | 'progresso' | 'custo' | 'sistema' | 'qa';

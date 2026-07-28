@@ -23,6 +23,7 @@ import type {
   ProjetoRealFront,
   SnapshotReal,
 } from './tipos';
+import { ehResponsavelTime, idDoTime } from './tipos';
 
 type NomeEventoBus = 'event' | 'change' | 'tick';
 
@@ -189,16 +190,27 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
     const projetoEquipe = emAberto.find(
       (p) => p.funcionarioId === 'equipe' && p.status === 'em_andamento',
     );
+    // projetos de TIME (T1): os MEMBROS do time sentam e trabalham neles
+    const times = snap.times ?? [];
+    const projetoDoTimeDe = (funcionarioId: string) =>
+      emAberto.find((p) => {
+        if (!ehResponsavelTime(p.funcionarioId) || p.status !== 'em_andamento') return false;
+        const time = times.find((t) => t.id === idDoTime(p.funcionarioId));
+        return Boolean(time?.membros.includes(funcionarioId));
+      });
 
     // a ORDEM define qual boneco é quem — segue a ordem estável da ponte
     estado.employees = ativos.map((f): Employee => {
-      // prioridade: projeto próprio rodando > projeto da equipe rodando > projeto próprio parado
+      // prioridade: projeto próprio rodando > projeto do time dele > projeto da equipe > próprio parado
+      const projetoTime = projetoDoTimeDe(f.id);
       const projetoDele =
         emAberto.find((p) => p.funcionarioId === f.id && p.status === 'em_andamento') ??
+        projetoTime ??
         projetoEquipe ??
         emAberto.find((p) => p.funcionarioId === f.id);
       const trabalhando =
         emAberto.some((p) => p.funcionarioId === f.id && p.status === 'em_andamento') ||
+        Boolean(projetoTime) ||
         Boolean(projetoEquipe);
       return {
         uid: f.id,

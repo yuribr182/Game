@@ -58,6 +58,20 @@ export function arquivarFuncionario(id: string): Promise<unknown> {
   return chamar(`/funcionarios/${id}`, { method: 'DELETE' });
 }
 
+// ---- times dinâmicos (T1) ----
+
+export function criarTime(dados: unknown): Promise<unknown> {
+  return chamar('/times', { method: 'POST', body: JSON.stringify(dados) });
+}
+
+export function atualizarTime(id: string, dados: unknown): Promise<unknown> {
+  return chamar(`/times/${id}`, { method: 'PUT', body: JSON.stringify(dados) });
+}
+
+export function arquivarTime(id: string): Promise<unknown> {
+  return chamar(`/times/${id}`, { method: 'DELETE' });
+}
+
 // ---- financeiro ----
 
 export function financeiroResumo(): Promise<unknown> {

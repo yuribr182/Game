@@ -19,6 +19,7 @@ import { rotasEstado } from './rotas/estado.js';
 import { rotasFinanceiro } from './rotas/financeiro.js';
 import { rotasFuncionarios } from './rotas/funcionarios.js';
 import { rotasProjetos } from './rotas/projetos.js';
+import { rotasTimes } from './rotas/times.js';
 
 async function principal(): Promise<void> {
   carregarEnv();
@@ -93,6 +94,7 @@ async function principal(): Promise<void> {
       rotasEstado(api, ctx);
       rotasFuncionarios(api, ctx);
       rotasProjetos(api, ctx);
+      rotasTimes(api, ctx);
       rotasFinanceiro(api, ctx);
       rotasCrm(api, ctx);
     },

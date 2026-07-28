@@ -2,8 +2,9 @@
 // e 1 Environment global. O `system` é montado da persona + blocos de skill + instruções fixas.
 
 import type Anthropic from '@anthropic-ai/sdk';
-import type { ConfigPonte, FuncionarioAgente, ProjetoReal } from '../store/tipos.js';
+import type { ConfigPonte, FuncionarioAgente, ProjetoReal, Time } from '../store/tipos.js';
 import type { Store } from '../store/db.js';
+import { ErroPonte } from './cliente.js';
 
 export const CARGO_ROTULO: Record<string, string> = {
   junior: 'Desenvolvedor(a) Júnior',
@@ -203,6 +204,78 @@ export async function garantirGerente(cliente: Anthropic, store: Store): Promise
     await store.salvarConfig(cfg);
   }
   return cfg.gerenteAgentId;
+}
+
+// ---------- Times dinâmicos (PLANO-TIMES-FLUXOS T1) ----------
+
+/** System do coordenador de um time específico: missão + roster próprio. */
+export function montarSystemCoordenadorTime(time: Time, membros: FuncionarioAgente[]): string {
+  const quem = membros
+    .map((m) => `- ${m.nome} (${CARGO_ROTULO[m.cargoVisual] ?? m.cargoVisual}): ${m.skills.join(', ') || 'generalista'}`)
+    .join('\n');
+  return `Você é o(a) coordenador(a) do time "${time.nome}" de uma agência digital real. Você NÃO executa o trabalho braçal: você coordena os membros do SEU time — cada um é um agente com nome e especialidades próprias.
+
+## Missão do time
+${time.missao || 'Executar com excelência os projetos atribuídos ao time.'}
+
+## Seu time
+${quem}
+
+## Como coordenar (obrigatório)
+- Comunique-se SEMPRE em português do Brasil.
+- Ao receber a especificação: quebre em tarefas claras, decida QUEM faz o quê pela especialidade de cada membro e delegue com instruções completas (eles não veem sua conversa — inclua todo o contexto necessário na mensagem; o sistema de arquivos é compartilhado, então indique caminhos).
+- Chame \`${FERRAMENTA_PROGRESSO}\` imediatamente com o plano ({ etapasConcluidas: 0, etapasTotais: N, resumo }) e a cada etapa realmente concluída pelo time.
+- Revise o que o time entregar antes de dar a etapa por concluída; peça ajustes quando preciso.
+- Entrega final: projeto de ENTREGA em /mnt/session/outputs/; projeto de CÓDIGO no repositório montado (commits pt-BR, push na branch indicada).
+- Ao terminar: \`${FERRAMENTA_PROGRESSO}\` com tudo concluído + resumo final de quem fez o quê e como conferir cada critério de aceite.`;
+}
+
+/**
+ * Agent coordenador de UM time (1x por time; roster = membros do time).
+ * Mudou a composição/missão → agents.update (sessões em andamento não quebram).
+ * Devolve o agentId do coordenador; persiste ids/roster no próprio Time.
+ */
+export async function garantirCoordenadorTime(
+  cliente: Anthropic,
+  store: Store,
+  timeId: string,
+): Promise<string> {
+  const times = await store.listarTimes();
+  const time = times.find((t) => t.id === timeId && t.status === 'ativo');
+  if (!time) throw new ErroPonte('Time não encontrado ou arquivado.', 404);
+  const funcionarios = await store.listarFuncionarios();
+  const membros = funcionarios.filter(
+    (f) => time.membros.includes(f.id) && f.status === 'ativo' && f.agentId,
+  );
+  if (!membros.length) {
+    throw new ErroPonte(`O time "${time.nome}" precisa de pelo menos 1 membro ativo.`, 400);
+  }
+  const roster = membros.slice(0, 20).map((f) => f.agentId!);
+  const parametros = {
+    name: `Coordenador — ${time.nome}`,
+    model: 'claude-opus-5',
+    system: montarSystemCoordenadorTime(time, membros),
+    tools: ferramentasAgente(),
+    multiagent: { type: 'coordinator', agents: roster },
+  };
+  if (!time.coordenadorAgentId) {
+    const agente = await cliente.beta.agents.create(
+      parametros as Parameters<typeof cliente.beta.agents.create>[0],
+    );
+    time.coordenadorAgentId = agente.id;
+    time.coordenadorVersion = Number(agente.version);
+    time.coordenadorRoster = roster;
+    await store.salvarTimes(times);
+  } else if (rosterMudou(roster, time.coordenadorRoster)) {
+    const agente = await cliente.beta.agents.update(
+      time.coordenadorAgentId,
+      parametros as Parameters<typeof cliente.beta.agents.update>[1],
+    );
+    time.coordenadorVersion = Number(agente.version);
+    time.coordenadorRoster = roster;
+    await store.salvarTimes(times);
+  }
+  return time.coordenadorAgentId;
 }
 
 // ---------- Agente comercial: propostas em PDF (backlog 3) ----------

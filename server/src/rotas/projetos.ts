@@ -5,7 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { agoraISO } from '../config.js';
 import type { ProjetoReal } from '../store/tipos.js';
-import { FUNCIONARIO_EQUIPE } from '../store/tipos.js';
+import { FUNCIONARIO_EQUIPE, ehResponsavelTime, idDoTime } from '../store/tipos.js';
 import { responderErro, type Contexto } from './contexto.js';
 
 const esquemaSpec = z.object({
@@ -79,6 +79,15 @@ export function rotasProjetos(app: FastifyInstance, ctx: Contexto): void {
         if (!funcionarios.some((f) => f.status === 'ativo')) {
           return reply.code(400).send({ erro: 'Contrate pelo menos 1 funcionário para usar o Gerente de IA' });
         }
+      } else if (ehResponsavelTime(corpo.data.funcionarioId)) {
+        // Time dinâmico (T1): o coordenador do time delega entre os membros
+        const time = (await ctx.store.listarTimes()).find(
+          (t) => t.id === idDoTime(corpo.data.funcionarioId) && t.status === 'ativo',
+        );
+        if (!time) return reply.code(400).send({ erro: 'Time responsável inválido ou arquivado' });
+        if (!funcionarios.some((f) => time.membros.includes(f.id) && f.status === 'ativo')) {
+          return reply.code(400).send({ erro: `O time "${time.nome}" não tem membros ativos` });
+        }
       } else {
         const responsavel = funcionarios.find(
           (f) => f.id === corpo.data.funcionarioId && f.status === 'ativo',
@@ -146,6 +155,15 @@ export function rotasProjetos(app: FastifyInstance, ctx: Contexto): void {
       if (projeto.funcionarioId === FUNCIONARIO_EQUIPE) {
         if (!funcionarios.some((f) => f.status === 'ativo')) {
           return reply.code(400).send({ erro: 'O Gerente de IA precisa de pelo menos 1 funcionário ativo' });
+        }
+        await ctx.sessoes.iniciar(projeto, null);
+      } else if (ehResponsavelTime(projeto.funcionarioId)) {
+        const time = (await ctx.store.listarTimes()).find(
+          (t) => t.id === idDoTime(projeto.funcionarioId) && t.status === 'ativo',
+        );
+        if (!time) return reply.code(400).send({ erro: 'Time responsável indisponível' });
+        if (!funcionarios.some((f) => time.membros.includes(f.id) && f.status === 'ativo')) {
+          return reply.code(400).send({ erro: `O time "${time.nome}" não tem membros ativos` });
         }
         await ctx.sessoes.iniciar(projeto, null);
       } else {

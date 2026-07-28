@@ -17,6 +17,26 @@ export interface FuncionarioReal {
   criadoEm: string;
 }
 
+/** Squad dinâmico (T1) — coordenador multiagente fica só na ponte. */
+export interface TimeReal {
+  id: string;
+  nome: string;
+  emoji: string;
+  missao: string;
+  membros: string[]; // funcionarioIds
+  status: 'ativo' | 'arquivado';
+  criadoEm: string;
+}
+
+/** Prefixo de responsável quando o projeto é de um time ("time:<id>"). */
+export const PREFIXO_TIME = 'time:';
+export function ehResponsavelTime(funcionarioId: string): boolean {
+  return funcionarioId.startsWith(PREFIXO_TIME);
+}
+export function idDoTime(funcionarioId: string): string {
+  return funcionarioId.slice(PREFIXO_TIME.length);
+}
+
 export type StatusProjetoReal =
   | 'rascunho'
   | 'em_andamento'
@@ -120,6 +140,7 @@ export interface ConquistaRealFront {
 export interface SnapshotReal {
   agora: string;
   funcionarios: FuncionarioReal[];
+  times?: TimeReal[]; // squads dinâmicos (T1)
   projetos: ProjetoRealFront[];
   financeiro: ResumoFinanceiroReal;
   standups?: RelatorioStandupReal[]; // mais recente primeiro (F4b)

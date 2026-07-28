@@ -20,11 +20,12 @@ import type {
   ProjetoReal,
   ResultadoQA,
 } from '../store/tipos.js';
-import { FUNCIONARIO_EQUIPE } from '../store/tipos.js';
+import { FUNCIONARIO_EQUIPE, ehResponsavelTime, idDoTime } from '../store/tipos.js';
 import type { TempoReal } from '../tempoReal.js';
 import {
   extrairLinkPR,
   FERRAMENTA_PROGRESSO,
+  garantirCoordenadorTime,
   garantirEnvironment,
   garantirGerente,
   garantirMemoria,
@@ -138,12 +139,14 @@ export class GerenciadorSessoes {
 
   /** Inicia o projeto: registra a VENDA, cria a Session e liga o loop de eventos.
    *  Com funcionário null + funcionarioId 'equipe', quem assume é o Gerente de IA
-   *  (coordenador multiagente cujo roster são os funcionários ativos). */
+   *  (coordenador multiagente cujo roster são os funcionários ativos); com
+   *  'time:<id>', quem assume é o coordenador daquele Time (roster = membros). */
   async iniciar(projeto: ProjetoReal, funcionario: FuncionarioAgente | null): Promise<void> {
     const { store } = this.deps;
     const cliente = this.deps.cliente();
     const equipe = projeto.funcionarioId === FUNCIONARIO_EQUIPE;
-    if (!equipe && !funcionario?.agentId) {
+    const timeId = ehResponsavelTime(projeto.funcionarioId) ? idDoTime(projeto.funcionarioId) : null;
+    if (!equipe && !timeId && !funcionario?.agentId) {
       throw new ErroPonte(`O funcionário ${funcionario?.nome ?? '?'} ainda não tem Agent na Anthropic.`);
     }
     if (projeto.tipo === 'codigo' && !process.env.GITHUB_TOKEN) {
@@ -151,15 +154,24 @@ export class GerenciadorSessoes {
     }
 
     const environmentId = await garantirEnvironment(cliente, store);
-    const agentId = equipe ? await garantirGerente(cliente, store) : funcionario!.agentId!;
+    const agentId = timeId
+      ? await garantirCoordenadorTime(cliente, store, timeId)
+      : equipe
+        ? await garantirGerente(cliente, store)
+        : funcionario!.agentId!;
+    const time = timeId ? (await store.listarTimes()).find((t) => t.id === timeId) : null;
 
     const recursos: Record<string, unknown>[] = [];
     // memória profissional (F4e): acessório — sem ela a sessão sai igual.
-    // Projeto de equipe monta as memórias de até 8 ativos (o container é compartilhado
-    // entre os threads, então cada subagente enxerga a própria).
-    const donosDeMemoria = equipe
-      ? (await store.listarFuncionarios()).filter((f) => f.status === 'ativo').slice(0, 8)
-      : [funcionario!];
+    // Projeto de equipe/time monta as memórias de até 8 membros (o container é
+    // compartilhado entre os threads, então cada subagente enxerga a própria).
+    const donosDeMemoria = timeId
+      ? (await store.listarFuncionarios())
+          .filter((f) => f.status === 'ativo' && (time?.membros ?? []).includes(f.id))
+          .slice(0, 8)
+      : equipe
+        ? (await store.listarFuncionarios()).filter((f) => f.status === 'ativo').slice(0, 8)
+        : [funcionario!];
     for (const dono of donosDeMemoria) {
       try {
         const memoryStoreId = await garantirMemoria(cliente, store, dono);
@@ -188,7 +200,7 @@ export class GerenciadorSessoes {
     const sessao = await cliente.beta.sessions.create({
       agent: agentId,
       environment_id: environmentId,
-      title: `${projeto.emoji} ${projeto.nome} — ${equipe ? 'Equipe toda (Gerente de IA)' : funcionario!.nome}`,
+      title: `${projeto.emoji} ${projeto.nome} — ${timeId ? `Time ${time?.nome ?? '?'}` : equipe ? 'Equipe toda (Gerente de IA)' : funcionario!.nome}`,
       ...(recursos.length ? { resources: recursos } : {}),
     } as Parameters<typeof cliente.beta.sessions.create>[0]);
 
@@ -205,7 +217,13 @@ export class GerenciadorSessoes {
     await this.registrarAtividade(
       projeto.id,
       'sistema',
-      `Sessão criada (${sessao.id}) — ${equipe ? 'o Gerente de IA assumiu com a equipe toda' : `${funcionario!.nome} assumiu o projeto`}.`,
+      `Sessão criada (${sessao.id}) — ${
+        timeId
+          ? `o coordenador do time "${time?.nome ?? '?'}" assumiu com os membros do time`
+          : equipe
+            ? 'o Gerente de IA assumiu com a equipe toda'
+            : `${funcionario!.nome} assumiu o projeto`
+      }.`,
     );
     this.ligarLoop(projeto.id);
     await this.deps.aoMudarEstado();
@@ -822,7 +840,10 @@ export class GerenciadorSessoes {
    */
   private async reconciliarCustoEquipe(projetoId: string): Promise<void> {
     const projeto = await this.obterProjeto(projetoId);
-    if (!projeto?.sessionId || projeto.funcionarioId !== FUNCIONARIO_EQUIPE) return;
+    const multiagente =
+      projeto?.funcionarioId === FUNCIONARIO_EQUIPE ||
+      (projeto ? ehResponsavelTime(projeto.funcionarioId) : false);
+    if (!projeto?.sessionId || !multiagente) return;
     try {
       const total = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
       for await (const bruto of this.deps.cliente().beta.sessions.threads.list(projeto.sessionId)) {

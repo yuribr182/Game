@@ -16,6 +16,7 @@ import type {
   OportunidadeCRM,
   ProjetoReal,
   RelatorioStandup,
+  Time,
 } from './tipos.js';
 import { CONFIG_PADRAO } from './tipos.js';
 
@@ -210,6 +211,16 @@ export class Store {
 
   caminhoPropostas(oportunidadeId: string): string {
     return this.db.caminho(path.join('propostas', oportunidadeId));
+  }
+
+  // ---- times dinâmicos (PLANO-TIMES-FLUXOS T1) ----
+
+  listarTimes(): Promise<Time[]> {
+    return this.db.lerJson<Time[]>('times.json', []);
+  }
+
+  salvarTimes(itens: Time[]): Promise<void> {
+    return this.enfileirar(() => this.db.gravarJson('times.json', itens));
   }
 
   // ---- CRM (backlog 7) ----

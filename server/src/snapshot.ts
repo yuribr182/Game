@@ -12,11 +12,13 @@ import type {
   OportunidadeCRM,
   ProjetoReal,
   RelatorioStandup,
+  Time,
 } from './store/tipos.js';
 
 export interface Snapshot {
   agora: string;
   funcionarios: FuncionarioAgente[];
+  times: Omit<Time, 'coordenadorAgentId' | 'coordenadorVersion' | 'coordenadorRoster'>[]; // squads (T1) — ids de Agent nunca chegam ao browser
   projetos: ProjetoReal[];
   financeiro: ResumoFinanceiro;
   standups: RelatorioStandup[]; // mais recente primeiro (F4b)
@@ -36,9 +38,10 @@ export interface Snapshot {
 
 export async function montarSnapshot(store: Store): Promise<Snapshot> {
   const hoje = hojeISO();
-  const [funcionarios, projetos, lancamentos, contas, config, standups, clientes, oportunidades, conquistas] =
+  const [funcionarios, times, projetos, lancamentos, contas, config, standups, clientes, oportunidades, conquistas] =
     await Promise.all([
       store.listarFuncionarios(),
+      store.listarTimes(),
       store.listarProjetos(),
       store.listarLancamentos(),
       store.listarContasReceber(),
@@ -52,6 +55,7 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
   return {
     agora: new Date().toISOString(),
     funcionarios,
+    times: times.map(({ coordenadorAgentId: _a, coordenadorVersion: _v, coordenadorRoster: _r, ...t }) => t),
     projetos,
     financeiro: resumoFinanceiro(lancamentos, contas, hoje),
     standups,
