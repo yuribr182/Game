@@ -1,0 +1,288 @@
+/* ===========================================================
+   Painel profissional do Modo Empresa Real (T4)
+   A cena isométrica continua sendo o jogo/vitrine; a GESTÃO
+   (projetos, equipe, financeiro, CRM) vira um painel sóbrio de
+   SaaS: fundo claro neutro, tipografia sólida, tabelas limpas.
+   Tudo escopado em body.modo-real — o jogo normal não muda nada.
+   =========================================================== */
+
+body.modo-real {
+  --pro-bg: #f5f6f8;
+  --pro-card: #ffffff;
+  --pro-line: #e3e6ec;
+  --pro-text: #1d2433;
+  --pro-muted: #667085;
+  --pro-accent: #2456d6;
+  --pro-accent-suave: #eef2fd;
+  --pro-verde: #12805c;
+  --pro-verde-suave: #e7f6ef;
+  --pro-ambar: #935e10;
+  --pro-ambar-suave: #fdf3e0;
+  --pro-vermelho: #b42332;
+  --pro-vermelho-suave: #fdecee;
+  --pro-roxo: #5b3fd1;
+  --pro-roxo-suave: #f0edfc;
+  --pro-sombra: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+/* ---------- gaveta mais larga + modo painel cheio ---------- */
+body.modo-real .side-panel {
+  width: min(760px, 96vw);
+  background: var(--pro-bg);
+  border-left: 1px solid var(--pro-line);
+  box-shadow: -10px 0 30px rgba(16, 24, 40, 0.12);
+}
+body.modo-real.painel-cheio .side-panel {
+  width: 100vw;
+  border-left: none;
+}
+/* botão ⛶ (expande o painel) entra na barra de abas via ui-real */
+body.modo-real .painel-expandir {
+  flex: 0 0 auto;
+  padding: 13px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--pro-muted);
+  font: inherit;
+  cursor: pointer;
+}
+body.modo-real .painel-expandir:hover { color: var(--pro-text); }
+
+/* ---------- casca do painel ---------- */
+body.modo-real .side-panel .tabs {
+  background: var(--pro-card);
+  border-bottom: 1px solid var(--pro-line);
+}
+body.modo-real .side-panel .tab {
+  color: var(--pro-muted);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+body.modo-real .side-panel .tab:hover { color: var(--pro-text); }
+body.modo-real .side-panel .tab.active {
+  color: var(--pro-accent);
+  border-bottom-color: var(--pro-accent);
+  background: transparent;
+}
+body.modo-real .side-panel .tab-content {
+  color: var(--pro-text);
+  padding: 14px 18px 28px;
+}
+body.modo-real .drawer-tab {
+  background: var(--pro-card);
+  border-color: var(--pro-line);
+  color: var(--pro-muted);
+}
+
+/* colunas em telas largas quando o painel está cheio */
+body.modo-real.painel-cheio .painel-real {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* ---------- tipografia e cards ---------- */
+body.modo-real .painel-real h3 {
+  color: var(--pro-text);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+body.modo-real .painel-real .pr-topo { border-bottom: none; }
+body.modo-real .painel-real .pr-secao {
+  color: var(--pro-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--pro-line);
+  padding-bottom: 6px;
+}
+body.modo-real .painel-real .pr-card,
+body.modo-real .painel-real details.standup-card {
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  border-radius: 10px;
+  box-shadow: var(--pro-sombra);
+  color: var(--pro-text);
+}
+body.modo-real .painel-real .pr-card h4 {
+  color: var(--pro-text);
+  font-weight: 650;
+}
+body.modo-real .painel-real .pr-sub,
+body.modo-real .painel-real .modal-hint {
+  color: var(--pro-muted);
+}
+body.modo-real .painel-real .pr-metricas { color: var(--pro-muted); }
+body.modo-real .painel-real .pr-metricas b { color: var(--pro-text); }
+
+/* chips e badges discretos */
+body.modo-real .painel-real .pr-chip {
+  background: var(--pro-bg);
+  border: 1px solid var(--pro-line);
+  color: var(--pro-muted);
+  border-radius: 6px;
+}
+body.modo-real .painel-real .pr-badge {
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+}
+body.modo-real .painel-real .pr-badge.andamento { background: var(--pro-accent-suave); color: var(--pro-accent); }
+body.modo-real .painel-real .pr-badge.entregue { background: var(--pro-verde-suave); color: var(--pro-verde); }
+body.modo-real .painel-real .pr-badge.revisao { background: var(--pro-ambar-suave); color: var(--pro-ambar); }
+body.modo-real .painel-real .pr-badge.pausado { background: var(--pro-bg); color: var(--pro-muted); }
+body.modo-real .painel-real .pr-badge.falhou { background: var(--pro-vermelho-suave); color: var(--pro-vermelho); }
+
+/* barra de progresso sóbria */
+body.modo-real .painel-real .pr-barra {
+  background: var(--pro-bg);
+  border: 1px solid var(--pro-line);
+}
+body.modo-real .painel-real .pr-barra > div {
+  background: var(--pro-accent);
+}
+
+/* ---------- botões ---------- */
+body.modo-real .painel-real .btn,
+body.modo-real .modal .btn {
+  background: var(--pro-card);
+  border: 1px solid #cfd4dd;
+  color: var(--pro-text);
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: var(--pro-sombra);
+}
+body.modo-real .painel-real .btn:hover,
+body.modo-real .modal .btn:hover {
+  background: var(--pro-bg);
+}
+body.modo-real .painel-real .btn-primary,
+body.modo-real .modal .btn-primary {
+  background: var(--pro-accent);
+  border-color: var(--pro-accent);
+  color: #fff;
+}
+body.modo-real .painel-real .btn-primary:hover,
+body.modo-real .modal .btn-primary:hover {
+  background: #1d47b8;
+}
+
+/* ---------- formulários ---------- */
+body.modo-real .painel-real input,
+body.modo-real .painel-real select,
+body.modo-real .painel-real textarea,
+body.modo-real .modal input,
+body.modo-real .modal select,
+body.modo-real .modal textarea {
+  background: var(--pro-card);
+  border: 1px solid #cfd4dd;
+  color: var(--pro-text);
+  border-radius: 8px;
+}
+body.modo-real .painel-real input:focus,
+body.modo-real .painel-real select:focus,
+body.modo-real .painel-real textarea:focus,
+body.modo-real .modal input:focus,
+body.modo-real .modal select:focus,
+body.modo-real .modal textarea:focus {
+  outline: 2px solid var(--pro-accent-suave);
+  border-color: var(--pro-accent);
+}
+body.modo-real .painel-real label,
+body.modo-real .modal label {
+  color: var(--pro-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+body.modo-real .painel-real .wizard-checks label,
+body.modo-real .modal .wizard-checks label {
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  color: var(--pro-text);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* ---------- financeiro: KPIs e tabelas ---------- */
+body.modo-real .painel-real .fin-card {
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  border-radius: 10px;
+  box-shadow: var(--pro-sombra);
+  color: var(--pro-text);
+}
+body.modo-real .painel-real .fin-card b { color: var(--pro-text); }
+body.modo-real .painel-real .fin-abas .btn { box-shadow: none; }
+body.modo-real .painel-real .fin-abas .btn.ativa {
+  background: var(--pro-accent-suave);
+  border-color: var(--pro-accent);
+  color: var(--pro-accent);
+}
+body.modo-real .painel-real table,
+body.modo-real .painel-real .fin-tabela {
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  border-radius: 10px;
+  color: var(--pro-text);
+}
+body.modo-real .painel-real th {
+  color: var(--pro-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--pro-line);
+  background: var(--pro-bg);
+}
+body.modo-real .painel-real td { border-bottom: 1px solid var(--pro-line); }
+body.modo-real .painel-real tr:hover td { background: #fafbfc; }
+
+/* ---------- standup / feed / atividade ---------- */
+body.modo-real .painel-real .standup-texto {
+  background: var(--pro-bg);
+  border: 1px solid var(--pro-line);
+  color: var(--pro-text);
+  border-radius: 8px;
+}
+body.modo-real .modal .atv-log {
+  background: #0e1420; /* o log da sessão continua "terminal" de propósito */
+}
+
+/* ---------- modais do modo real ---------- */
+body.modo-real .modal {
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  color: var(--pro-text);
+  box-shadow: 0 20px 60px rgba(16, 24, 40, 0.2);
+}
+body.modo-real .modal h2,
+body.modo-real .modal h3 { color: var(--pro-text); }
+body.modo-real .modal .wizard-preview {
+  background: var(--pro-bg);
+  border: 1px solid var(--pro-line);
+  color: var(--pro-text);
+}
+body.modo-real .modal .wizard-passos { color: var(--pro-muted); }
+body.modo-real .modal .wizard-passos .ativo { color: var(--pro-accent); }
+
+/* conquistas: sóbrias, sem dourado gritante */
+body.modo-real .painel-real .conq {
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  color: var(--pro-text);
+  border-radius: 10px;
+}
+body.modo-real .painel-real .conq.trancada { opacity: 0.55; }
+
+/* CRM: colunas do funil */
+body.modo-real .painel-real .crm-coluna {
+  background: var(--pro-bg);
+  border: 1px solid var(--pro-line);
+  border-radius: 10px;
+}
+
+/* telas estreitas: painel cheio vira o padrão de uso confortável */
+@media (max-width: 900px) {
+  body.modo-real .side-panel { width: 100vw; }
+}

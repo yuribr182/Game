@@ -197,7 +197,21 @@ resumidas, útil se o CLAUDE.md um dia não estiver disponível.
 
 ### 6.1 Ponto exato de parada (atualizado a cada sessão)
 
-**Última sessão: 2026-07-24.** F1 concluída (motor tipado, 55 testes, cobertura
+**Última sessão: 2026-07-28 — Modo Empresa Real ganhou Times, Rotinas, Fluxos
+e painel profissional** (plano em `docs/PLANO-TIMES-FLUXOS.md`, inspiração
+WeStack): **T1 Times** — squads por demanda com Agent coordenador multiagente
+próprio (responsável `time:<id>` em projetos); **T2 Rotinas** — trabalhos
+recorrentes 24/7 (cron na nuvem, generalização do standup) com contexto real
+(CRM/projetos/financeiro) e ações estruturadas com guard-rails
+(criar_oportunidade, registrar_nota_cliente, criar_rascunho_projeto);
+**T3 Fluxos** — esteiras configuráveis ligando agentes/times, cada estágio numa
+sessão própria, a ponte faz o handoff (carga = resumo + arquivos) com aprovação
+manual entre estágios; **T4 Painel profissional** — `css/painel.css` (tema SaaS
+claro escopado em `body.modo-real`) + botão ⛶ que expande a gestão para a tela
+toda. Checks verdes: 55 testes no jogo, 70 na ponte. Próximo: F-ML (integração
+real Mercado Livre, atrás de OAuth) e disparo de fluxo a partir do CRM/rotinas.
+
+**Sessão 2026-07-24.** F1 concluída (motor tipado, 55 testes, cobertura
 do core 94%). **MUDANÇA DE RUMO (decisão do dono): a migração para Pixi (F2–F5)
 foi CANCELADA.** A arte passou a ser por **imagem real (PNG)** em vez de
 procedural — e, com imagens, o renderer **Canvas 2D** (`js/iso.js`) ficou

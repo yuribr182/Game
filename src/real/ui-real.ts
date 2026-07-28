@@ -1806,6 +1806,23 @@ function iniciarPaineis(): void {
   const abaEmpresa = document.querySelector('.tab[data-tab="company"]');
   if (abaEmpresa) abaEmpresa.textContent = '💰 Financeiro';
 
+  // painel profissional (T4): botão ⛶ expande a gestão para a tela toda
+  const nav = document.querySelector('.side-panel .tabs');
+  if (nav && !document.querySelector('.painel-expandir')) {
+    const botao = document.createElement('button');
+    botao.className = 'painel-expandir';
+    botao.title = 'Expandir/recolher o painel de gestão';
+    botao.textContent = '⛶';
+    botao.addEventListener('click', () => {
+      document.body.classList.toggle('painel-cheio');
+      botao.textContent = document.body.classList.contains('painel-cheio') ? '🏢' : '⛶';
+      botao.title = document.body.classList.contains('painel-cheio')
+        ? 'Voltar a ver o escritório'
+        : 'Expandir/recolher o painel de gestão';
+    });
+    nav.appendChild(botao);
+  }
+
   renderProjetos();
   renderEquipe();
   moldeFinanceiro();
