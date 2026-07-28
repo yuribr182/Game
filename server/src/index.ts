@@ -3,6 +3,7 @@
 
 import Fastify from 'fastify';
 import { clienteAnthropic, temChaveApi } from './anthropic/cliente.js';
+import { GerenciadorFluxos } from './anthropic/fluxos.js';
 import { GerenciadorPropostas } from './anthropic/propostas.js';
 import { GerenciadorRotinas } from './anthropic/rotinas.js';
 import { GerenciadorSessoes } from './anthropic/sessoes.js';
@@ -17,6 +18,7 @@ import { TempoReal } from './tempoReal.js';
 import type { Contexto } from './rotas/contexto.js';
 import { rotasCrm } from './rotas/crm.js';
 import { rotasEstado } from './rotas/estado.js';
+import { rotasFluxos } from './rotas/fluxos.js';
 import { rotasFinanceiro } from './rotas/financeiro.js';
 import { rotasFuncionarios } from './rotas/funcionarios.js';
 import { rotasProjetos } from './rotas/projetos.js';
@@ -64,6 +66,13 @@ async function principal(): Promise<void> {
     aoMudarEstado,
   });
 
+  const fluxos = new GerenciadorFluxos({
+    store,
+    tempoReal,
+    cliente: clienteAnthropic,
+    aoMudarEstado,
+  });
+
   /** Rotina diária: contas atrasadas + custos fixos recorrentes (idempotente; com catch-up). */
   const rodarRotinaDiaria = async (): Promise<void> => {
     const hoje = hojeISO();
@@ -95,7 +104,7 @@ async function principal(): Promise<void> {
     }
   };
 
-  const ctx: Contexto = { store, tempoReal, sessoes, standup, propostas, rotinas, aoMudarEstado, rodarRotinaDiaria };
+  const ctx: Contexto = { store, tempoReal, sessoes, standup, propostas, rotinas, fluxos, aoMudarEstado, rodarRotinaDiaria };
 
   const app = Fastify({ logger: { level: 'info' } });
   await app.register(
@@ -105,6 +114,7 @@ async function principal(): Promise<void> {
       rotasProjetos(api, ctx);
       rotasTimes(api, ctx);
       rotasRotinas(api, ctx);
+      rotasFluxos(api, ctx);
       rotasFinanceiro(api, ctx);
       rotasCrm(api, ctx);
     },

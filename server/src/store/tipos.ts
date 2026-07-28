@@ -246,6 +246,60 @@ export interface EstadoRotinas {
   runsProcessados: string[];
 }
 
+// ---- Fluxos: esteiras ligando agentes/times (PLANO-TIMES-FLUXOS T3) ----
+
+export interface EstagioFluxo {
+  id: string;
+  nome: string; // "Captação", "Proposta", "Desenvolvimento", "Entrega"
+  responsavelTipo: 'funcionario' | 'time';
+  responsavelId: string;
+  instrucao: string; // o que fazer NESTE estágio (além da carga recebida)
+  aprovacao: 'manual' | 'automatica'; // manual = dono revisa antes de passar adiante
+}
+
+/** Esteira configurável pelo dono — a "ligação" entre agentes/times. */
+export interface Fluxo {
+  id: string;
+  nome: string; // "Comercial completo", "Operação ML", "Conteúdo"
+  emoji: string;
+  estagios: EstagioFluxo[];
+  ativo: boolean;
+  criadoEm: string;
+}
+
+/** Saída de um estágio — vira a entrada do próximo (o correio é a ponte). */
+export interface CargaEstagio {
+  estagioId: string;
+  estagioNome: string;
+  resumo: string; // resumo final produzido pelo agente do estágio
+  arquivos: string[]; // nomes em data/fluxos/<execucao>/<n>-<estagio>/
+  custoUSD: number;
+  concluidoEm: string;
+}
+
+export type StatusExecucaoFluxo =
+  | 'em_andamento' // um estágio está rodando agora
+  | 'aguardando_aprovacao' // estágio concluiu; dono decide se passa adiante
+  | 'concluida'
+  | 'cancelada'
+  | 'falhou';
+
+/** Uma "descida" pela esteira (ex.: um lead atravessando o fluxo comercial). */
+export interface ExecucaoFluxo {
+  id: string;
+  fluxoId: string;
+  titulo: string; // ex. "Lead: Padaria do João"
+  entrada: string; // carga inicial dada pelo dono ao disparar
+  estagioAtual: number; // índice em fluxo.estagios
+  status: StatusExecucaoFluxo;
+  carga: CargaEstagio[]; // histórico: saída de cada estágio concluído
+  origem: { tipo: 'manual' | 'rotina' | 'crm'; refId?: string };
+  sessionId: string | null; // sessão do estágio em andamento
+  erro?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export interface EntradaAtividade {
   ts: string; // ISO completo
   tipo: 'mensagem' | 'ferramenta' | 'progresso' | 'custo' | 'sistema' | 'qa';

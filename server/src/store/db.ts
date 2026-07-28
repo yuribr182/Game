@@ -14,7 +14,9 @@ import type {
   FuncionarioAgente,
   Lancamento,
   EstadoRotinas,
+  ExecucaoFluxo,
   ExecucaoRotina,
+  Fluxo,
   OportunidadeCRM,
   ProjetoReal,
   RelatorioStandup,
@@ -253,6 +255,29 @@ export class Store {
   async listarExecucoesRotinas(limite = 20): Promise<ExecucaoRotina[]> {
     const { execucoes } = await this.lerEstadoRotinas();
     return execucoes.slice(-limite).reverse(); // mais recente primeiro
+  }
+
+  // ---- fluxos (PLANO-TIMES-FLUXOS T3) ----
+
+  listarFluxos(): Promise<Fluxo[]> {
+    return this.db.lerJson<Fluxo[]>('fluxos.json', []);
+  }
+
+  salvarFluxos(itens: Fluxo[]): Promise<void> {
+    return this.enfileirar(() => this.db.gravarJson('fluxos.json', itens));
+  }
+
+  async listarExecucoesFluxos(): Promise<ExecucaoFluxo[]> {
+    return this.db.lerJson<ExecucaoFluxo[]>('fluxos-exec.json', []);
+  }
+
+  salvarExecucoesFluxos(itens: ExecucaoFluxo[]): Promise<void> {
+    // mantém as 200 mais recentes (concluídas antigas caem)
+    return this.enfileirar(() => this.db.gravarJson('fluxos-exec.json', itens.slice(-200)));
+  }
+
+  caminhoFluxos(execucaoId: string): string {
+    return this.db.caminho(path.join('fluxos', execucaoId));
   }
 
   // ---- CRM (backlog 7) ----

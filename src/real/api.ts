@@ -90,6 +90,36 @@ export function rodarRotinaAgora(id: string): Promise<unknown> {
   return chamar(`/rotinas/${id}/rodar`, { method: 'POST' });
 }
 
+// ---- fluxos (T3) ----
+
+export function criarFluxo(dados: unknown): Promise<unknown> {
+  return chamar('/fluxos', { method: 'POST', body: JSON.stringify(dados) });
+}
+
+export function atualizarFluxo(id: string, dados: unknown): Promise<unknown> {
+  return chamar(`/fluxos/${id}`, { method: 'PUT', body: JSON.stringify(dados) });
+}
+
+export function excluirFluxo(id: string): Promise<unknown> {
+  return chamar(`/fluxos/${id}`, { method: 'DELETE' });
+}
+
+export function dispararFluxo(id: string, titulo: string, entrada: string): Promise<unknown> {
+  return chamar(`/fluxos/${id}/disparar`, { method: 'POST', body: JSON.stringify({ titulo, entrada }) });
+}
+
+export function aprovarExecucaoFluxo(id: string): Promise<unknown> {
+  return chamar(`/fluxos/execucoes/${id}/aprovar`, { method: 'POST' });
+}
+
+export function refazerExecucaoFluxo(id: string, feedback: string): Promise<unknown> {
+  return chamar(`/fluxos/execucoes/${id}/refazer`, { method: 'POST', body: JSON.stringify({ feedback }) });
+}
+
+export function cancelarExecucaoFluxo(id: string): Promise<unknown> {
+  return chamar(`/fluxos/execucoes/${id}/cancelar`, { method: 'POST' });
+}
+
 // ---- financeiro ----
 
 export function financeiroResumo(): Promise<unknown> {

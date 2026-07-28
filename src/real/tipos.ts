@@ -67,6 +67,55 @@ export interface ExecucaoRotinaReal {
   criadoEm: string;
 }
 
+// ---- Fluxos (T3) ----
+
+export interface EstagioFluxoReal {
+  id: string;
+  nome: string;
+  responsavelTipo: 'funcionario' | 'time';
+  responsavelId: string;
+  instrucao: string;
+  aprovacao: 'manual' | 'automatica';
+}
+
+export interface FluxoReal {
+  id: string;
+  nome: string;
+  emoji: string;
+  estagios: EstagioFluxoReal[];
+  ativo: boolean;
+  criadoEm: string;
+}
+
+export interface CargaEstagioReal {
+  estagioId: string;
+  estagioNome: string;
+  resumo: string;
+  arquivos: string[];
+  custoUSD: number;
+  concluidoEm: string;
+}
+
+export type StatusExecucaoFluxoReal =
+  | 'em_andamento'
+  | 'aguardando_aprovacao'
+  | 'concluida'
+  | 'cancelada'
+  | 'falhou';
+
+export interface ExecucaoFluxoReal {
+  id: string;
+  fluxoId: string;
+  titulo: string;
+  entrada: string;
+  estagioAtual: number;
+  status: StatusExecucaoFluxoReal;
+  carga: CargaEstagioReal[];
+  erro?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export type StatusProjetoReal =
   | 'rascunho'
   | 'em_andamento'
@@ -173,6 +222,8 @@ export interface SnapshotReal {
   times?: TimeReal[]; // squads dinâmicos (T1)
   rotinas?: RotinaReal[]; // rotinas 24/7 (T2)
   execucoesRotinas?: ExecucaoRotinaReal[]; // feed, mais recente primeiro (T2)
+  fluxos?: FluxoReal[]; // esteiras (T3)
+  execucoesFluxos?: ExecucaoFluxoReal[]; // mais recente primeiro (T3)
   projetos: ProjetoRealFront[];
   financeiro: ResumoFinanceiroReal;
   standups?: RelatorioStandupReal[]; // mais recente primeiro (F4b)

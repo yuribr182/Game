@@ -9,6 +9,9 @@ import * as api from './api';
 import type {
   ClienteCRMReal,
   EntradaAtividadeReal,
+  EstagioFluxoReal,
+  ExecucaoFluxoReal,
+  FluxoReal,
   FuncionarioReal,
   OportunidadeCRMReal,
   ProjetoRealFront,
@@ -323,7 +326,234 @@ function renderProjetos(): void {
     ${rascunhos.length ? `<div class="pr-secao">Rascunhos</div>${rascunhos.map(cardProjeto).join('')}` : ''}
     ${!abertos.length && !rascunhos.length ? '<p class="pr-sub">Nenhum projeto ainda — cadastre o primeiro!</p>' : ''}
     ${blocoRotinas()}
+    ${blocoFluxos()}
     ${passados.length ? `<div class="pr-secao">Histórico</div>${passados.map(cardProjeto).join('')}` : ''}`;
+}
+
+// ---------- fluxos (T3): esteiras ligando agentes/times ----------
+
+let fluxoFormAberto = false;
+let fluxoEmEdicao: FluxoReal | null = null;
+let fluxoEstagiosDraft: Omit<EstagioFluxoReal, 'id'>[] = [];
+
+const STATUS_EXEC_FLUXO: Record<string, string> = {
+  em_andamento: '<span class="pr-badge andamento">⚙️ rodando</span>',
+  aguardando_aprovacao: '<span class="pr-badge revisao">👀 aguardando sua aprovação</span>',
+  concluida: '<span class="pr-badge entregue">✅ concluída</span>',
+  cancelada: '<span class="pr-badge pausado">🚫 cancelada</span>',
+  falhou: '<span class="pr-badge falhou">❌ falhou</span>',
+};
+
+function opcoesResponsavel(selecionado: string): string {
+  const funcionarios = snap()?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
+  const times = timesAtivos();
+  return `<option value="">— responsável —</option>
+    ${funcionarios.map((f) => `<option value="funcionario:${f.id}" ${selecionado === `funcionario:${f.id}` ? 'selected' : ''}>${esc(f.nome)}</option>`).join('')}
+    ${times.map((t) => `<option value="time:${t.id}" ${selecionado === `time:${t.id}` ? 'selected' : ''}>${esc(t.emoji)} Time ${esc(t.nome)}</option>`).join('')}`;
+}
+
+function formFluxo(): string {
+  const f = fluxoEmEdicao;
+  const estagios = fluxoEstagiosDraft
+    .map(
+      (e, i) => `<div class="pr-card" data-estagio="${i}">
+      <div class="wizard-linha">
+        <div><label>Estágio ${i + 1} — nome</label>
+          <input type="text" data-fx-nome="${i}" maxlength="60" value="${esc(e.nome)}" placeholder="ex.: Proposta" /></div>
+        <div><label>Responsável</label>
+          <select data-fx-resp="${i}">${opcoesResponsavel(`${e.responsavelTipo}:${e.responsavelId}`)}</select></div>
+        <div><label>Passa adiante</label>
+          <select data-fx-aprov="${i}">
+            <option value="manual" ${e.aprovacao === 'manual' ? 'selected' : ''}>👀 Com minha aprovação</option>
+            <option value="automatica" ${e.aprovacao === 'automatica' ? 'selected' : ''}>⚡ Automático</option>
+          </select></div>
+      </div>
+      <label>Instrução deste estágio</label>
+      <textarea data-fx-instrucao="${i}" placeholder="O que fazer neste estágio (a carga do anterior chega junto)">${esc(e.instrucao)}</textarea>
+      ${fluxoEstagiosDraft.length > 1 ? `<div class="pr-acoes"><button class="btn" data-acao-fluxo="remover-estagio" data-id="${i}">🗑 Remover estágio</button></div>` : ''}
+    </div>`,
+    )
+    .join('');
+  return `<div class="pr-card">
+    <h4>${f ? `✏️ Editar fluxo ${esc(f.nome)}` : '🔗 Novo fluxo'}</h4>
+    <p class="pr-sub">A saída de cada estágio (resumo + arquivos) vira a entrada do próximo — a ponte é o correio entre os agentes.</p>
+    <div class="wizard-linha">
+      <div><label>Nome do fluxo</label>
+        <input type="text" id="fxNome" maxlength="80" value="${esc(f?.nome ?? '')}" placeholder="ex.: Comercial completo" /></div>
+      <div><label>Emoji</label>
+        <input type="text" id="fxEmoji" maxlength="8" value="${esc(f?.emoji ?? '🔗')}" /></div>
+    </div>
+    ${estagios}
+    <div class="pr-acoes" style="margin-top:8px">
+      <button class="btn" data-acao-fluxo="add-estagio">+ Adicionar estágio</button>
+      <button class="btn btn-primary" data-acao-fluxo="salvar">${f ? 'Salvar fluxo' : 'Criar fluxo'}</button>
+      <button class="btn" data-acao-fluxo="cancelar">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function cardFluxo(f: FluxoReal): string {
+  const cadeia = f.estagios
+    .map((e) => `${esc(e.nome)}${e.aprovacao === 'manual' ? ' 👀' : ''}`)
+    .join(' → ');
+  return `<div class="pr-card">
+    <h4>${esc(f.emoji)} ${esc(f.nome)}</h4>
+    <div class="pr-sub">${cadeia} <small>(👀 = passa com sua aprovação)</small></div>
+    <div class="pr-acoes">
+      <button class="btn btn-primary" data-acao-fluxo="disparar" data-id="${f.id}">🚀 Disparar</button>
+      <button class="btn" data-acao-fluxo="editar" data-id="${f.id}">✏️ Editar</button>
+      <button class="btn" data-acao-fluxo="excluir" data-id="${f.id}">🗑 Excluir</button>
+    </div>
+  </div>`;
+}
+
+function cardExecucaoFluxo(e: ExecucaoFluxoReal): string {
+  const fluxo = snap()?.fluxos?.find((f) => f.id === e.fluxoId);
+  const total = fluxo?.estagios.length ?? 0;
+  const nomeEstagio = fluxo?.estagios[e.estagioAtual]?.nome ?? '?';
+  const cargas = e.carga
+    .map(
+      (c, i) => `<details><summary><b>${i + 1}. ${esc(c.estagioNome)}</b> · ${brlCentavos(c.custoUSD * cambio())}${c.arquivos.length ? ` · 📎 ${c.arquivos.length}` : ''}</summary>
+        <div class="standup-texto">${esc(c.resumo)}</div>
+      </details>`,
+    )
+    .join('');
+  const acoes =
+    e.status === 'aguardando_aprovacao'
+      ? `<div class="pr-acoes">
+          <button class="btn btn-primary" data-acao-fluxo="aprovar" data-id="${e.id}">✅ Aprovar e passar adiante</button>
+          <button class="btn" data-acao-fluxo="refazer" data-id="${e.id}">🔧 Refazer com feedback</button>
+          <button class="btn" data-acao-fluxo="cancelar-exec" data-id="${e.id}">🚫 Cancelar</button>
+        </div>`
+      : e.status === 'em_andamento'
+        ? `<div class="pr-acoes"><button class="btn" data-acao-fluxo="cancelar-exec" data-id="${e.id}">🚫 Cancelar</button></div>`
+        : '';
+  return `<div class="pr-card">
+    <h4>${esc(fluxo?.emoji ?? '🔗')} ${esc(e.titulo)} ${STATUS_EXEC_FLUXO[e.status] ?? ''}</h4>
+    <div class="pr-sub">${esc(fluxo?.nome ?? 'Fluxo')} · estágio ${Math.min(e.estagioAtual + 1, total)}/${total} (${esc(nomeEstagio)})${e.erro ? ` · <b>${esc(e.erro)}</b>` : ''}</div>
+    ${cargas}
+    ${acoes}
+  </div>`;
+}
+
+function blocoFluxos(): string {
+  const s = snap();
+  const fluxos = s?.fluxos ?? [];
+  const execucoes = (s?.execucoesFluxos ?? []).filter(
+    (e) => ['em_andamento', 'aguardando_aprovacao'].includes(e.status) || Date.now() - Date.parse(e.atualizadoEm) < 3 * 86400000,
+  );
+  return `
+    <div class="pr-topo" style="margin-top:16px"><h3>🔗 Fluxos (${fluxos.length})</h3>
+      <button class="btn" data-acao-fluxo="novo">+ Novo fluxo</button></div>
+    ${fluxoFormAberto ? formFluxo() : ''}
+    ${
+      fluxos.length
+        ? fluxos.map(cardFluxo).join('')
+        : fluxoFormAberto
+          ? ''
+          : '<p class="pr-sub">Ligue agentes e times numa esteira: captação → proposta → execução → entrega. Cada estágio roda com o responsável que você escolher, e você aprova entre estágios.</p>'
+    }
+    ${execucoes.length ? `<div class="pr-secao">Execuções</div>${execucoes.map(cardExecucaoFluxo).join('')}` : ''}`;
+}
+
+/** Lê o formulário do fluxo do DOM para o draft (preserva valores em re-render). */
+function colherFluxoDraft(): void {
+  fluxoEstagiosDraft = fluxoEstagiosDraft.map((e, i) => {
+    const valor = (attr: string): string =>
+      (document.querySelector(`[data-fx-${attr}="${i}"]`) as HTMLInputElement | HTMLSelectElement | null)?.value ?? '';
+    const resp = valor('resp').split(':');
+    return {
+      nome: valor('nome') || e.nome,
+      responsavelTipo: (resp[0] as 'funcionario' | 'time') || e.responsavelTipo,
+      responsavelId: resp.slice(1).join(':') || e.responsavelId,
+      instrucao: valor('instrucao') || e.instrucao,
+      aprovacao: (valor('aprov') as 'manual' | 'automatica') || e.aprovacao,
+    };
+  });
+}
+
+async function agirFluxo(acao: string, id: string): Promise<void> {
+  const s = snap();
+  try {
+    if (acao === 'novo') {
+      fluxoFormAberto = true;
+      fluxoEmEdicao = null;
+      fluxoEstagiosDraft = [{ nome: '', responsavelTipo: 'funcionario', responsavelId: '', instrucao: '', aprovacao: 'manual' }];
+      renderProjetos();
+    } else if (acao === 'editar') {
+      const f = s?.fluxos?.find((x) => x.id === id) ?? null;
+      if (!f) return;
+      fluxoFormAberto = true;
+      fluxoEmEdicao = f;
+      fluxoEstagiosDraft = f.estagios.map((e) => ({
+        nome: e.nome,
+        responsavelTipo: e.responsavelTipo,
+        responsavelId: e.responsavelId,
+        instrucao: e.instrucao,
+        aprovacao: e.aprovacao,
+      }));
+      renderProjetos();
+    } else if (acao === 'cancelar') {
+      fluxoFormAberto = false;
+      fluxoEmEdicao = null;
+      renderProjetos();
+    } else if (acao === 'add-estagio') {
+      colherFluxoDraft();
+      fluxoEstagiosDraft.push({ nome: '', responsavelTipo: 'funcionario', responsavelId: '', instrucao: '', aprovacao: 'manual' });
+      renderProjetos();
+    } else if (acao === 'remover-estagio') {
+      colherFluxoDraft();
+      fluxoEstagiosDraft.splice(Number(id), 1);
+      renderProjetos();
+    } else if (acao === 'salvar') {
+      colherFluxoDraft();
+      const nome = (document.getElementById('fxNome') as HTMLInputElement | null)?.value.trim() ?? '';
+      const emoji = (document.getElementById('fxEmoji') as HTMLInputElement | null)?.value.trim() || '🔗';
+      if (!nome) return toast('⚠️ Dê um nome ao fluxo.', 'bad');
+      for (const [i, e] of fluxoEstagiosDraft.entries()) {
+        if (!e.nome.trim()) return toast(`⚠️ Estágio ${i + 1}: falta o nome.`, 'bad');
+        if (!e.responsavelId) return toast(`⚠️ Estágio ${i + 1}: escolha o responsável.`, 'bad');
+        if (e.instrucao.trim().length < 10) return toast(`⚠️ Estágio ${i + 1}: escreva a instrução.`, 'bad');
+      }
+      const dados = { nome, emoji, estagios: fluxoEstagiosDraft };
+      if (fluxoEmEdicao) {
+        await api.atualizarFluxo(fluxoEmEdicao.id, dados);
+        toast(`✅ Fluxo ${nome} atualizado.`);
+      } else {
+        await api.criarFluxo(dados);
+        toast(`🔗 Fluxo ${nome} criado! Dispare quando quiser.`);
+      }
+      fluxoFormAberto = false;
+      fluxoEmEdicao = null;
+    } else if (acao === 'disparar') {
+      const f = s?.fluxos?.find((x) => x.id === id);
+      if (!f) return;
+      const titulo = prompt(`Disparar "${f.nome}" — dê um título a esta execução:`, '');
+      if (!titulo?.trim()) return;
+      const entrada = prompt('Entrada para o 1º estágio (contexto inicial):', '') ?? '';
+      toast('🚀 Fluxo disparado — o 1º estágio começou…');
+      await api.dispararFluxo(id, titulo.trim(), entrada);
+    } else if (acao === 'excluir') {
+      const f = s?.fluxos?.find((x) => x.id === id);
+      if (!f || !confirm(`Excluir o fluxo ${f.nome}?`)) return;
+      await api.excluirFluxo(id);
+      toast(`🗑 Fluxo ${f.nome} excluído.`);
+    } else if (acao === 'aprovar') {
+      await api.aprovarExecucaoFluxo(id);
+      toast('✅ Aprovado — seguindo para o próximo estágio.', 'good');
+    } else if (acao === 'refazer') {
+      const feedback = prompt('O que deve mudar? (vira o feedback do estágio)');
+      if (!feedback?.trim()) return;
+      await api.refazerExecucaoFluxo(id, feedback.trim());
+      toast('🔧 Refazendo o estágio com o seu feedback…');
+    } else if (acao === 'cancelar-exec') {
+      if (!confirm('Cancelar esta execução do fluxo?')) return;
+      await api.cancelarExecucaoFluxo(id);
+      toast('🚫 Execução cancelada.');
+    }
+  } catch (erro) {
+    toast(`⚠️ ${(erro as Error).message}`, 'bad');
+  }
 }
 
 // ---------- rotinas 24/7 (T2) ----------
@@ -1585,6 +1815,8 @@ function iniciarPaineis(): void {
   $('#realProjetos').addEventListener('click', (ev) => {
     const alvoRotina = (ev.target as HTMLElement).closest('[data-acao-rotina]') as HTMLElement | null;
     if (alvoRotina) return void agirRotina(alvoRotina.dataset.acaoRotina!, alvoRotina.dataset.id ?? '');
+    const alvoFluxo = (ev.target as HTMLElement).closest('[data-acao-fluxo]') as HTMLElement | null;
+    if (alvoFluxo) return void agirFluxo(alvoFluxo.dataset.acaoFluxo!, alvoFluxo.dataset.id ?? '');
     const alvo = (ev.target as HTMLElement).closest('[data-acao]') as HTMLElement | null;
     if (alvo) void agirProjeto(alvo.dataset.acao!, alvo.dataset.id ?? '');
   });

@@ -2,6 +2,7 @@
 
 import type { FastifyReply } from 'fastify';
 import Anthropic from '@anthropic-ai/sdk';
+import type { GerenciadorFluxos } from '../anthropic/fluxos.js';
 import type { GerenciadorPropostas } from '../anthropic/propostas.js';
 import type { GerenciadorRotinas } from '../anthropic/rotinas.js';
 import type { GerenciadorSessoes } from '../anthropic/sessoes.js';
@@ -17,6 +18,7 @@ export interface Contexto {
   standup: GerenciadorStandup;
   propostas: GerenciadorPropostas;
   rotinas: GerenciadorRotinas;
+  fluxos: GerenciadorFluxos;
   aoMudarEstado: () => Promise<void>;
   rodarRotinaDiaria: () => Promise<void>;
 }

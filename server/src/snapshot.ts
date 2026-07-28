@@ -9,7 +9,9 @@ import type {
   ConfigPonte,
   ConquistaReal,
   FuncionarioAgente,
+  ExecucaoFluxo,
   ExecucaoRotina,
+  Fluxo,
   OportunidadeCRM,
   ProjetoReal,
   RelatorioStandup,
@@ -26,6 +28,8 @@ export interface Snapshot {
   standups: RelatorioStandup[]; // mais recente primeiro (F4b)
   rotinas: Omit<Rotina, 'agentId' | 'deploymentId' | 'agendaAplicada' | 'rosterAplicado'>[]; // T2
   execucoesRotinas: ExecucaoRotina[]; // feed, mais recente primeiro (T2)
+  fluxos: Fluxo[]; // esteiras (T3)
+  execucoesFluxos: ExecucaoFluxo[]; // mais recente primeiro (T3)
   crm: { clientes: ClienteCRM[]; oportunidades: OportunidadeCRM[] }; // backlog 7
   conquistas: ConquistaReal[]; // backlog 5 — bloqueadas viram metas
   config: Pick<
@@ -55,9 +59,11 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
       store.listarOportunidades(),
       store.lerConquistas(),
     ]);
-  const [rotinas, execucoesRotinas] = await Promise.all([
+  const [rotinas, execucoesRotinas, fluxos, execucoesFluxos] = await Promise.all([
     store.listarRotinas(),
     store.listarExecucoesRotinas(15),
+    store.listarFluxos(),
+    store.listarExecucoesFluxos(),
   ]);
   if (marcarAtrasadas(contas, hoje)) await store.salvarContasReceber(contas);
   return {
@@ -71,6 +77,8 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
       ({ agentId: _a, deploymentId: _d, agendaAplicada: _g, rosterAplicado: _r, ...r }) => r,
     ),
     execucoesRotinas,
+    fluxos,
+    execucoesFluxos: [...execucoesFluxos].reverse().slice(0, 20),
     crm: { clientes, oportunidades },
     conquistas: listaConquistas(conquistas),
     config: {
