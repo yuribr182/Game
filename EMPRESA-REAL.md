@@ -51,13 +51,11 @@ npm run empresa
 Isso sobe **ponte + front juntos**. Depois abra:
 
 ```
-http://localhost:5173/Game/?empresa=1
+http://localhost:5173/Game/
 ```
 
-(ou clique no botão **🏢 Empresa Real** na tela inicial do jogo).
-
-Sem a query `?empresa=1`, o jogo normal continua funcionando como sempre — os
-dois modos não se misturam e o save do jogo não é tocado.
+A interface abre **direto no escritório** (sem tela inicial). Para renomear a
+agência, clique no nome dela no topo.
 
 ## Primeiro uso (passo a passo)
 
@@ -120,7 +118,7 @@ dois modos não se misturam e o save do jogo não é tocado.
   entra na cena fechar negócio. Bateu a meta? **Fanfarra, chuva de confete e a
   equipe comemora** (1 vez por mês) — e chega no Telegram.
 - **📺 Modo TV** — botão no topo do Financeiro (ou abra direto
-  `…?empresa=1&tv=1` num monitor dedicado): tela cheia com relógio, caixa, a
+  `…?tv=1` num monitor dedicado): tela cheia com relógio, caixa, a
   receber, vendas × meta, custo de API de hoje, os projetos com barras ao vivo
   e a manchete do standup. `Esc` sai.
 - **📈 Linha do tempo do projeto** — no modal de Atividade: cada etapa

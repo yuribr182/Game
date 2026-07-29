@@ -115,8 +115,8 @@
     document.removeEventListener('pointerdown', unlockOnce);
   });
 
-  // ---------- PWA (só quando servido por http/https) ----------
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  // ---------- PWA (só no build de produção — em dev o sw.js não existe) ----------
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && import.meta.env.PROD) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
