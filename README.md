@@ -38,7 +38,7 @@ contas, clientes, custo de API, data e hora.
 npm install && npm --prefix server install
 cp server/.env.example server/.env    # coloque sua ANTHROPIC_API_KEY
 npm run empresa                        # ponte + interface
-# abra http://localhost:5173/Game/
+# abra http://localhost:5173/agencia/
 ```
 
 Tudo roda **100% na sua máquina**: a chave da API e os dados da agência ficam

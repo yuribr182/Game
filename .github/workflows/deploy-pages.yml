@@ -43,6 +43,11 @@ jobs:
           npm run test
 
       - name: Build (Vite)
+        # Pages publica em github.io/<nome-do-repo>/ — enquanto o repo se
+        # chamar "Game", a base do build precisa casar. Renomeou o repo para
+        # "agencia"? Troque para /agencia/ (ou apague a linha, que é o padrão).
+        env:
+          BASE_URL: /Game/
         run: npm run build
 
       - name: Configurar Pages

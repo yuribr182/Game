@@ -61,10 +61,10 @@ Os agentes **nunca** fazem isto sozinhos — o sistema espera o seu clique:
 
 ```bash
 # A agência (ponte + interface juntas) — o jeito normal de abrir:
-npm run empresa        # abrir http://localhost:5173/Game/
+npm run empresa        # abrir http://localhost:5173/agencia/
 
 # Modo TV (telão da agência num monitor dedicado):
-#   http://localhost:5173/Game/?tv=1   (Esc sai)
+#   http://localhost:5173/agencia/?tv=1   (Esc sai)
 ```
 
 - A interface abre **direto no escritório** — sem tela inicial.

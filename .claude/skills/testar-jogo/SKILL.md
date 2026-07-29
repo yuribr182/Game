@@ -45,7 +45,7 @@ const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
 p.on('console', m => { if (m.type()==='error' && !m.text().includes('MIME')) errors.push(m.text()); });
 p.on('pageerror', e => errors.push(e.message));
 p.on('dialog', d => d.dismiss().catch(()=>{}));       // prompts/confirms
-await p.goto('http://localhost:5173/Game/');           // abre DIRETO no escritório
+await p.goto('http://localhost:5173/agencia/');           // abre DIRETO no escritório
 await p.waitForTimeout(3000);                          // ponte + SSE + cena
 // abas: p.click('.tab[data-tab="team"]') · painéis: #realProjetos/#realEquipe/#realFinanceiro
 // estado real: p.evaluate(() => window.Game.real.snapshot())

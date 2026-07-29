@@ -21,7 +21,7 @@ o front a cada push — sem a ponte, ele mostra o overlay "ponte desligada".
 
 - Instalar: `npm install` + `npm --prefix server install` (Node 20+).
 - Rodar: **`npm run empresa`** (ponte + Vite) e abrir
-  http://localhost:5173/Game/ — a interface abre direto no escritório. Sem a
+  http://localhost:5173/agencia/ — a interface abre direto no escritório. Sem a
   ponte, aparece o overlay "ponte desligada". Guia em `EMPRESA-REAL.md`;
   arquitetura em `docs/PLANO-EMPRESA-REAL.md` e `docs/PLANO-TIMES-FLUXOS.md`.
 - Qualidade: `npm run check` (front) e `npm --prefix server run check` (ponte).
@@ -56,7 +56,8 @@ os módulos da cena são IIFEs em `window.*`, carregados em ordem por
 Comunicação: `Game.on('event'|'change'|'tick', fn)`; o canvas lê `Game.state`
 a cada frame. O adapter alimenta tudo com o snapshot da ponte (REST + SSE).
 
-Ferramentas: Vite (`vite.config.ts`, base `/Game/`), TS estrito
+Ferramentas: Vite (`vite.config.ts`, base `/agencia/`; o deploy do Pages
+injeta `BASE_URL=/Game/` enquanto o repositório se chamar "Game"), TS estrito
 (`tsconfig.json`), ESLint + Prettier, Vitest (`test/`), PWA via
 `vite-plugin-pwa` (gera o `sw.js` — o antigo manual foi removido; **não** é
 mais preciso bump de cache). Estáticos ficam em `public/`.

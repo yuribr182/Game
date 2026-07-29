@@ -60,7 +60,7 @@ npm run empresa
 Isso sobe **ponte + front juntos**. Depois abra:
 
 ```
-http://localhost:5173/Game/
+http://localhost:5173/agencia/
 ```
 
 A interface abre **direto no escritório** (sem tela inicial). Para renomear a
