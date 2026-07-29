@@ -1,10 +1,12 @@
-# 🏢 Modo Empresa Real — como rodar
+# 🏢 Agência Real — como rodar
 
-O App Agency Tycoon tem dois modos: o **jogo normal** (simulado, publicado no
-GitHub Pages) e o **Modo Empresa Real** — a mesma cena isométrica, mas onde os
-funcionários são **agentes de IA de verdade** (Claude Managed Agents, na nuvem
-da Anthropic) que executam projetos reais que você cadastra, com um financeiro
-de agência de verdade (contas a receber, custos fixos, DRE).
+> **Pivô 2026-07-28: este é o modo ÚNICO.** O jogo simulado foi aposentado —
+> a interface abre direto na agência (não precisa mais de `?empresa=1`).
+
+A **Agência Real** é a cena isométrica animada onde os funcionários são
+**agentes de IA de verdade** (Claude Managed Agents, na nuvem da Anthropic)
+que executam projetos reais que você cadastra, com um financeiro de agência de
+verdade (contas a receber, custos fixos, DRE), times, rotinas 24/7 e fluxos.
 
 O plano completo com a arquitetura está em
 [`docs/PLANO-EMPRESA-REAL.md`](docs/PLANO-EMPRESA-REAL.md).

@@ -234,6 +234,7 @@ export interface SnapshotReal {
   crm?: { clientes: ClienteCRMReal[]; oportunidades: OportunidadeCRMReal[] };
   conquistas?: ConquistaRealFront[];
   config: {
+    nomeEmpresa?: string;
     cambioUsdBrl: number;
     limiteDiarioUSD: number;
     limitePorProjetoUSD: number;

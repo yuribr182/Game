@@ -197,7 +197,17 @@ resumidas, útil se o CLAUDE.md um dia não estiver disponível.
 
 ### 6.1 Ponto exato de parada (atualizado a cada sessão)
 
-**Última sessão: 2026-07-28 — Modo Empresa Real ganhou Times, Rotinas, Fluxos
+**PIVÔ (2026-07-28, decisão do dono): o produto NÃO é mais um jogo.** A
+Agência Real virou o **modo único**: boot direto no RealAdapter (sem
+`?empresa=1`), tela inicial/velocidade/save/Loja/contratos/eventos/ranking
+simulados **removidos da UI** (`index.html` enxuto, `js/main.js` e `js/ui.js`
+reescritos — HUD só com caixa real + data/hora reais; nome da agência é real,
+configurável pela config da ponte e editável clicando no nome no HUD).
+`src/core/` permanece como base tipada da cena (o balanceamento em `data.ts`
+está inerte); `src/game-shim.ts` foi removido. Não criar features simuladas —
+toda mecânica nova é dado real via ponte.
+
+**Sessão 2026-07-28 (antes do pivô) — Modo Empresa Real ganhou Times, Rotinas, Fluxos
 e painel profissional** (plano em `docs/PLANO-TIMES-FLUXOS.md`, inspiração
 WeStack): **T1 Times** — squads por demanda com Agent coordenador multiagente
 próprio (responsável `time:<id>` em projetos); **T2 Rotinas** — trabalhos

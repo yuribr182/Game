@@ -34,6 +34,7 @@ export interface Snapshot {
   conquistas: ConquistaReal[]; // backlog 5 — bloqueadas viram metas
   config: Pick<
     ConfigPonte,
+    | 'nomeEmpresa'
     | 'cambioUsdBrl'
     | 'limiteDiarioUSD'
     | 'limitePorProjetoUSD'
@@ -82,6 +83,7 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
     crm: { clientes, oportunidades },
     conquistas: listaConquistas(conquistas),
     config: {
+      nomeEmpresa: config.nomeEmpresa,
       cambioUsdBrl: config.cambioUsdBrl,
       limiteDiarioUSD: config.limiteDiarioUSD,
       limitePorProjetoUSD: config.limitePorProjetoUSD,

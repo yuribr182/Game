@@ -1,11 +1,21 @@
-# App Agency Tycoon — guia para o Claude
+# Agência Real — guia para o Claude
 
-Jogo web tycoon (pt-BR) de agência de desenvolvimento de apps, estilo The Sims /
-idle tycoon. **Stack: Vite + TypeScript** (o motor já é TS; o renderer é
-Canvas 2D em `js/iso.js` com arte de imagem real — a migração p/ Pixi foi
-cancelada). O status e o backlog estão em **`docs/PRD.md` §6.1** (leia antes de
-mexer em arquitetura ou gráficos). Publicado via GitHub Pages em
-https://yuribr182.github.io/Game/ (o workflow builda e publica a cada push).
+> ⚠️ **PIVÔ (2026-07-28, decisão do dono): NÃO é mais um jogo.** O produto é a
+> **Agência Real** — a cena isométrica animada (Canvas 2D, `js/iso.js`) ficou
+> como identidade visual, mas **tudo que aparece na tela é real**: os
+> funcionários são agentes de IA (Claude Managed Agents) executando projetos
+> reais, com CRM, financeiro, times, rotinas 24/7 e fluxos. O boot liga direto
+> o RealAdapter (sem `?empresa=1`); tela inicial de jogo, velocidade, save,
+> loja, contratos/eventos/ranking simulados foram **removidos da UI**.
+> `src/core/` permanece como base tipada (tipos/constantes que a cena consome)
+> e o balanceamento antigo em `data.ts` está inerte — não crie features de
+> jogo simulado. Novas mecânicas = dados reais via ponte (`server/`).
+
+Plataforma web (pt-BR) de operação de agência com agentes de IA. **Stack: Vite
++ TypeScript** (front) + **Fastify** (`server/`, a ponte local). O status e o
+backlog estão em **`docs/PRD.md` §6.1** (leia antes de mexer em arquitetura ou
+gráficos). O GitHub Pages (https://yuribr182.github.io/Game/) segue publicando
+o front a cada push — sem a ponte, ele mostra o overlay "ponte desligada".
 
 ## Como rodar e testar
 

@@ -134,6 +134,7 @@ export interface Lancamento {
 }
 
 export interface ConfigPonte {
+  nomeEmpresa: string; // nome real da agência (HUD/letreiro da cena)
   cambioUsdBrl: number;
   limiteDiarioUSD: number; // custo de API somado do dia (todos os projetos)
   limitePorProjetoUSD: number;
@@ -155,6 +156,7 @@ export interface ConfigPonte {
 }
 
 export const CONFIG_PADRAO: ConfigPonte = {
+  nomeEmpresa: 'Minha Agência',
   cambioUsdBrl: 5.4,
   limiteDiarioUSD: 25,
   limitePorProjetoUSD: 50,

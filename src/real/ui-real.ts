@@ -1810,6 +1810,20 @@ function iniciarPaineis(): void {
   const abaEmpresa = document.querySelector('.tab[data-tab="company"]');
   if (abaEmpresa) abaEmpresa.textContent = '💰 Financeiro';
 
+  // nome real da agência: clique no nome (HUD) para renomear
+  const brand = document.getElementById('companyName');
+  brand?.setAttribute('title', 'Clique para renomear a agência');
+  brand?.addEventListener('click', () => {
+    const atual = snap()?.config.nomeEmpresa ?? '';
+    const nome = prompt('Nome da agência:', atual);
+    if (nome?.trim()) {
+      void api
+        .atualizarConfig({ nomeEmpresa: nome.trim() })
+        .then(() => toast('✏️ Nome da agência atualizado.', 'good'))
+        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
+    }
+  });
+
   // painel profissional (T4): botão ⛶ expande a gestão para a tela toda
   const nav = document.querySelector('.side-panel .tabs');
   if (nav && !document.querySelector('.painel-expandir')) {

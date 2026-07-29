@@ -8,12 +8,15 @@
 
 ## 1. O que é o projeto (visão de 1 minuto)
 
-O repositório tem **duas coisas na mesma cena isométrica**:
+> ⚠️ **Pivô (2026-07-28): não é mais um jogo.** A simulação foi removida.
 
-| Modo | O que é | Onde roda |
-|---|---|---|
-| 🎮 **Jogo** (App Agency Tycoon) | Tycoon simulado, estilo The Sims — grátis, sem custos | https://yuribr182.github.io/Game/ (publica sozinho a cada push na `master`) |
-| 🏢 **Empresa Real** (`?empresa=1`) | A MESMA cena, mas os funcionários são **agentes de IA de verdade** (Claude, na nuvem da Anthropic) executando projetos reais, com CRM, financeiro de agência, rotinas 24/7 e fluxos entre agentes | Só no seu computador (`npm run empresa`) — os dados e a chave nunca vão para a internet |
+A **Agência Real** é a sua agência de verdade com uma identidade única: um
+escritório isométrico **animado** onde cada personagem é um **funcionário-agente
+de IA real** (Claude, na nuvem da Anthropic) executando **projetos reais** —
+com CRM, financeiro de agência, times, rotinas 24/7 e fluxos entre agentes.
+**Tudo que aparece na tela é informação real** (caixa, contas, custo de API,
+data/hora). Roda **só no seu computador** (`npm run empresa`) — dados e chave
+nunca vão para a internet.
 
 ---
 
@@ -56,19 +59,17 @@ Os agentes **nunca** fazem isto sozinhos — o sistema espera o seu clique:
 ## 3. 🚀 Rodando
 
 ```bash
-# Jogo normal (sem custos, sem chave):
-npm run dev            # abre http://localhost:5173/Game/
-
-# Modo Empresa Real (ponte + front juntos):
-npm run empresa        # abrir http://localhost:5173/Game/?empresa=1
+# A agência (ponte + interface juntas) — o jeito normal de abrir:
+npm run empresa        # abrir http://localhost:5173/Game/
 
 # Modo TV (telão da agência num monitor dedicado):
-#   http://localhost:5173/Game/?empresa=1&tv=1   (Esc sai)
+#   http://localhost:5173/Game/?tv=1   (Esc sai)
 ```
 
-- Primeira vez no jogo: clique **🎮 Novo jogo** (ou **🏢 Empresa Real** na tela inicial).
+- A interface abre **direto no escritório** — sem tela inicial.
 - O painel de gestão é a **gaveta à direita**; o botão **⛶** na barra de abas
   expande para a tela toda (visual profissional); **🏢** volta ao escritório.
+- **Renomear a agência**: clique no nome dela no topo (HUD).
 - Overlay "🔌 A ponte está desligada"? → rode `npm run empresa`.
 
 ---

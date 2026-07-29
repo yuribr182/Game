@@ -39,7 +39,7 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
   // ---------- estado (mesma forma do GameState do jogo) ----------
   const estado: GameState = {
     v: 3,
-    company: 'Empresa Real',
+    company: 'Minha Agência', // trocado pelo nomeEmpresa real da config no 1º snapshot
     money: 0,
     rep: 0,
     level: 1,
@@ -229,6 +229,7 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
     estado.available = rascunhos.map(mapearProjeto);
     for (const p of emAberto) registrarProgressoParaTaxa(p.id, p.etapasConcluidas * 100);
 
+    estado.company = snap.config.nomeEmpresa || estado.company;
     estado.money = snap.financeiro.caixaBRL;
     estado.desks = Math.max(3, ativos.length + 1);
     estado.tier = Math.max(
