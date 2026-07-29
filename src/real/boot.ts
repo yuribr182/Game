@@ -18,6 +18,8 @@ declare global {
       realResumo?: (projetoId: string) => string;
       /** Últimas linhas de atividade por projeto (monitor ao vivo do boneco). */
       realLinhas?: (projetoId: string) => string[];
+      /** Salas por time na cena: faixas de mesas [inicio, fim) por time. */
+      salasCena?: () => { nome: string; emoji: string; inicio: number; fim: number }[];
     };
   }
 }

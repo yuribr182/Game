@@ -25,7 +25,7 @@
   let pops = [];             // popups flutuantes (+R$)
   let cars = [];             // carros na rua
   let particles = [];        // fumacinha / faíscas
-  let lastTier = -1, lastDesks = -1, lastEmp = -1, lastDecorSig = '';
+  let lastTier = -1, lastDesks = -1, lastEmp = -1, lastDecorSig = '', lastSalasSig = '';
   let t = 0, lastNow = 0;
   let running = false;
   let plusPad = null;        // posição do pad "+" clicável (raw screen)
@@ -163,20 +163,47 @@
   function buildLayout() {
     const s = G.state;
     const max = G.maxDesks();
-    const perRow = Math.min(5, Math.max(2, Math.ceil(Math.sqrt(max))));
-    const rows = Math.ceil(max / perRow);
     const DX = 1.45, DY = 1.7;
     // zona de trabalho deslocada: cozinha (cômodo) + lounge à esquerda,
     // recepção+reunião à direita/frente
     const WX0 = 3.0, WY0 = 2.1;
     const desks = [];
-    for (let i = 0; i < max; i++) {
-      const gx = WX0 + (i % perRow) * DX;
-      const gy = WY0 + Math.floor(i / perRow) * DY;
-      desks.push({ gx, gy });
+    let perRow, rows, W, H;
+
+    // ---- salas por time: cada time ganha um CLUSTER de mesas com corredor ----
+    const salas = (G.salasCena && G.salasCena()) || [];
+    if (salas.length) {
+      const CORREDOR = 1.05; // vão entre as salas
+      const usadas = salas[salas.length - 1].fim;
+      const clusters = salas.map((sl) => ({ n: sl.fim - sl.inicio }));
+      const resto = Math.max(0, max - usadas);
+      if (resto > 0) clusters.push({ n: resto }); // mesas livres (sem time) no fim
+      let cx = WX0, alturaMax = 1;
+      clusters.forEach((c) => {
+        const cols = c.n <= 2 ? 1 : 2; // time de 1-2 senta em coluna; maior, em 2 colunas
+        const linhas = Math.ceil(c.n / cols);
+        for (let i = 0; i < c.n; i++) {
+          desks.push({ gx: cx + (i % cols) * DX, gy: WY0 + Math.floor(i / cols) * DY });
+        }
+        alturaMax = Math.max(alturaMax, linhas);
+        cx += (cols - 1) * DX + 0.95 + CORREDOR; // largura do cluster + corredor
+      });
+      perRow = Math.max(2, clusters.length);
+      rows = alturaMax;
+      W = Math.max(cx - CORREDOR + 2.4, WX0 + 2 * DX + 2.4);
+      H = WY0 + alturaMax * DY + 2.3;
+    } else {
+      // sem times: grade clássica
+      perRow = Math.min(5, Math.max(2, Math.ceil(Math.sqrt(max))));
+      rows = Math.ceil(max / perRow);
+      for (let i = 0; i < max; i++) {
+        const gx = WX0 + (i % perRow) * DX;
+        const gy = WY0 + Math.floor(i / perRow) * DY;
+        desks.push({ gx, gy });
+      }
+      W = WX0 + perRow * DX + 2.4;
+      H = WY0 + rows * DY + 2.3;
     }
-    const W = WX0 + perRow * DX + 2.4;
-    const H = WY0 + rows * DY + 2.3;
     layout = { W, H, desks, perRow, max };
 
     layout.door = { gx: W - 0.9, gy: H - 0.1 };
@@ -241,8 +268,10 @@
       { gx: W - 2.0, gy: 0.8, w: 1.4, h: 0.8, col: 'rgba(120,92,255,.12)' },     // reunião
     ];
     layout.lamps = [];
-    for (let gx = WX0; gx < WX0 + perRow * DX; gx += 1.6)
-      for (let gy = WY0; gy < WY0 + rows * DY; gy += 1.7) layout.lamps.push({ gx: gx + 0.5, gy: gy + 0.4 });
+    const deskMaxX = desks.length ? Math.max(...desks.map((d) => d.gx)) + 1 : WX0 + 2;
+    const deskMaxY = desks.length ? Math.max(...desks.map((d) => d.gy)) + 1 : WY0 + 2;
+    for (let gx = WX0; gx < deskMaxX; gx += 1.6)
+      for (let gy = WY0; gy < deskMaxY; gy += 1.7) layout.lamps.push({ gx: gx + 0.5, gy: gy + 0.4 });
     // árvores de FRENTE (cantos externos) — pequenas, só pra emoldurar
     layout.trees = [];
     layout.trees.push({ gx: -0.9, gy: H + 0.6, s: 0.9 });
@@ -282,7 +311,12 @@
   function syncEntities() {
     const s = G.state;
     const decorSig = (s.upgrades || []).join(',');
-    if (!layout || s.tier !== lastTier) { lastTier = s.tier; lastDecorSig = decorSig; buildLayout(); workers = []; npcs = []; }
+    // salas por time mudaram (time criado/arquivado, membros trocados) → re-layout
+    const salasSig = G.salasCena ? G.salasCena().map((x) => x.nome + x.inicio + x.fim).join('|') : '';
+    if (!layout || s.tier !== lastTier || salasSig !== lastSalasSig) {
+      lastTier = s.tier; lastDecorSig = decorSig; lastSalasSig = salasSig;
+      buildLayout(); workers = []; npcs = [];
+    }
     else if (decorSig !== lastDecorSig) { lastDecorSig = decorSig; buildLayout(); }
     const emp = Math.min(s.employees.length, s.desks);
 
@@ -623,6 +657,9 @@
     // pad "+"
     if (plusPad) drawPlus(plusPad);
 
+    // placas das salas de time (por cima da mobília, antes do véu noturno)
+    drawPlacasSalas();
+
     // véu noturno sobre a cena (mantém interior aconchegante)
     if (night > 0.05) {
       ctx.save();
@@ -722,6 +759,72 @@
       ctx.fillStyle = g;
       ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 0.5);
       ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    });
+
+    drawSalasTimes();
+  }
+
+  // ---------- salas por time: cada time tem sua área no mapa ----------
+  // O adapter agrupa os funcionários por time (a ordem = mesa) e expõe as
+  // faixas em Game.salasCena(); aqui pintamos o piso da área e a placa.
+  const SALA_CORES = [
+    { piso: 'rgba(79,140,255,.14)', borda: 'rgba(79,140,255,.45)' },   // azul
+    { piso: 'rgba(55,214,122,.13)', borda: 'rgba(55,214,122,.45)' },   // verde
+    { piso: 'rgba(255,170,60,.14)', borda: 'rgba(255,170,60,.5)' },    // laranja
+    { piso: 'rgba(186,110,255,.14)', borda: 'rgba(186,110,255,.5)' },  // roxo
+    { piso: 'rgba(255,110,140,.13)', borda: 'rgba(255,110,140,.5)' },  // rosa
+    { piso: 'rgba(90,210,220,.14)', borda: 'rgba(90,210,220,.5)' },    // ciano
+  ];
+
+  function faixasSalas() {
+    if (!G.salasCena) return [];
+    const salas = G.salasCena() || [];
+    return salas.filter((s) => s.fim > s.inicio && s.inicio < layout.desks.length);
+  }
+
+  function boundsSala(sala) {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (let i = sala.inicio; i < Math.min(sala.fim, layout.desks.length); i++) {
+      const d = layout.desks[i];
+      x0 = Math.min(x0, d.gx); y0 = Math.min(y0, d.gy);
+      x1 = Math.max(x1, d.gx); y1 = Math.max(y1, d.gy);
+    }
+    // folga: a mesa ocupa ~0.9 e a cadeira fica ao sul (gy+0.8)
+    return { gx: x0 - 0.5, gy: y0 - 0.45, w: x1 - x0 + 1.85, h: y1 - y0 + 1.85 };
+  }
+
+  function drawSalasTimes() {
+    faixasSalas().forEach((sala, k) => {
+      const cor = SALA_CORES[k % SALA_CORES.length];
+      const b = boundsSala(sala);
+      tile(b.gx, b.gy, b.w, b.h, cor.piso);
+      // borda fina demarcando a sala
+      const c1 = iso(b.gx, b.gy), c2 = iso(b.gx + b.w, b.gy),
+            c3 = iso(b.gx + b.w, b.gy + b.h), c4 = iso(b.gx, b.gy + b.h);
+      ctx.strokeStyle = cor.borda; ctx.lineWidth = 1.4;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y);
+      ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y); ctx.closePath(); ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+
+  // placas flutuantes com o nome do time (desenhadas por cima, no fim do frame)
+  function drawPlacasSalas() {
+    faixasSalas().forEach((sala, k) => {
+      const cor = SALA_CORES[k % SALA_CORES.length];
+      const b = boundsSala(sala);
+      const topo = iso(b.gx + b.w / 2, b.gy);      // canto de trás da sala
+      const texto = sala.emoji + ' ' + sala.nome.toUpperCase();
+      ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      const meia = ctx.measureText(texto).width / 2 + 8;
+      const y = topo.y - 34;
+      roundRect(topo.x - meia, y - 9, meia * 2, 17, 8, 'rgba(13,20,32,.78)');
+      ctx.strokeStyle = cor.borda; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(topo.x - meia, y - 9, meia * 2, 17, 8); ctx.stroke();
+      ctx.fillStyle = '#e8eef7';
+      ctx.fillText(texto, topo.x, y + 3.5);
+      ctx.textAlign = 'left';
     });
   }
 

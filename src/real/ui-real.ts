@@ -2067,7 +2067,9 @@ declare global {
 if (G.modoReal && G.real) {
   window.UIReal = {
     abrirAtividadePorFuncionario(indice: number) {
-      const funcionario = snap()?.funcionarios.filter((f) => f.status === 'ativo')[indice];
+      // a ordem da cena é agrupada por time (salas) — o uid do boneco é a verdade
+      const uid = G.state?.employees[indice]?.uid;
+      const funcionario = snap()?.funcionarios.find((f) => f.id === uid && f.status === 'ativo');
       if (!funcionario) return;
       const projeto = snap()?.projetos.find(
         (p) =>

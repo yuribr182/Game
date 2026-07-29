@@ -99,6 +99,8 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
 
   let ultimoSnapshot: SnapshotReal | null = null;
   const resumos = new Map<string, string>();
+  /** Faixas de mesas por time (salas na cena): [inicio, fim) sobre employees. */
+  let salasCena: { nome: string; emoji: string; inicio: number; fim: number }[] = [];
   // últimas linhas de atividade por projeto — alimentam o "monitor ao vivo" do boneco
   const linhas = new Map<string, string[]>();
 
@@ -199,8 +201,30 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
         return Boolean(time?.membros.includes(funcionarioId));
       });
 
-    // a ORDEM define qual boneco é quem — segue a ordem estável da ponte
-    estado.employees = ativos.map((f): Employee => {
+    // ---- salas por time (cada time tem sua área no mapa) ----
+    // A ordem do array employees define a mesa de cada boneco; agrupando os
+    // membros de cada time em sequência, o time inteiro senta juto — e a cena
+    // pinta a área + placa usando as faixas expostas em salasCena().
+    const timesComMembros = times.filter((t) => t.status === 'ativo');
+    const colocado = new Set<string>();
+    const grupos: { nome: string; emoji: string; membros: typeof ativos }[] = [];
+    for (const t of timesComMembros) {
+      const membros = ativos.filter((f) => t.membros.includes(f.id) && !colocado.has(f.id));
+      if (!membros.length) continue;
+      membros.forEach((m) => colocado.add(m.id));
+      grupos.push({ nome: t.nome, emoji: t.emoji, membros });
+    }
+    const semTime = ativos.filter((f) => !colocado.has(f.id));
+    const ordenados = [...grupos.flatMap((g) => g.membros), ...semTime];
+    salasCena = [];
+    let mesa = 0;
+    for (const g of grupos) {
+      salasCena.push({ nome: g.nome, emoji: g.emoji, inicio: mesa, fim: mesa + g.membros.length });
+      mesa += g.membros.length;
+    }
+
+    // a ORDEM define qual boneco é quem — agrupada por time (salas), estável
+    estado.employees = ordenados.map((f): Employee => {
       // prioridade: projeto próprio rodando > projeto do time dele > projeto da equipe > próprio parado
       const projetoTime = projetoDoTimeDe(f.id);
       const projetoDele =
@@ -355,6 +379,7 @@ export function criarAdaptadorReal(): Engine & { modoReal: true } {
     real,
     realResumo: (projetoId: string) => resumos.get(projetoId) ?? '',
     realLinhas: (projetoId: string) => linhas.get(projetoId) ?? [],
+    salasCena: () => salasCena,
 
     on(tipo: NomeEventoBus, fn: (dados: never) => void): void {
       ouvintes[tipo]?.push(fn as (dados: unknown) => void);
