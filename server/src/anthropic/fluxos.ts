@@ -5,9 +5,10 @@
 // aprovação manual, nada anda sem o clique do dono.
 
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type Anthropic from '@anthropic-ai/sdk';
+import { toFile } from '@anthropic-ai/sdk';
 import { agoraISO, hojeISO, MODELO_PADRAO } from '../config.js';
 import { notificarCelular } from '../notificar/telegram.js';
 import type { Store } from '../store/db.js';
@@ -28,6 +29,11 @@ const BETA_MANAGED_AGENTS = 'managed-agents-2026-04-01';
 
 // ---------- helpers puros (testáveis) ----------
 
+/** Pasta em data/fluxos/<execucao>/ onde os arquivos de um estágio ficam. */
+export function pastaEstagio(indice: number, estagioNome: string): string {
+  return `${indice + 1}-${estagioNome.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`;
+}
+
 /** Kickoff de um estágio: instrução + entrada do dono + carga acumulada dos anteriores. */
 export function montarKickoffEstagio(dados: {
   fluxo: Fluxo;
@@ -35,8 +41,11 @@ export function montarKickoffEstagio(dados: {
   estagio: EstagioFluxo;
   indice: number;
   feedback?: string;
+  /** rótulos "estagio-N/arquivo" que foram MONTADOS na sessão deste estágio */
+  arquivosMontados?: string[];
 }): string {
   const { fluxo, execucao, estagio, indice, feedback } = dados;
+  const montados = new Set(dados.arquivosMontados ?? []);
   const partes: string[] = [
     `# Fluxo: ${fluxo.emoji} ${fluxo.nome} — estágio ${indice + 1}/${fluxo.estagios.length}: ${estagio.nome}`,
     `Execução: "${execucao.titulo}"`,
@@ -46,10 +55,15 @@ export function montarKickoffEstagio(dados: {
     partes.push(`\n## Entrada dada pelo dono da agência\n${execucao.entrada.trim()}`);
   }
   for (const [i, carga] of execucao.carga.entries()) {
+    const noContainer = carga.arquivos.filter((n) => montados.has(`estagio-${i + 1}/${n}`));
+    const soComDono = carga.arquivos.filter((n) => !montados.has(`estagio-${i + 1}/${n}`));
     partes.push(
       `\n## Resultado do estágio ${i + 1} (${carga.estagioNome})\n${carga.resumo}` +
-        (carga.arquivos.length
-          ? `\n(Arquivos produzidos nesse estágio, guardados com o dono: ${carga.arquivos.join(', ')} — trabalhe a partir do resumo acima.)`
+        (noContainer.length
+          ? `\nARQUIVOS DESSE ESTÁGIO montados em /workspace/carga/estagio-${i + 1}/: ${noContainer.join(', ')} — USE-OS como insumo direto.`
+          : '') +
+        (soComDono.length
+          ? `\n(Outros arquivos ficaram com o dono: ${soComDono.join(', ')} — trabalhe a partir do resumo.)`
           : ''),
     );
   }
@@ -179,10 +193,15 @@ export class GerenciadorFluxos {
 
       const agentId = await this.agenteDe(estagio);
       const environmentId = await garantirEnvironment(cliente, store);
+      // arquivos dos estágios anteriores sobem via Files API e são MONTADOS
+      // na sessão nova (/workspace/carga/estagio-N/) — é assim que o logo do
+      // designer chega de verdade na mão do dev
+      const { recursos, montados } = await this.montarArquivosCarga(execucao);
       const sessao = await cliente.beta.sessions.create({
         agent: agentId,
         environment_id: environmentId,
         title: `${fluxo.emoji} ${fluxo.nome} · ${estagio.nome} — ${execucao.titulo}`,
+        ...(recursos.length ? { resources: recursos } : {}),
       } as Parameters<typeof cliente.beta.sessions.create>[0]);
       await this.atualizarExecucao(execucaoId, (e) => {
         e.sessionId = sessao.id;
@@ -190,7 +209,7 @@ export class GerenciadorFluxos {
 
       // stream ANTES do kickoff (SSE não tem replay) — regra do driver
       const stream = await cliente.beta.sessions.events.stream(sessao.id);
-      const kickoff = montarKickoffEstagio({ fluxo, execucao, estagio, indice, feedback });
+      const kickoff = montarKickoffEstagio({ fluxo, execucao, estagio, indice, feedback, arquivosMontados: montados });
       await cliente.beta.sessions.events.send(sessao.id, {
         events: [{ type: 'user.message', content: [{ type: 'text', text: kickoff }] }],
       } as Parameters<Anthropic['beta']['sessions']['events']['send']>[1]);
@@ -299,6 +318,48 @@ export class GerenciadorFluxos {
     return funcionario.agentId;
   }
 
+  /** Sobe os arquivos das cargas anteriores (disco → Files API) e devolve os
+   *  resources p/ montar em /workspace/carga/estagio-N/. Melhor esforço:
+   *  arquivo que falhar só não é montado (o kickoff avisa o agente). */
+  private async montarArquivosCarga(
+    execucao: ExecucaoFluxo,
+  ): Promise<{ recursos: Record<string, unknown>[]; montados: string[] }> {
+    const cliente = this.deps.cliente();
+    const recursos: Record<string, unknown>[] = [];
+    const montados: string[] = [];
+    const LIMITE_ARQUIVOS = 12;
+    const LIMITE_BYTES = 8 * 1024 * 1024;
+    for (const [i, carga] of execucao.carga.entries()) {
+      for (const nome of carga.arquivos) {
+        if (recursos.length >= LIMITE_ARQUIVOS) break;
+        const caminho = path.join(
+          this.deps.store.caminhoFluxos(execucao.id),
+          pastaEstagio(i, carga.estagioNome),
+          path.basename(nome),
+        );
+        try {
+          const info = await stat(caminho);
+          if (!info.isFile() || info.size > LIMITE_BYTES) continue;
+          const bytes = await readFile(caminho);
+          const arquivo = await cliente.beta.files.upload({
+            file: await toFile(bytes, path.basename(nome)),
+            betas: [BETA_MANAGED_AGENTS],
+          } as Parameters<typeof cliente.beta.files.upload>[0]);
+          const fileId = (arquivo as { id: string }).id;
+          recursos.push({
+            type: 'file',
+            file_id: fileId,
+            mount_path: `/workspace/carga/estagio-${i + 1}/${path.basename(nome)}`,
+          });
+          montados.push(`estagio-${i + 1}/${path.basename(nome)}`);
+        } catch (erro) {
+          console.warn(`[fluxo] não montei ${nome} do estágio ${i + 1}: ${msg(erro)}`);
+        }
+      }
+    }
+    return { recursos, montados };
+  }
+
   private async baixarArquivos(
     sessionId: string,
     execucaoId: string,
@@ -306,7 +367,7 @@ export class GerenciadorFluxos {
     estagioNome: string,
   ): Promise<string[]> {
     const cliente = this.deps.cliente();
-    const pasta = `${indice + 1}-${estagioNome.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`;
+    const pasta = pastaEstagio(indice, estagioNome);
     const destino = path.join(this.deps.store.caminhoFluxos(execucaoId), pasta);
     await mkdir(destino, { recursive: true });
     const nomes: string[] = [];

@@ -56,6 +56,18 @@ describe('montarKickoffEstagio', () => {
     expect(kickoff).toContain('não faça o trabalho dos próximos');
   });
 
+  it('arquivos montados apontam para /workspace/carga; os demais ficam com o dono', () => {
+    const kickoff = montarKickoffEstagio({
+      fluxo,
+      execucao,
+      estagio: fluxo.estagios[1]!,
+      indice: 1,
+      arquivosMontados: ['estagio-1/analise.md'],
+    });
+    expect(kickoff).toContain('montados em /workspace/carga/estagio-1/: analise.md');
+    expect(kickoff).not.toContain('ficaram com o dono');
+  });
+
   it('feedback do dono entra no refazer', () => {
     const kickoff = montarKickoffEstagio({
       fluxo,
