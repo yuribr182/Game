@@ -1,6 +1,7 @@
 // Fluxos (T3): kickoff de estágio (com carga acumulada) e extração de resumo.
 
 import { describe, expect, it } from 'vitest';
+import { SYSTEM_BRIEFING } from '../src/anthropic/agentes.js';
 import { extrairResumoEstagio, montarKickoffEstagio } from '../src/anthropic/fluxos.js';
 import type { ExecucaoFluxo, Fluxo } from '../src/store/tipos.js';
 
@@ -77,6 +78,21 @@ describe('montarKickoffEstagio', () => {
       feedback: 'Preço muito alto, refaça com 3 opções.',
     });
     expect(kickoff).toContain('Preço muito alto');
+  });
+});
+
+describe('autonomia e briefing', () => {
+  it('todo kickoff manda o agente decidir sozinho (sem parar no dono)', () => {
+    const kickoff = montarKickoffEstagio({ fluxo, execucao, estagio: fluxo.estagios[1]!, indice: 1 });
+    expect(kickoff).toContain('NÃO pare nem espere o dono');
+    expect(kickoff).toContain('REGISTRE a decisão');
+  });
+
+  it('o system do Agente de Briefing fecha decisões e registra premissas', () => {
+    expect(SYSTEM_BRIEFING).toContain('Decisões técnicas');
+    expect(SYSTEM_BRIEFING).toContain('Premissas assumidas');
+    expect(SYSTEM_BRIEFING).toContain('NUNCA bloqueie por falta de informação');
+    expect(SYSTEM_BRIEFING).toContain('RESUMO DO ESTÁGIO:');
   });
 });
 

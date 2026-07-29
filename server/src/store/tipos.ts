@@ -151,6 +151,7 @@ export interface ConfigPonte {
   metaBatidaMes?: string | null; // yyyy-mm em que a meta já foi comemorada (dedupe)
   // ---- integrações (PLANO-TIMES-FLUXOS F-ML) ----
   mlRefreshToken?: string | null; // ML rotaciona o refresh token — o mais novo vive aqui
+  briefingAgentId?: string | null; // Agente de Briefing embutido (1º estágio de fluxos)
   // ---- gerente de IA multiagente (backlog 1) + agente comercial (backlog 3) ----
   gerenteAgentId?: string | null; // Agent coordenador (roster = funcionários ativos)
   gerenteRoster?: string[]; // agentIds usados na última atualização do roster
@@ -264,8 +265,9 @@ export interface EstadoRotinas {
 
 export interface EstagioFluxo {
   id: string;
-  nome: string; // "Captação", "Proposta", "Desenvolvimento", "Entrega"
-  responsavelTipo: 'funcionario' | 'time';
+  nome: string; // "Briefing", "Captação", "Proposta", "Desenvolvimento", "Entrega"
+  /** 'briefing' = Agente de Briefing embutido da ponte (responsavelId vazio) */
+  responsavelTipo: 'funcionario' | 'time' | 'briefing';
   responsavelId: string;
   instrucao: string; // o que fazer NESTE estágio (além da carga recebida)
   aprovacao: 'manual' | 'automatica'; // manual = dono revisa antes de passar adiante

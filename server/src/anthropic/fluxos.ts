@@ -20,7 +20,7 @@ import type {
   Fluxo,
 } from '../store/tipos.js';
 import type { TempoReal } from '../tempoReal.js';
-import { garantirCoordenadorTime, garantirEnvironment } from './agentes.js';
+import { garantirBriefing, garantirCoordenadorTime, garantirEnvironment } from './agentes.js';
 import { ErroPonte } from './cliente.js';
 import { custoUsd, lancamentoCustoApiDiario, type UsoModelo } from './custos.js';
 import { decidirAposEvento, textoDoEvento } from './sessoes.js';
@@ -73,6 +73,7 @@ export function montarKickoffEstagio(dados: {
   partes.push(`\n## Como entregar (obrigatório)
 - Trabalhe SÓ este estágio — não faça o trabalho dos próximos.
 - Tudo em português do Brasil.
+- Dúvidas no meio do caminho: NÃO pare nem espere o dono — siga o briefing/carga, tome a decisão mais razoável e REGISTRE a decisão no resumo final.
 - Arquivos produzidos: escreva em /mnt/session/outputs/ (é o que passa adiante).
 - Termine com uma mensagem final começando com "RESUMO DO ESTÁGIO:" contendo o resultado essencial em até ~1500 caracteres — é ela que o próximo estágio (e o dono) vai ler.`);
   return partes.join('\n');
@@ -303,9 +304,12 @@ export class GerenciadorFluxos {
     }
   }
 
-  /** Agent do estágio: funcionário direto ou coordenador do time. */
+  /** Agent do estágio: Briefing embutido, funcionário direto ou coordenador do time. */
   private async agenteDe(estagio: EstagioFluxo): Promise<string> {
     const { store } = this.deps;
+    if (estagio.responsavelTipo === 'briefing') {
+      return garantirBriefing(this.deps.cliente(), store);
+    }
     if (estagio.responsavelTipo === 'time') {
       return garantirCoordenadorTime(this.deps.cliente(), store, estagio.responsavelId);
     }

@@ -80,7 +80,7 @@ export interface ExecucaoRotinaReal {
 export interface EstagioFluxoReal {
   id: string;
   nome: string;
-  responsavelTipo: 'funcionario' | 'time';
+  responsavelTipo: 'funcionario' | 'time' | 'briefing';
   responsavelId: string;
   instrucao: string;
   aprovacao: 'manual' | 'automatica';

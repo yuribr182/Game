@@ -255,10 +255,21 @@ Crie o fluxo **"Cliente novo"** — é ele que a Rotina B dispara sozinha:
 
 | # | Estágio | Responsável | Instrução (resumo) | Passa adiante |
 |---|---|---|---|---|
-| 1 | Qualificação | 🧲 Comercial | Aprofundar o lead: necessidade, orçamento, urgência, decisor | 👀 sua aprovação |
+| 0 | **Briefing** | 🧠 Agente de Briefing (embutido) | Transformar o pedido curto em briefing completo: decisões técnicas fechadas + premissas assumidas | 👀 (o ÚNICO ponto onde você tira dúvidas) |
+| 1 | Qualificação | 🧲 Comercial | Aprofundar o lead: necessidade, orçamento, urgência, decisor | ⚡ automático |
 | 2 | Proposta | 🧲 Comercial | Escrever a proposta comercial calibrada pelo histórico | 👀 (você envia ao cliente) |
-| 3 | Execução | 💻 Execução | Executar o que foi vendido (o coordenador delega no time) | 👀 |
+| 3 | Execução | 💻 Execução | Executar o que foi vendido (o coordenador delega no time) | ⚡ automático |
 | 4 | Campanha de lançamento | 📣 Marketing | Kit Google + Instagram para lançar a entrega | 👀 |
+
+> 🧠 **O Agente de Briefing é a resposta para "eu preciso ficar de babá?"**:
+> você passa **um prompt curto ao disparar** (é a "entrada" do fluxo — ex.:
+> "site em HTML puro para a padaria X, tom acolhedor"). Ele fecha TODAS as
+> decisões que faltam (linguagem, stack, escopo, tom) e lista as **premissas
+> assumidas** para você conferir numa única aprovação. Dali em diante, os
+> estágios ⚡ automáticos correm de agente para agente **sem depender de
+> você** — e a regra embutida em todo estágio é: *dúvida não para o fluxo;
+> o agente decide pela premissa mais razoável e registra a decisão no resumo*.
+> Deixe 👀 só onde dinheiro/cliente estão envolvidos.
 
 ### Passo 4 — O ciclo rodando (o que acontece sozinho vs. o que é seu)
 

@@ -348,6 +348,7 @@ function opcoesResponsavel(selecionado: string): string {
   const funcionarios = snap()?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
   const times = timesAtivos();
   return `<option value="">— responsável —</option>
+    <option value="briefing:" ${selecionado.startsWith('briefing') ? 'selected' : ''}>🧠 Agente de Briefing (embutido) — fecha decisões e premissas</option>
     ${funcionarios.map((f) => `<option value="funcionario:${f.id}" ${selecionado === `funcionario:${f.id}` ? 'selected' : ''}>${esc(f.nome)}</option>`).join('')}
     ${times.map((t) => `<option value="time:${t.id}" ${selecionado === `time:${t.id}` ? 'selected' : ''}>${esc(t.emoji)} Time ${esc(t.nome)}</option>`).join('')}`;
 }
@@ -462,10 +463,11 @@ function colherFluxoDraft(): void {
     const valor = (attr: string): string =>
       (document.querySelector(`[data-fx-${attr}="${i}"]`) as HTMLInputElement | HTMLSelectElement | null)?.value ?? '';
     const resp = valor('resp').split(':');
+    const tipo = (resp[0] as 'funcionario' | 'time' | 'briefing') || e.responsavelTipo;
     return {
       nome: valor('nome') || e.nome,
-      responsavelTipo: (resp[0] as 'funcionario' | 'time') || e.responsavelTipo,
-      responsavelId: resp.slice(1).join(':') || e.responsavelId,
+      responsavelTipo: tipo,
+      responsavelId: tipo === 'briefing' ? '' : resp.slice(1).join(':') || e.responsavelId,
       instrucao: valor('instrucao') || e.instrucao,
       aprovacao: (valor('aprov') as 'manual' | 'automatica') || e.aprovacao,
     };
@@ -512,7 +514,8 @@ async function agirFluxo(acao: string, id: string): Promise<void> {
       if (!nome) return toast('⚠️ Dê um nome ao fluxo.', 'bad');
       for (const [i, e] of fluxoEstagiosDraft.entries()) {
         if (!e.nome.trim()) return toast(`⚠️ Estágio ${i + 1}: falta o nome.`, 'bad');
-        if (!e.responsavelId) return toast(`⚠️ Estágio ${i + 1}: escolha o responsável.`, 'bad');
+        if (e.responsavelTipo !== 'briefing' && !e.responsavelId)
+          return toast(`⚠️ Estágio ${i + 1}: escolha o responsável.`, 'bad');
         if (e.instrucao.trim().length < 10) return toast(`⚠️ Estágio ${i + 1}: escreva a instrução.`, 'bad');
       }
       const dados = { nome, emoji, estagios: fluxoEstagiosDraft };
