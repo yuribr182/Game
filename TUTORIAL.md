@@ -28,7 +28,7 @@ nunca vão para a internet.
 |---|---|---|---|
 | 1 | **Node 20+** instalado | https://nodejs.org | ✅ Sim |
 | 2 | **Clonar e instalar** | `git clone` → `npm install` → `npm --prefix server install` | ✅ Sim |
-| 3 | **Chave da API da Anthropic** (`sk-ant-…`) | [console.anthropic.com](https://console.anthropic.com) → API Keys → colar em `server/.env` | ✅ Para o Modo Empresa Real (💸 **custa dinheiro por uso** — veja limites em 5.8) |
+| 3 | **Chave da API da Anthropic** (`sk-ant-…`) | [console.anthropic.com](https://console.anthropic.com) → API Keys → colar em `server/.env` | ✅ Sim (💸 **custa dinheiro por uso** — veja limites em 4.8) |
 | 4 | **PAT do GitHub** (fine-grained) | GitHub → Settings → Developer settings → Fine-grained tokens, com `Contents: Read and write` **e** `Pull requests: Read and write` nos repos dos projetos | Só para projetos de **código** (o agente clona, commita e abre PR) |
 | 5 | **Bot do Telegram** | Criar com o @BotFather → token + chat id em `server/.env` | Opcional (notificações no celular) |
 | 6 | **Conta Mercado Livre (futuro)** | Quando formos integrar a operação ML de verdade: criar um app em developers.mercadolivre.com.br e autorizar via OAuth | Ainda não — fase F-ML do plano |
@@ -179,7 +179,103 @@ fluxo. **Backup = copiar a pasta.**
 
 ---
 
-## 5. 🛠 Desenvolvendo o projeto (mudanças no código)
+## 5. 🤝 Receita pronta: agentes trabalhando entre si, 24/7
+
+> O exemplo abaixo monta uma **operação completa e recorrente**: atendimento
+> de Mercado Livre + captação de clientes + execução + campanhas de marketing
+> para Google e Instagram. É copiar, colar e ajustar ao seu negócio.
+>
+> ⚠️ **Honestidade primeiro**: hoje os agentes **produzem tudo pronto**
+> (respostas, propostas, anúncios, posts) e **você aprova e publica** — a
+> publicação automática dentro do Mercado Livre/Google/Instagram exige as
+> integrações de API de cada plataforma (fase F-ML do roadmap, precisa das
+> suas credenciais). O ciclo de trabalho entre os agentes já é 100% real.
+
+### Passo 1 — Monte os times (aba Equipe → Times)
+
+Cada time ganha **uma sala no mapa** e um coordenador de IA próprio:
+
+| Time | Membros sugeridos (contrate antes) | Missão (cole no campo) |
+|---|---|---|
+| 🛒 **Mercado Livre** | 1 Atendimento (persona de pós-venda) + 1 Anúncios (persona de catálogo/SEO ML) | "Operar a conta do Mercado Livre: responder perguntas e reclamações com rapidez e cordialidade, e manter anúncios competitivos (título, descrição, preço)." |
+| 🧲 **Comercial** | 1 SDR (persona de vendas consultivas) | "Captar e qualificar leads, nutrir o funil do CRM e preparar propostas que fecham." |
+| 📣 **Marketing** | 1 Social (copy) + 1 Performance (copy/pesquisa) | "Criar e otimizar campanhas: anúncios de Google Ads, posts e reels de Instagram, sempre com CTA claro e métricas em mente." |
+| 💻 **Execução** | seus devs/designer | "Entregar os projetos vendidos com qualidade, no prazo." |
+
+### Passo 2 — Rotinas recorrentes (aba Projetos → Rotinas)
+
+**Rotina A · "Atendimento Mercado Livre" — 2x ao dia**
+- Responsável: 🛒 Time Mercado Livre · Horário: 09:00 (crie uma segunda às 16:00) · Dias: todos
+- Contexto: CRM ✓ · Ações: *Anotar em cliente* ✓
+- Briefing (cole e ajuste):
+  > Você opera a conta do Mercado Livre da loja X. Analise as perguntas e
+  > reclamações abaixo do contexto (enquanto a integração de API não chega, o
+  > dono cola as pendências nas notas do cliente "Mercado Livre — pendências").
+  > Para CADA pergunta: rascunhe a resposta ideal (cordial, direta, que
+  > converte). Para reclamações: proponha a tratativa. Liste sugestões de
+  > melhoria nos anúncios citados (título/descrição/preço vs. concorrência).
+  > Publique tudo organizado para o dono aprovar e colar no ML.
+
+**Rotina B · "Captação de clientes" — seg–sex 08:00**
+- Responsável: 🧲 Time Comercial
+- Contexto: CRM ✓ + Financeiro ✓ · Ações: *Criar oportunidade* ✓, *Anotar em cliente* ✓, *Disparar fluxo* ✓
+- Briefing:
+  > Garimpe e qualifique os leads do funil. Classifique cada um
+  > (quente/morno/frio) e anote o racional no cliente. Lead QUENTE com fit:
+  > crie/atualize a oportunidade e **dispare o fluxo "Cliente novo"** com
+  > todo o contexto. Sem inventar contato — trabalhe só com os dados reais.
+
+**Rotina C · "Campanhas Google + Instagram" — seg/qua/sex 10:00**
+- Responsável: 📣 Time Marketing
+- Contexto: CRM ✓ + Projetos ✓ · Ações: *Anotar em cliente* ✓
+- Briefing:
+  > Para cada cliente com campanha ativa (veja notas do cliente): produza o
+  > pacote do dia — 2 variações de anúncio de Google Ads (títulos ≤30, descrições
+  > ≤90 caracteres, palavras-chave), 1 post de feed e 1 roteiro de reel para o
+  > Instagram, com legenda e hashtags. Se o dono anotou métricas da rodada
+  > anterior, comece otimizando: corte o que não performou e explique o porquê.
+  > Entregue tudo pronto para copiar e publicar.
+
+### Passo 3 — O fluxo que liga tudo (aba Projetos → Fluxos)
+
+Crie o fluxo **"Cliente novo"** — é ele que a Rotina B dispara sozinha:
+
+| # | Estágio | Responsável | Instrução (resumo) | Passa adiante |
+|---|---|---|---|---|
+| 1 | Qualificação | 🧲 Comercial | Aprofundar o lead: necessidade, orçamento, urgência, decisor | 👀 sua aprovação |
+| 2 | Proposta | 🧲 Comercial | Escrever a proposta comercial calibrada pelo histórico | 👀 (você envia ao cliente) |
+| 3 | Execução | 💻 Execução | Executar o que foi vendido (o coordenador delega no time) | 👀 |
+| 4 | Campanha de lançamento | 📣 Marketing | Kit Google + Instagram para lançar a entrega | 👀 |
+
+### Passo 4 — O ciclo rodando (o que acontece sozinho vs. o que é seu)
+
+```
+        (cron na nuvem, mesmo com seu PC desligado)
+ 09:00/16:00  🛒 ML responde pendências  ──► feed + Telegram ──► VOCÊ cola no ML
+ 08:00        🧲 Captação qualifica      ──► cria oportunidade no CRM
+                    └── lead quente ────► 🔗 dispara o fluxo "Cliente novo"
+ fluxo        Qualificação 👀 → Proposta 👀 → Execução 👀 → Campanha 👀
+ 10:00 (3x/sem) 📣 Marketing produz/otimiza anúncios ──► VOCÊ publica e anota métricas
+```
+
+- **Sozinho**: rodar no horário, analisar, produzir, criar oportunidades,
+  anotar em clientes, disparar o fluxo, passar carga entre estágios.
+- **Sempre você (👀)**: aprovar estágios, enviar proposta, publicar
+  anúncios/respostas, receber dinheiro.
+- **Custo**: cada execução conta no limite diário (padrão US$ 25/dia, com
+  pausa automática) — comece com as rotinas em dias úteis e ajuste.
+
+### Dica de retroalimentação
+
+O elo que fecha o ciclo é **anotar resultados no cliente** (funciona hoje):
+depois de publicar uma campanha, anote no CRM "CTR 2,1%, 34 cliques, 3
+matrículas". Na próxima execução a rotina de Marketing **lê essas notas no
+contexto e otimiza** — é assim que os agentes "conversam" com o mundo real
+enquanto as integrações diretas (F-ML) não chegam.
+
+---
+
+## 6. 🛠 Desenvolvendo o projeto (mudanças no código)
 
 ### 5.1 Fluxo de trabalho com o Claude
 
@@ -234,7 +330,7 @@ Regras de ouro (o CI bloqueia se quebrar):
 
 ---
 
-## 6. 🧭 Roadmap — o que ainda falta e o que depende de você
+## 7. 🧭 Roadmap — o que ainda falta e o que depende de você
 
 | Item | Status | Depende de você? |
 |---|---|---|
@@ -247,7 +343,7 @@ Regras de ouro (o CI bloqueia se quebrar):
 
 ---
 
-## 7. 🆘 Problemas comuns
+## 8. 🆘 Problemas comuns
 
 A tabela completa está em **`EMPRESA-REAL.md`** (seção "Problemas comuns").
 Os três mais frequentes:
