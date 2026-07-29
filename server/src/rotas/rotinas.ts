@@ -17,9 +17,20 @@ const esquemaRotina = z.object({
   hora: z.string().regex(/^\d{1,2}:\d{2}$/, 'hora no formato HH:MM'),
   dias: z.enum(['todos', 'uteis']).default('uteis'),
   briefing: z.string().min(10).max(6000),
-  contexto: z.array(z.enum(['crm', 'projetos', 'financeiro'])).default([]),
+  contexto: z.array(z.enum(['crm', 'projetos', 'financeiro', 'mercadolivre'])).default([]),
   acoes: z
-    .array(z.enum(['criar_oportunidade', 'registrar_nota_cliente', 'criar_rascunho_projeto', 'disparar_fluxo']))
+    .array(
+      z.enum([
+        'criar_oportunidade',
+        'registrar_nota_cliente',
+        'criar_rascunho_projeto',
+        'disparar_fluxo',
+        'ml_responder_pergunta',
+        'ml_atualizar_anuncio',
+        'ig_publicar_post',
+        'gads_exportar_campanha',
+      ]),
+    )
     .default([]),
 });
 

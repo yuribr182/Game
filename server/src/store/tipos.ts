@@ -149,6 +149,8 @@ export interface ConfigPonte {
   // ---- sino de vendas + meta mensal (backlog 6) ----
   metaMensalBRL: number; // 0 = sem meta
   metaBatidaMes?: string | null; // yyyy-mm em que a meta já foi comemorada (dedupe)
+  // ---- integrações (PLANO-TIMES-FLUXOS F-ML) ----
+  mlRefreshToken?: string | null; // ML rotaciona o refresh token — o mais novo vive aqui
   // ---- gerente de IA multiagente (backlog 1) + agente comercial (backlog 3) ----
   gerenteAgentId?: string | null; // Agent coordenador (roster = funcionários ativos)
   gerenteRoster?: string[]; // agentIds usados na última atualização do roster
@@ -204,15 +206,21 @@ export function idDoTime(funcionarioId: string): string {
 // ---- Rotinas 24/7 (PLANO-TIMES-FLUXOS T2) ----
 
 /** Blocos de dados reais que a ponte fornece à rotina via custom tool. */
-export type ContextoRotina = 'crm' | 'projetos' | 'financeiro';
+export type ContextoRotina = 'crm' | 'projetos' | 'financeiro' | 'mercadolivre';
 
-/** Ações estruturadas que a rotina PODE executar no sistema (guard-rails:
- *  criar/anotar/disparar-esteira é permitido; iniciar projeto e mover dinheiro é sempre humano). */
+/** Ações estruturadas que a rotina PODE executar no sistema.
+ *  Guard-rails: cada ação só existe se o DONO a marcou no cadastro da rotina —
+ *  inclusive as que publicam fora (ML/Instagram); dinheiro e início de projeto
+ *  continuam sempre humanos. */
 export type AcaoRotina =
   | 'criar_oportunidade'
   | 'registrar_nota_cliente'
   | 'criar_rascunho_projeto'
-  | 'disparar_fluxo';
+  | 'disparar_fluxo'
+  | 'ml_responder_pergunta'
+  | 'ml_atualizar_anuncio'
+  | 'ig_publicar_post'
+  | 'gads_exportar_campanha';
 
 /** Trabalho recorrente sem projeto: "toda manhã, qualificar os leads do CRM". */
 export interface Rotina {

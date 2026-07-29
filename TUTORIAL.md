@@ -31,7 +31,8 @@ nunca vão para a internet.
 | 3 | **Chave da API da Anthropic** (`sk-ant-…`) | [console.anthropic.com](https://console.anthropic.com) → API Keys → colar em `server/.env` | ✅ Sim (💸 **custa dinheiro por uso** — veja limites em 4.8) |
 | 4 | **PAT do GitHub** (fine-grained) | GitHub → Settings → Developer settings → Fine-grained tokens, com `Contents: Read and write` **e** `Pull requests: Read and write` nos repos dos projetos | Só para projetos de **código** (o agente clona, commita e abre PR) |
 | 5 | **Bot do Telegram** | Criar com o @BotFather → token + chat id em `server/.env` | Opcional (notificações no celular) |
-| 6 | **Conta Mercado Livre (futuro)** | Quando formos integrar a operação ML de verdade: criar um app em developers.mercadolivre.com.br e autorizar via OAuth | Ainda não — fase F-ML do plano |
+| 6 | **Mercado Livre** (opcional) | App em developers.mercadolivre.com.br → `ML_CLIENT_ID/SECRET/REFRESH_TOKEN` no `server/.env` | Só p/ rotinas responderem perguntas e editarem anúncios direto na sua conta |
+| 7 | **Instagram/Meta** (opcional) | App em developers.facebook.com → `META_ACCESS_TOKEN` + `META_IG_USER_ID` no `server/.env` | Só p/ rotina publicar posts na conta profissional |
 
 O arquivo `server/.env` (copie de `server/.env.example`):
 
@@ -185,11 +186,19 @@ fluxo. **Backup = copiar a pasta.**
 > de Mercado Livre + captação de clientes + execução + campanhas de marketing
 > para Google e Instagram. É copiar, colar e ajustar ao seu negócio.
 >
-> ⚠️ **Honestidade primeiro**: hoje os agentes **produzem tudo pronto**
-> (respostas, propostas, anúncios, posts) e **você aprova e publica** — a
-> publicação automática dentro do Mercado Livre/Google/Instagram exige as
-> integrações de API de cada plataforma (fase F-ML do roadmap, precisa das
-> suas credenciais). O ciclo de trabalho entre os agentes já é 100% real.
+> 🔑 **As integrações já estão implementadas** — os campos estão prontos no
+> `server/.env` (copie de `.env.example`) e você preenche quando quiser:
+>
+> | Integração | Campos no .env | O que libera |
+> |---|---|---|
+> | 🛒 Mercado Livre | `ML_CLIENT_ID` + `ML_CLIENT_SECRET` + `ML_REFRESH_TOKEN` | contexto real (perguntas abertas + anúncios) e as ações **responder pergunta** e **atualizar anúncio** direto na sua conta |
+> | 📸 Instagram | `META_ACCESS_TOKEN` + `META_IG_USER_ID` | ação **publicar post** (foto + legenda) na conta profissional |
+> | 🎯 Google Ads | *(nenhum!)* | exportação **CSV para o Google Ads Editor** funciona já; os campos `GOOGLE_ADS_*` ficam prontos para a API oficial (exige developer token aprovado) |
+>
+> **Sem as chaves, nada quebra**: as ações explicam ao agente que a integração
+> está desligada e ele trabalha com o que você colar nas notas do CRM. Ações
+> que publicam para fora estão marcadas com **"publica!"** no cadastro — só
+> existem se VOCÊ marcar a caixinha naquela rotina.
 
 ### Passo 1 — Monte os times (aba Equipe → Times)
 
@@ -206,15 +215,16 @@ Cada time ganha **uma sala no mapa** e um coordenador de IA próprio:
 
 **Rotina A · "Atendimento Mercado Livre" — 2x ao dia**
 - Responsável: 🛒 Time Mercado Livre · Horário: 09:00 (crie uma segunda às 16:00) · Dias: todos
-- Contexto: CRM ✓ · Ações: *Anotar em cliente* ✓
+- Contexto: **Mercado Livre** ✓ (perguntas abertas + anúncios reais) + CRM ✓
+- Ações: *Responder pergunta no ML* ✓ (publica!) · *Anotar em cliente* ✓ —
+  marque *Atualizar anúncio no ML* só quando confiar no agente
 - Briefing (cole e ajuste):
-  > Você opera a conta do Mercado Livre da loja X. Analise as perguntas e
-  > reclamações abaixo do contexto (enquanto a integração de API não chega, o
-  > dono cola as pendências nas notas do cliente "Mercado Livre — pendências").
-  > Para CADA pergunta: rascunhe a resposta ideal (cordial, direta, que
-  > converte). Para reclamações: proponha a tratativa. Liste sugestões de
-  > melhoria nos anúncios citados (título/descrição/preço vs. concorrência).
-  > Publique tudo organizado para o dono aprovar e colar no ML.
+  > Você opera a conta do Mercado Livre da loja X. O contexto traz as
+  > perguntas ABERTAS e os anúncios ativos reais. Para CADA pergunta:
+  > responda com cordialidade e precisão usando os dados do anúncio — nunca
+  > invente prazo/estoque. Perguntas ambíguas ou reclamações delicadas: NÃO
+  > responda; liste no relatório para o dono decidir. Feche com sugestões de
+  > melhoria nos anúncios (título/preço vs. concorrência).
 
 **Rotina B · "Captação de clientes" — seg–sex 08:00**
 - Responsável: 🧲 Time Comercial
@@ -227,14 +237,17 @@ Cada time ganha **uma sala no mapa** e um coordenador de IA próprio:
 
 **Rotina C · "Campanhas Google + Instagram" — seg/qua/sex 10:00**
 - Responsável: 📣 Time Marketing
-- Contexto: CRM ✓ + Projetos ✓ · Ações: *Anotar em cliente* ✓
+- Contexto: CRM ✓ + Projetos ✓
+- Ações: *Exportar campanha Google Ads (CSV)* ✓ · *Anotar em cliente* ✓ —
+  marque *Publicar post no Instagram* (publica!) quando o token Meta estiver no .env
 - Briefing:
   > Para cada cliente com campanha ativa (veja notas do cliente): produza o
-  > pacote do dia — 2 variações de anúncio de Google Ads (títulos ≤30, descrições
-  > ≤90 caracteres, palavras-chave), 1 post de feed e 1 roteiro de reel para o
-  > Instagram, com legenda e hashtags. Se o dono anotou métricas da rodada
-  > anterior, comece otimizando: corte o que não performou e explique o porquê.
-  > Entregue tudo pronto para copiar e publicar.
+  > pacote do dia — anúncios de Google Ads **exportados via CSV** (títulos ≤30,
+  > descrições ≤90, palavras-chave; o dono importa no Google Ads Editor), 1 post
+  > de feed e 1 roteiro de reel para o Instagram com legenda e hashtags (se a
+  > publicação estiver liberada e houver imagem em URL pública, publique o
+  > post). Se o dono anotou métricas da rodada anterior, comece otimizando:
+  > corte o que não performou e explique o porquê.
 
 ### Passo 3 — O fluxo que liga tudo (aba Projetos → Fluxos)
 
@@ -271,7 +284,7 @@ O elo que fecha o ciclo é **anotar resultados no cliente** (funciona hoje):
 depois de publicar uma campanha, anote no CRM "CTR 2,1%, 34 cliques, 3
 matrículas". Na próxima execução a rotina de Marketing **lê essas notas no
 contexto e otimiza** — é assim que os agentes "conversam" com o mundo real
-enquanto as integrações diretas (F-ML) não chegam.
+mesmo antes de preencher as chaves das integrações diretas.
 
 ---
 
@@ -336,7 +349,9 @@ Regras de ouro (o CI bloqueia se quebrar):
 |---|---|---|
 | Times, Rotinas, Fluxos, painel profissional | ✅ Entregue (2026-07-28) | Usar e dar feedback |
 | Disparo de fluxo pelo CRM e por rotinas | ✅ Entregue | — |
-| **F-ML: operação Mercado Livre real** (responder perguntas, editar anúncios/preços) | 🔜 Próxima grande fase | **Sim**: criar o app no [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br), me passar client id/secret e autorizar sua conta de vendedor (OAuth). Até lá, o time ML trabalha com dados que você colar. |
+| **Operação Mercado Livre real** (responder perguntas, editar anúncios) | ✅ Implementada | **Sim**: criar o app no [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br) e preencher `ML_*` no `server/.env` (fluxo OAuth 1x para o refresh token) |
+| **Instagram real** (publicar posts) | ✅ Implementada | **Sim**: token Meta + id da conta IG business no `server/.env` |
+| **Google Ads** | ✅ CSV p/ Ads Editor (sem chave) · API oficial futura | API: só quando o Google aprovar seu developer token (`GOOGLE_ADS_*` prontos no .env) |
 | Portal do cliente (link público de acompanhamento) | 💡 Backlog | Decidir se quer |
 | Ponte 24/7 num servidor (VPS) — agência roda com o PC desligado | 💡 Backlog | Contratar um VPS (~R$ 25/mês) quando quiser |
 | Conciliação financeira (extrato/Pix/NF) | 💡 Backlog | Decidir se quer |

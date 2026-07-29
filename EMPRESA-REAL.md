@@ -39,8 +39,17 @@ ANTHROPIC_API_KEY=sk-ant-...   # obrigatória
 GITHUB_TOKEN=github_pat_...    # só para projetos de código
 TELEGRAM_BOT_TOKEN=...         # opcional — notificações no celular (crie com o @BotFather)
 TELEGRAM_CHAT_ID=...           # opcional — mande "oi" pro bot e pegue em /getUpdates
+ML_CLIENT_ID=...               # opcional — rotinas respondendo/editando no Mercado Livre
+ML_CLIENT_SECRET=...
+ML_REFRESH_TOKEN=...           # rotaciona sozinho: a ponte guarda o mais novo
+META_ACCESS_TOKEN=...          # opcional — rotina publicando posts no Instagram
+META_IG_USER_ID=...
+GOOGLE_ADS_...=                # opcionais — CSV p/ Ads Editor funciona SEM chave
 PORTA=3777                     # porta da ponte (padrão)
 ```
+
+O `server/.env.example` traz todos os campos comentados — campos vazios só
+desligam a integração correspondente (nada quebra sem eles).
 
 ## Rodar
 
