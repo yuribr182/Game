@@ -1,16 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Base profissional: /agencia/ (local e padrão). O deploy no GitHub Pages
-// injeta BASE_URL=/Game/ enquanto o repositório se chamar "Game" — ao
-// renomear o repo para "agencia", remova o env do workflow e tudo casa.
-// (acesso a process sem @types/node: o tsconfig do front não inclui Node)
-const BASE =
-  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.BASE_URL ||
-  '/agencia/';
-
 export default defineConfig({
-  base: BASE,
+  // o site é publicado em https://yuribr182.github.io/Game/
+  base: '/Game/',
   server: {
     // Modo Empresa Real (dev): o front fala com a ponte local em /api
     proxy: { '/api': 'http://127.0.0.1:3777' },

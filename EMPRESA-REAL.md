@@ -1,12 +1,10 @@
-# 🏢 Agência Real — como rodar
+# 🏢 Modo Empresa Real — como rodar
 
-> **Pivô 2026-07-28: este é o modo ÚNICO.** O jogo simulado foi aposentado —
-> a interface abre direto na agência (não precisa mais de `?empresa=1`).
-
-A **Agência Real** é a cena isométrica animada onde os funcionários são
-**agentes de IA de verdade** (Claude Managed Agents, na nuvem da Anthropic)
-que executam projetos reais que você cadastra, com um financeiro de agência de
-verdade (contas a receber, custos fixos, DRE), times, rotinas 24/7 e fluxos.
+O App Agency Tycoon tem dois modos: o **jogo normal** (simulado, publicado no
+GitHub Pages) e o **Modo Empresa Real** — a mesma cena isométrica, mas onde os
+funcionários são **agentes de IA de verdade** (Claude Managed Agents, na nuvem
+da Anthropic) que executam projetos reais que você cadastra, com um financeiro
+de agência de verdade (contas a receber, custos fixos, DRE).
 
 O plano completo com a arquitetura está em
 [`docs/PLANO-EMPRESA-REAL.md`](docs/PLANO-EMPRESA-REAL.md).
@@ -39,17 +37,8 @@ ANTHROPIC_API_KEY=sk-ant-...   # obrigatória
 GITHUB_TOKEN=github_pat_...    # só para projetos de código
 TELEGRAM_BOT_TOKEN=...         # opcional — notificações no celular (crie com o @BotFather)
 TELEGRAM_CHAT_ID=...           # opcional — mande "oi" pro bot e pegue em /getUpdates
-ML_CLIENT_ID=...               # opcional — rotinas respondendo/editando no Mercado Livre
-ML_CLIENT_SECRET=...
-ML_REFRESH_TOKEN=...           # rotaciona sozinho: a ponte guarda o mais novo
-META_ACCESS_TOKEN=...          # opcional — rotina publicando posts no Instagram
-META_IG_USER_ID=...
-GOOGLE_ADS_...=                # opcionais — CSV p/ Ads Editor funciona SEM chave
 PORTA=3777                     # porta da ponte (padrão)
 ```
-
-O `server/.env.example` traz todos os campos comentados — campos vazios só
-desligam a integração correspondente (nada quebra sem eles).
 
 ## Rodar
 
@@ -60,11 +49,13 @@ npm run empresa
 Isso sobe **ponte + front juntos**. Depois abra:
 
 ```
-http://localhost:5173/agencia/
+http://localhost:5173/Game/?empresa=1
 ```
 
-A interface abre **direto no escritório** (sem tela inicial). Para renomear a
-agência, clique no nome dela no topo.
+(ou clique no botão **🏢 Empresa Real** na tela inicial do jogo).
+
+Sem a query `?empresa=1`, o jogo normal continua funcionando como sempre — os
+dois modos não se misturam e o save do jogo não é tocado.
 
 ## Primeiro uso (passo a passo)
 
@@ -127,7 +118,7 @@ agência, clique no nome dela no topo.
   entra na cena fechar negócio. Bateu a meta? **Fanfarra, chuva de confete e a
   equipe comemora** (1 vez por mês) — e chega no Telegram.
 - **📺 Modo TV** — botão no topo do Financeiro (ou abra direto
-  `…?tv=1` num monitor dedicado): tela cheia com relógio, caixa, a
+  `…?empresa=1&tv=1` num monitor dedicado): tela cheia com relógio, caixa, a
   receber, vendas × meta, custo de API de hoje, os projetos com barras ao vivo
   e a manchete do standup. `Esc` sai.
 - **📈 Linha do tempo do projeto** — no modal de Atividade: cada etapa

@@ -1,7 +1,7 @@
 {
-  "name": "Agência Real",
-  "short_name": "Agência Real",
-  "description": "Sua agência operada por agentes de IA reais — projetos, CRM, financeiro, rotinas 24/7 e fluxos, num escritório isométrico animado.",
+  "name": "App Agency Tycoon",
+  "short_name": "Agency Tycoon",
+  "description": "Simule uma agência de desenvolvimento de aplicativos: contrate, entregue projetos e expanda seu escritório.",
   "lang": "pt-BR",
   "start_url": ".",
   "display": "standalone",

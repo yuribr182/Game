@@ -8,15 +8,12 @@
 
 ## 1. O que é o projeto (visão de 1 minuto)
 
-> ⚠️ **Pivô (2026-07-28): não é mais um jogo.** A simulação foi removida.
+O repositório tem **duas coisas na mesma cena isométrica**:
 
-A **Agência Real** é a sua agência de verdade com uma identidade única: um
-escritório isométrico **animado** onde cada personagem é um **funcionário-agente
-de IA real** (Claude, na nuvem da Anthropic) executando **projetos reais** —
-com CRM, financeiro de agência, times, rotinas 24/7 e fluxos entre agentes.
-**Tudo que aparece na tela é informação real** (caixa, contas, custo de API,
-data/hora). Roda **só no seu computador** (`npm run empresa`) — dados e chave
-nunca vão para a internet.
+| Modo | O que é | Onde roda |
+|---|---|---|
+| 🎮 **Jogo** (App Agency Tycoon) | Tycoon simulado, estilo The Sims — grátis, sem custos | https://yuribr182.github.io/Game/ (publica sozinho a cada push na `master`) |
+| 🏢 **Empresa Real** (`?empresa=1`) | A MESMA cena, mas os funcionários são **agentes de IA de verdade** (Claude, na nuvem da Anthropic) executando projetos reais, com CRM, financeiro de agência, rotinas 24/7 e fluxos entre agentes | Só no seu computador (`npm run empresa`) — os dados e a chave nunca vão para a internet |
 
 ---
 
@@ -28,11 +25,10 @@ nunca vão para a internet.
 |---|---|---|---|
 | 1 | **Node 20+** instalado | https://nodejs.org | ✅ Sim |
 | 2 | **Clonar e instalar** | `git clone` → `npm install` → `npm --prefix server install` | ✅ Sim |
-| 3 | **Chave da API da Anthropic** (`sk-ant-…`) | [console.anthropic.com](https://console.anthropic.com) → API Keys → colar em `server/.env` | ✅ Sim (💸 **custa dinheiro por uso** — veja limites em 4.8) |
+| 3 | **Chave da API da Anthropic** (`sk-ant-…`) | [console.anthropic.com](https://console.anthropic.com) → API Keys → colar em `server/.env` | ✅ Para o Modo Empresa Real (💸 **custa dinheiro por uso** — veja limites em 5.8) |
 | 4 | **PAT do GitHub** (fine-grained) | GitHub → Settings → Developer settings → Fine-grained tokens, com `Contents: Read and write` **e** `Pull requests: Read and write` nos repos dos projetos | Só para projetos de **código** (o agente clona, commita e abre PR) |
 | 5 | **Bot do Telegram** | Criar com o @BotFather → token + chat id em `server/.env` | Opcional (notificações no celular) |
-| 6 | **Mercado Livre** (opcional) | App em developers.mercadolivre.com.br → `ML_CLIENT_ID/SECRET/REFRESH_TOKEN` no `server/.env` | Só p/ rotinas responderem perguntas e editarem anúncios direto na sua conta |
-| 7 | **Instagram/Meta** (opcional) | App em developers.facebook.com → `META_ACCESS_TOKEN` + `META_IG_USER_ID` no `server/.env` | Só p/ rotina publicar posts na conta profissional |
+| 6 | **Conta Mercado Livre (futuro)** | Quando formos integrar a operação ML de verdade: criar um app em developers.mercadolivre.com.br e autorizar via OAuth | Ainda não — fase F-ML do plano |
 
 O arquivo `server/.env` (copie de `server/.env.example`):
 
@@ -60,17 +56,19 @@ Os agentes **nunca** fazem isto sozinhos — o sistema espera o seu clique:
 ## 3. 🚀 Rodando
 
 ```bash
-# A agência (ponte + interface juntas) — o jeito normal de abrir:
-npm run empresa        # abrir http://localhost:5173/agencia/
+# Jogo normal (sem custos, sem chave):
+npm run dev            # abre http://localhost:5173/Game/
+
+# Modo Empresa Real (ponte + front juntos):
+npm run empresa        # abrir http://localhost:5173/Game/?empresa=1
 
 # Modo TV (telão da agência num monitor dedicado):
-#   http://localhost:5173/agencia/?tv=1   (Esc sai)
+#   http://localhost:5173/Game/?empresa=1&tv=1   (Esc sai)
 ```
 
-- A interface abre **direto no escritório** — sem tela inicial.
+- Primeira vez no jogo: clique **🎮 Novo jogo** (ou **🏢 Empresa Real** na tela inicial).
 - O painel de gestão é a **gaveta à direita**; o botão **⛶** na barra de abas
   expande para a tela toda (visual profissional); **🏢** volta ao escritório.
-- **Renomear a agência**: clique no nome dela no topo (HUD).
 - Overlay "🔌 A ponte está desligada"? → rode `npm run empresa`.
 
 ---
@@ -180,126 +178,7 @@ fluxo. **Backup = copiar a pasta.**
 
 ---
 
-## 5. 🤝 Receita pronta: agentes trabalhando entre si, 24/7
-
-> O exemplo abaixo monta uma **operação completa e recorrente**: atendimento
-> de Mercado Livre + captação de clientes + execução + campanhas de marketing
-> para Google e Instagram. É copiar, colar e ajustar ao seu negócio.
->
-> 🔑 **As integrações já estão implementadas** — os campos estão prontos no
-> `server/.env` (copie de `.env.example`) e você preenche quando quiser:
->
-> | Integração | Campos no .env | O que libera |
-> |---|---|---|
-> | 🛒 Mercado Livre | `ML_CLIENT_ID` + `ML_CLIENT_SECRET` + `ML_REFRESH_TOKEN` | contexto real (perguntas abertas + anúncios) e as ações **responder pergunta** e **atualizar anúncio** direto na sua conta |
-> | 📸 Instagram | `META_ACCESS_TOKEN` + `META_IG_USER_ID` | ação **publicar post** (foto + legenda) na conta profissional |
-> | 🎯 Google Ads | *(nenhum!)* | exportação **CSV para o Google Ads Editor** funciona já; os campos `GOOGLE_ADS_*` ficam prontos para a API oficial (exige developer token aprovado) |
->
-> **Sem as chaves, nada quebra**: as ações explicam ao agente que a integração
-> está desligada e ele trabalha com o que você colar nas notas do CRM. Ações
-> que publicam para fora estão marcadas com **"publica!"** no cadastro — só
-> existem se VOCÊ marcar a caixinha naquela rotina.
-
-### Passo 1 — Monte os times (aba Equipe → Times)
-
-Cada time ganha **uma sala no mapa** e um coordenador de IA próprio:
-
-| Time | Membros sugeridos (contrate antes) | Missão (cole no campo) |
-|---|---|---|
-| 🛒 **Mercado Livre** | 1 Atendimento (persona de pós-venda) + 1 Anúncios (persona de catálogo/SEO ML) | "Operar a conta do Mercado Livre: responder perguntas e reclamações com rapidez e cordialidade, e manter anúncios competitivos (título, descrição, preço)." |
-| 🧲 **Comercial** | 1 SDR (persona de vendas consultivas) | "Captar e qualificar leads, nutrir o funil do CRM e preparar propostas que fecham." |
-| 📣 **Marketing** | 1 Social (copy) + 1 Performance (copy/pesquisa) | "Criar e otimizar campanhas: anúncios de Google Ads, posts e reels de Instagram, sempre com CTA claro e métricas em mente." |
-| 💻 **Execução** | seus devs/designer | "Entregar os projetos vendidos com qualidade, no prazo." |
-
-### Passo 2 — Rotinas recorrentes (aba Projetos → Rotinas)
-
-**Rotina A · "Atendimento Mercado Livre" — 2x ao dia**
-- Responsável: 🛒 Time Mercado Livre · Horário: 09:00 (crie uma segunda às 16:00) · Dias: todos
-- Contexto: **Mercado Livre** ✓ (perguntas abertas + anúncios reais) + CRM ✓
-- Ações: *Responder pergunta no ML* ✓ (publica!) · *Anotar em cliente* ✓ —
-  marque *Atualizar anúncio no ML* só quando confiar no agente
-- Briefing (cole e ajuste):
-  > Você opera a conta do Mercado Livre da loja X. O contexto traz as
-  > perguntas ABERTAS e os anúncios ativos reais. Para CADA pergunta:
-  > responda com cordialidade e precisão usando os dados do anúncio — nunca
-  > invente prazo/estoque. Perguntas ambíguas ou reclamações delicadas: NÃO
-  > responda; liste no relatório para o dono decidir. Feche com sugestões de
-  > melhoria nos anúncios (título/preço vs. concorrência).
-
-**Rotina B · "Captação de clientes" — seg–sex 08:00**
-- Responsável: 🧲 Time Comercial
-- Contexto: CRM ✓ + Financeiro ✓ · Ações: *Criar oportunidade* ✓, *Anotar em cliente* ✓, *Disparar fluxo* ✓
-- Briefing:
-  > Garimpe e qualifique os leads do funil. Classifique cada um
-  > (quente/morno/frio) e anote o racional no cliente. Lead QUENTE com fit:
-  > crie/atualize a oportunidade e **dispare o fluxo "Cliente novo"** com
-  > todo o contexto. Sem inventar contato — trabalhe só com os dados reais.
-
-**Rotina C · "Campanhas Google + Instagram" — seg/qua/sex 10:00**
-- Responsável: 📣 Time Marketing
-- Contexto: CRM ✓ + Projetos ✓
-- Ações: *Exportar campanha Google Ads (CSV)* ✓ · *Anotar em cliente* ✓ —
-  marque *Publicar post no Instagram* (publica!) quando o token Meta estiver no .env
-- Briefing:
-  > Para cada cliente com campanha ativa (veja notas do cliente): produza o
-  > pacote do dia — anúncios de Google Ads **exportados via CSV** (títulos ≤30,
-  > descrições ≤90, palavras-chave; o dono importa no Google Ads Editor), 1 post
-  > de feed e 1 roteiro de reel para o Instagram com legenda e hashtags (se a
-  > publicação estiver liberada e houver imagem em URL pública, publique o
-  > post). Se o dono anotou métricas da rodada anterior, comece otimizando:
-  > corte o que não performou e explique o porquê.
-
-### Passo 3 — O fluxo que liga tudo (aba Projetos → Fluxos)
-
-Crie o fluxo **"Cliente novo"** — é ele que a Rotina B dispara sozinha:
-
-| # | Estágio | Responsável | Instrução (resumo) | Passa adiante |
-|---|---|---|---|---|
-| 0 | **Briefing** | 🧠 Agente de Briefing (embutido) | Transformar o pedido curto em briefing completo: decisões técnicas fechadas + premissas assumidas | 👀 (o ÚNICO ponto onde você tira dúvidas) |
-| 1 | Qualificação | 🧲 Comercial | Aprofundar o lead: necessidade, orçamento, urgência, decisor | ⚡ automático |
-| 2 | Proposta | 🧲 Comercial | Escrever a proposta comercial calibrada pelo histórico | 👀 (você envia ao cliente) |
-| 3 | Execução | 💻 Execução | Executar o que foi vendido (o coordenador delega no time) | ⚡ automático |
-| 4 | Campanha de lançamento | 📣 Marketing | Kit Google + Instagram para lançar a entrega | 👀 |
-
-> 🧠 **O Agente de Briefing é a resposta para "eu preciso ficar de babá?"**:
-> você passa **um prompt curto ao disparar** (é a "entrada" do fluxo — ex.:
-> "site em HTML puro para a padaria X, tom acolhedor"). Ele fecha TODAS as
-> decisões que faltam (linguagem, stack, escopo, tom) e lista as **premissas
-> assumidas** para você conferir numa única aprovação. Dali em diante, os
-> estágios ⚡ automáticos correm de agente para agente **sem depender de
-> você** — e a regra embutida em todo estágio é: *dúvida não para o fluxo;
-> o agente decide pela premissa mais razoável e registra a decisão no resumo*.
-> Deixe 👀 só onde dinheiro/cliente estão envolvidos.
-
-### Passo 4 — O ciclo rodando (o que acontece sozinho vs. o que é seu)
-
-```
-        (cron na nuvem, mesmo com seu PC desligado)
- 09:00/16:00  🛒 ML responde pendências  ──► feed + Telegram ──► VOCÊ cola no ML
- 08:00        🧲 Captação qualifica      ──► cria oportunidade no CRM
-                    └── lead quente ────► 🔗 dispara o fluxo "Cliente novo"
- fluxo        Qualificação 👀 → Proposta 👀 → Execução 👀 → Campanha 👀
- 10:00 (3x/sem) 📣 Marketing produz/otimiza anúncios ──► VOCÊ publica e anota métricas
-```
-
-- **Sozinho**: rodar no horário, analisar, produzir, criar oportunidades,
-  anotar em clientes, disparar o fluxo, passar carga entre estágios.
-- **Sempre você (👀)**: aprovar estágios, enviar proposta, publicar
-  anúncios/respostas, receber dinheiro.
-- **Custo**: cada execução conta no limite diário (padrão US$ 25/dia, com
-  pausa automática) — comece com as rotinas em dias úteis e ajuste.
-
-### Dica de retroalimentação
-
-O elo que fecha o ciclo é **anotar resultados no cliente** (funciona hoje):
-depois de publicar uma campanha, anote no CRM "CTR 2,1%, 34 cliques, 3
-matrículas". Na próxima execução a rotina de Marketing **lê essas notas no
-contexto e otimiza** — é assim que os agentes "conversam" com o mundo real
-mesmo antes de preencher as chaves das integrações diretas.
-
----
-
-## 6. 🛠 Desenvolvendo o projeto (mudanças no código)
+## 5. 🛠 Desenvolvendo o projeto (mudanças no código)
 
 ### 5.1 Fluxo de trabalho com o Claude
 
@@ -354,22 +233,20 @@ Regras de ouro (o CI bloqueia se quebrar):
 
 ---
 
-## 7. 🧭 Roadmap — o que ainda falta e o que depende de você
+## 6. 🧭 Roadmap — o que ainda falta e o que depende de você
 
 | Item | Status | Depende de você? |
 |---|---|---|
 | Times, Rotinas, Fluxos, painel profissional | ✅ Entregue (2026-07-28) | Usar e dar feedback |
 | Disparo de fluxo pelo CRM e por rotinas | ✅ Entregue | — |
-| **Operação Mercado Livre real** (responder perguntas, editar anúncios) | ✅ Implementada | **Sim**: criar o app no [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br) e preencher `ML_*` no `server/.env` (fluxo OAuth 1x para o refresh token) |
-| **Instagram real** (publicar posts) | ✅ Implementada | **Sim**: token Meta + id da conta IG business no `server/.env` |
-| **Google Ads** | ✅ CSV p/ Ads Editor (sem chave) · API oficial futura | API: só quando o Google aprovar seu developer token (`GOOGLE_ADS_*` prontos no .env) |
+| **F-ML: operação Mercado Livre real** (responder perguntas, editar anúncios/preços) | 🔜 Próxima grande fase | **Sim**: criar o app no [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br), me passar client id/secret e autorizar sua conta de vendedor (OAuth). Até lá, o time ML trabalha com dados que você colar. |
 | Portal do cliente (link público de acompanhamento) | 💡 Backlog | Decidir se quer |
 | Ponte 24/7 num servidor (VPS) — agência roda com o PC desligado | 💡 Backlog | Contratar um VPS (~R$ 25/mês) quando quiser |
 | Conciliação financeira (extrato/Pix/NF) | 💡 Backlog | Decidir se quer |
 
 ---
 
-## 8. 🆘 Problemas comuns
+## 7. 🆘 Problemas comuns
 
 A tabela completa está em **`EMPRESA-REAL.md`** (seção "Problemas comuns").
 Os três mais frequentes:

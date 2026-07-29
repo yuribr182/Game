@@ -2,9 +2,6 @@
 
 import { hojeISO } from './config.js';
 import { listaConquistas } from './conquistas.js';
-import { gadsApiConfigurada } from './integracoes/googleads.js';
-import { igConfigurado } from './integracoes/meta.js';
-import { mlConfigurado } from './integracoes/mercadolivre.js';
 import { marcarAtrasadas, resumoFinanceiro, type ResumoFinanceiro } from './financeiro/motor.js';
 import type { Store } from './store/db.js';
 import type {
@@ -35,11 +32,8 @@ export interface Snapshot {
   execucoesFluxos: ExecucaoFluxo[]; // mais recente primeiro (T3)
   crm: { clientes: ClienteCRM[]; oportunidades: OportunidadeCRM[] }; // backlog 7
   conquistas: ConquistaReal[]; // backlog 5 — bloqueadas viram metas
-  /** Quais integrações externas estão prontas (chaves no .env). */
-  integracoes: { mercadoLivre: boolean; instagram: boolean; googleAdsCsv: true; googleAdsApi: boolean };
   config: Pick<
     ConfigPonte,
-    | 'nomeEmpresa'
     | 'cambioUsdBrl'
     | 'limiteDiarioUSD'
     | 'limitePorProjetoUSD'
@@ -83,18 +77,11 @@ export async function montarSnapshot(store: Store): Promise<Snapshot> {
       ({ agentId: _a, deploymentId: _d, agendaAplicada: _g, rosterAplicado: _r, ...r }) => r,
     ),
     execucoesRotinas,
-    integracoes: {
-      mercadoLivre: await mlConfigurado(store),
-      instagram: igConfigurado(),
-      googleAdsCsv: true,
-      googleAdsApi: gadsApiConfigurada(),
-    },
     fluxos,
     execucoesFluxos: [...execucoesFluxos].reverse().slice(0, 20),
     crm: { clientes, oportunidades },
     conquistas: listaConquistas(conquistas),
     config: {
-      nomeEmpresa: config.nomeEmpresa,
       cambioUsdBrl: config.cambioUsdBrl,
       limiteDiarioUSD: config.limiteDiarioUSD,
       limitePorProjetoUSD: config.limitePorProjetoUSD,

@@ -7,19 +7,13 @@ import { agoraISO } from '../config.js';
 import type { Fluxo } from '../store/tipos.js';
 import { responderErro, type Contexto } from './contexto.js';
 
-const esquemaEstagio = z
-  .object({
-    nome: z.string().min(1).max(60),
-    responsavelTipo: z.enum(['funcionario', 'time', 'briefing']),
-    responsavelId: z.string().default(''),
-    instrucao: z.string().min(10).max(4000),
-    aprovacao: z.enum(['manual', 'automatica']).default('manual'),
-  })
-  .superRefine((e, ctx2) => {
-    if (e.responsavelTipo !== 'briefing' && !e.responsavelId) {
-      ctx2.addIssue({ code: 'custom', path: ['responsavelId'], message: 'Escolha o responsável do estágio' });
-    }
-  });
+const esquemaEstagio = z.object({
+  nome: z.string().min(1).max(60),
+  responsavelTipo: z.enum(['funcionario', 'time']),
+  responsavelId: z.string().min(1),
+  instrucao: z.string().min(10).max(4000),
+  aprovacao: z.enum(['manual', 'automatica']).default('manual'),
+});
 
 const esquemaFluxo = z.object({
   nome: z.string().min(1).max(80),
@@ -34,7 +28,6 @@ async function validarResponsaveis(
   const funcionarios = await ctx.store.listarFuncionarios();
   const times = await ctx.store.listarTimes();
   for (const e of estagios) {
-    if (e.responsavelTipo === 'briefing') continue; // agente embutido da ponte
     if (e.responsavelTipo === 'time') {
       if (!times.some((t) => t.id === e.responsavelId && t.status === 'ativo')) {
         return `Estágio "${e.nome}": time inválido ou arquivado`;

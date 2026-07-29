@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agência Real — escritório vivo de agentes de IA</title>
-  <meta name="description" content="Sua agência de verdade: funcionários são agentes de IA reais executando projetos reais, com CRM, financeiro, rotinas 24/7 e fluxos — num escritório isométrico animado." />
+  <title>App Agency Tycoon — Simulador de Agência de Apps</title>
+  <meta name="description" content="Jogo tycoon para empreendedores: construa e faça crescer sua agência de desenvolvimento de aplicativos." />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/painel.css" />
   <link rel="manifest" href="manifest.json" />
@@ -12,24 +12,61 @@
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
 </head>
 <body>
-  <!-- ===== HUD superior (só informações reais) ===== -->
+  <!-- ===== Tela inicial ===== -->
+  <div id="startScreen" class="overlay">
+    <div class="start-card">
+      <div class="start-logo">💻🏢</div>
+      <h1>App Agency <span>Tycoon</span></h1>
+      <p class="tagline">Você é um empreendedor. Comece com uma sala pequena e transforme sua agência de apps em um império de tecnologia.</p>
+      <input id="companyInput" class="name-input" type="text" maxlength="28"
+             placeholder="Nome da sua agência (ex.: Pixel Labs)" autocomplete="off" />
+      <div class="start-actions">
+        <button id="btnNewGame" class="btn btn-primary btn-lg">🚀 Novo Jogo</button>
+        <button id="btnContinue" class="btn btn-ghost btn-lg" disabled>▶️ Continuar</button>
+        <button id="btnEmpresaReal" class="btn btn-ghost btn-lg" title="Sua agência de verdade: funcionários são agentes de IA reais">🏢 Empresa Real</button>
+      </div>
+      <p class="start-hint">Progresso salvo automaticamente no seu navegador.</p>
+    </div>
+  </div>
+
+  <!-- ===== HUD superior ===== -->
   <header id="hud" class="hud hidden">
     <div class="hud-left">
-      <div class="brand">🏢 <span id="companyName">Minha Agência</span></div>
-      <div class="tier-badge" id="tierBadge">🏢 Escritório</div>
+      <div class="brand">💻 <span id="companyName">Minha Agência</span></div>
+      <div class="tier-badge" id="tierBadge">🏚️ Garagem</div>
     </div>
     <div class="hud-stats">
-      <div class="stat stat-money" title="Caixa real (recebimentos − custos)">
+      <div class="stat stat-money" title="Dinheiro em caixa">
         <span class="stat-icon">💵</span>
         <span class="stat-val" id="statMoney">R$ 0</span>
       </div>
-      <div class="stat" title="Data e hora reais">
+      <div class="stat" title="Reputação — desbloqueia contratos maiores">
+        <span class="stat-icon">⭐</span>
+        <span class="stat-val" id="statRep">0</span>
+      </div>
+      <div class="stat" title="Nível da empresa">
+        <span class="stat-icon">🎯</span>
+        <span class="stat-val" id="statLevel">Nv 1</span>
+      </div>
+      <div class="stat" title="Produção da equipe por segundo">
+        <span class="stat-icon">⚡</span>
+        <span class="stat-val" id="statProd">0/s</span>
+      </div>
+      <div class="stat" title="Dia atual">
         <span class="stat-icon">📅</span>
-        <span class="stat-val" id="statDay">—</span>
+        <span class="stat-val" id="statDay">Dia 1</span>
       </div>
     </div>
     <div class="hud-right">
-      <button id="btnMute" class="btn btn-icon" title="Som ambiente do escritório">🔊</button>
+      <div class="speed-group" title="Velocidade do tempo (espaço pausa · teclas 1, 2, 3)">
+        <button class="speed-btn" data-speed="0">⏸</button>
+        <button class="speed-btn active" data-speed="1">1x</button>
+        <button class="speed-btn" data-speed="2">2x</button>
+        <button class="speed-btn" data-speed="3">3x</button>
+      </div>
+      <button id="btnMute" class="btn btn-icon" title="Som">🔊</button>
+      <button id="btnSave" class="btn btn-icon" title="Salvar agora">💾</button>
+      <button id="btnMenu" class="btn btn-icon" title="Menu">⚙️</button>
     </div>
   </header>
 
@@ -48,23 +85,71 @@
       <nav class="tabs">
         <button class="tab active" data-tab="projects">📋 Projetos</button>
         <button class="tab" data-tab="team">👥 Equipe</button>
-        <button class="tab" data-tab="company">💰 Financeiro</button>
+        <button class="tab" data-tab="shop">🛒 Loja</button>
+        <button class="tab" data-tab="company">📊 Empresa</button>
       </nav>
 
       <div class="tab-content">
-        <!-- Projetos reais (rotinas e fluxos inclusos) -->
+        <!-- Projetos -->
         <div class="tab-pane active" id="tab-projects">
           <div id="realProjetos" class="painel-real"></div>
+          <div class="pane-section so-jogo">
+            <h3>Projetos ativos <span class="pill" id="activeCount">0/1</span></h3>
+            <div id="activeProjects" class="list"></div>
+          </div>
+          <div class="pane-section so-jogo">
+            <h3>Contratos disponíveis</h3>
+            <div id="availableProjects" class="list"></div>
+          </div>
         </div>
 
-        <!-- Equipe de agentes + times -->
+        <!-- Equipe -->
         <div class="tab-pane" id="tab-team">
           <div id="realEquipe" class="painel-real"></div>
+          <div class="pane-section so-jogo">
+            <h3>Contratar</h3>
+            <div id="hireList" class="list"></div>
+          </div>
+          <div class="pane-section so-jogo">
+            <h3>Sua equipe <span class="pill" id="teamCount">0</span></h3>
+            <div id="teamList" class="list"></div>
+          </div>
         </div>
 
-        <!-- Financeiro de agência (visão, CRM, contas, relatórios) -->
+        <!-- Loja -->
+        <div class="tab-pane" id="tab-shop">
+          <div class="pane-section">
+            <h3>🏢 Escritório <span class="pill" id="officeCap">0/1 mesas</span></h3>
+            <div class="list office-actions">
+              <button id="btnBuyDesk" class="btn btn-primary">🪑 Comprar mesa (<span id="deskCost">R$ 500</span>)</button>
+              <button id="btnUpgradeOffice" class="btn btn-accent">🏗️ Expandir escritório</button>
+            </div>
+          </div>
+          <div class="pane-section">
+            <h3>💡 Produtos próprios</h3>
+            <div id="productList" class="list"></div>
+          </div>
+          <div class="pane-section">
+            <h3>Melhorias</h3>
+            <div id="upgradeList" class="list"></div>
+          </div>
+        </div>
+
+        <!-- Empresa (no modo real vira o painel Financeiro) -->
         <div class="tab-pane" id="tab-company">
           <div id="realFinanceiro" class="painel-real"></div>
+          <div class="pane-section so-jogo">
+            <h3>🏁 Ranking de agências</h3>
+            <div id="rankList" class="list"></div>
+          </div>
+          <div class="pane-section so-jogo">
+            <h3>📈 Estatísticas</h3>
+            <div id="statsPanel" class="card"></div>
+          </div>
+          <div class="pane-section so-jogo">
+            <h3>🏆 Conquistas <span class="pill" id="achCount">0/0</span></h3>
+            <div id="achList" class="list"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -72,6 +157,41 @@
 
   <!-- ===== Notificações ===== -->
   <div id="toasts" class="toasts"></div>
+
+  <!-- ===== Modal de menu ===== -->
+  <div id="menuModal" class="overlay hidden">
+    <div class="modal">
+      <h2>⚙️ Menu</h2>
+      <input id="renameInput" class="name-input" type="text" maxlength="28" placeholder="Renomear agência" autocomplete="off" />
+      <div class="modal-actions">
+        <button id="btnRename" class="btn">✏️ Renomear</button>
+        <button id="btnResume" class="btn btn-primary">▶️ Voltar ao jogo</button>
+        <button id="btnManualSave" class="btn">💾 Salvar</button>
+        <button id="btnReset" class="btn btn-danger">🗑️ Reiniciar jogo</button>
+      </div>
+      <p class="modal-hint">Reiniciar apaga o progresso salvo permanentemente.</p>
+    </div>
+  </div>
+
+  <!-- ===== Modal de evento (escolha) ===== -->
+  <div id="eventModal" class="overlay hidden">
+    <div class="modal event-modal">
+      <h2 id="eventTitle">Evento</h2>
+      <p id="eventText" class="event-text"></p>
+      <div id="eventOptions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- ===== Modal "enquanto você esteve fora" ===== -->
+  <div id="offlineModal" class="overlay hidden">
+    <div class="modal">
+      <h2>🌙 Enquanto você esteve fora...</h2>
+      <div id="offlineBody" class="offline-body"></div>
+      <div class="modal-actions">
+        <button id="btnOfflineOk" class="btn btn-primary">👍 Show!</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== Painel de personagem (clique na cena) ===== -->
   <div id="workerCard" class="worker-card hidden"></div>
@@ -128,14 +248,15 @@
     <div id="tvConteudo"></div>
   </div>
 
-  <!-- ===== Ponte local desligada ===== -->
+  <!-- ===== Modo Empresa Real: ponte local desligada ===== -->
   <div id="ponteOffline" class="overlay hidden">
     <div class="modal">
       <h2>🔌 A ponte está desligada</h2>
-      <p class="event-text">A agência roda 100% na sua máquina: a ponte local guarda seus dados e fala com os agentes. Rode no terminal, na pasta do projeto:</p>
+      <p class="event-text">O Modo Empresa Real precisa da ponte local (que guarda seus dados e fala com os agentes). Rode no terminal, na pasta do projeto:</p>
       <p class="ponte-comando"><code>npm run empresa</code></p>
       <div class="modal-actions">
         <button id="btnPonteRetry" class="btn btn-primary">🔄 Tentar de novo</button>
+        <button id="btnSairModoReal" class="btn">← Voltar ao jogo normal</button>
       </div>
     </div>
   </div>

@@ -39,16 +39,12 @@ export function idDoTime(funcionarioId: string): string {
 
 // ---- Rotinas 24/7 (T2) ----
 
-export type ContextoRotinaReal = 'crm' | 'projetos' | 'financeiro' | 'mercadolivre';
+export type ContextoRotinaReal = 'crm' | 'projetos' | 'financeiro';
 export type AcaoRotinaReal =
   | 'criar_oportunidade'
   | 'registrar_nota_cliente'
   | 'criar_rascunho_projeto'
-  | 'disparar_fluxo'
-  | 'ml_responder_pergunta'
-  | 'ml_atualizar_anuncio'
-  | 'ig_publicar_post'
-  | 'gads_exportar_campanha';
+  | 'disparar_fluxo';
 
 export interface RotinaReal {
   id: string;
@@ -80,7 +76,7 @@ export interface ExecucaoRotinaReal {
 export interface EstagioFluxoReal {
   id: string;
   nome: string;
-  responsavelTipo: 'funcionario' | 'time' | 'briefing';
+  responsavelTipo: 'funcionario' | 'time';
   responsavelId: string;
   instrucao: string;
   aprovacao: 'manual' | 'automatica';
@@ -237,9 +233,7 @@ export interface SnapshotReal {
   standups?: RelatorioStandupReal[]; // mais recente primeiro (F4b)
   crm?: { clientes: ClienteCRMReal[]; oportunidades: OportunidadeCRMReal[] };
   conquistas?: ConquistaRealFront[];
-  integracoes?: { mercadoLivre: boolean; instagram: boolean; googleAdsCsv: boolean; googleAdsApi: boolean };
   config: {
-    nomeEmpresa?: string;
     cambioUsdBrl: number;
     limiteDiarioUSD: number;
     limitePorProjetoUSD: number;

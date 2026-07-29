@@ -22,15 +22,6 @@ import type {
   Time,
 } from '../store/tipos.js';
 import { PREFIXO_TIME } from '../store/tipos.js';
-import { gerarCsvGoogleAds, salvarCsvCampanha, type AnuncioGoogle } from '../integracoes/googleads.js';
-import { publicarFotoInstagram } from '../integracoes/meta.js';
-import {
-  atualizarItem,
-  listarItens,
-  listarPerguntasAbertas,
-  mlConfigurado,
-  responderPergunta,
-} from '../integracoes/mercadolivre.js';
 import type { TempoReal } from '../tempoReal.js';
 import { CARGO_ROTULO, garantirEnvironment, rosterMudou } from './agentes.js';
 import { ErroPonte } from './cliente.js';
@@ -98,70 +89,6 @@ export const ACOES_ROTINA: Record<AcaoRotina, { descricao: string; schema: Recor
         entrada: { type: 'string', description: 'Contexto inicial completo para o 1º estágio' },
       },
       required: ['fluxoNome', 'titulo', 'entrada'],
-    },
-  },
-  ml_responder_pergunta: {
-    descricao:
-      'Responde uma pergunta de comprador no Mercado Livre — publica NA HORA no anúncio. Responda com cordialidade e precisão; nunca invente prazo/estoque que não estejam no contexto.',
-    schema: {
-      type: 'object',
-      properties: {
-        perguntaId: { type: 'number', description: 'id da pergunta (vem do contexto mercadolivre)' },
-        resposta: { type: 'string', description: 'A resposta completa ao comprador (pt-BR)' },
-      },
-      required: ['perguntaId', 'resposta'],
-    },
-  },
-  ml_atualizar_anuncio: {
-    descricao:
-      'Atualiza título e/ou preço de um anúncio do Mercado Livre — aplica NA HORA. Use só com justificativa clara baseada no contexto.',
-    schema: {
-      type: 'object',
-      properties: {
-        itemId: { type: 'string', description: 'id do anúncio (ex.: MLB123..., vem do contexto)' },
-        titulo: { type: 'string', description: 'Novo título (máx. 60 caracteres) — opcional' },
-        precoBRL: { type: 'number', description: 'Novo preço em R$ — opcional' },
-        justificativa: { type: 'string', description: 'Por que mudar (vai para o registro)' },
-      },
-      required: ['itemId', 'justificativa'],
-    },
-  },
-  ig_publicar_post: {
-    descricao:
-      'Publica uma FOTO no feed do Instagram profissional da agência/cliente — publica NA HORA. A imagem precisa ser uma URL https pública.',
-    schema: {
-      type: 'object',
-      properties: {
-        imagemUrl: { type: 'string', description: 'URL https pública da imagem' },
-        legenda: { type: 'string', description: 'Legenda completa com hashtags (pt-BR)' },
-      },
-      required: ['imagemUrl', 'legenda'],
-    },
-  },
-  gads_exportar_campanha: {
-    descricao:
-      'Gera o arquivo CSV da campanha pronto para importar no Google Ads Editor (títulos ≤30, descrições ≤90 caracteres). Não precisa de chave — o dono importa e publica.',
-    schema: {
-      type: 'object',
-      properties: {
-        nomeCampanha: { type: 'string' },
-        anuncios: {
-          type: 'array',
-          description: 'Um item por anúncio',
-          items: {
-            type: 'object',
-            properties: {
-              grupo: { type: 'string' },
-              titulo1: { type: 'string' }, titulo2: { type: 'string' }, titulo3: { type: 'string' },
-              descricao1: { type: 'string' }, descricao2: { type: 'string' },
-              palavrasChave: { type: 'string', description: 'separadas por ;' },
-              urlFinal: { type: 'string' },
-            },
-            required: ['grupo', 'titulo1', 'descricao1', 'palavrasChave', 'urlFinal'],
-          },
-        },
-      },
-      required: ['nomeCampanha', 'anuncios'],
     },
   },
 };
@@ -598,24 +525,6 @@ export class GerenciadorRotinas {
           valorContratoBRL: p.valorContratoBRL,
         }));
     }
-    if (rotina.contexto.includes('mercadolivre')) {
-      if (await mlConfigurado(store)) {
-        try {
-          const [perguntas, itens] = await Promise.all([
-            listarPerguntasAbertas(store, 20),
-            listarItens(store, 20),
-          ]);
-          resultado.mercadolivre = { perguntasAbertas: perguntas, anunciosAtivos: itens };
-        } catch (erro) {
-          resultado.mercadolivre = { erro: `Falha ao consultar o Mercado Livre: ${msg(erro)}` };
-        }
-      } else {
-        resultado.mercadolivre = {
-          aviso:
-            'Integração não configurada — o dono precisa preencher ML_CLIENT_ID/SECRET/REFRESH_TOKEN em server/.env. Enquanto isso, trabalhe com os dados que ele colar nas notas dos clientes.',
-        };
-      }
-    }
     if (rotina.contexto.includes('financeiro')) {
       const [lancamentos, contas] = await Promise.all([store.listarLancamentos(), store.listarContasReceber()]);
       const fin = resumoFinanceiro(lancamentos, contas, hoje);
@@ -637,62 +546,6 @@ export class GerenciadorRotinas {
     const { store } = this.deps;
     const dados = (entrada ?? {}) as Record<string, unknown>;
     const texto = (chave: string): string => String(dados[chave] ?? '').trim();
-
-    // ---- integrações externas (o dono liberou a ação ao marcar no cadastro) ----
-    if (acao === 'ml_responder_pergunta') {
-      const perguntaId = Number(dados.perguntaId);
-      const resposta = texto('resposta');
-      if (!perguntaId || !resposta) return 'erro: perguntaId e resposta são obrigatórios';
-      try {
-        await responderPergunta(store, perguntaId, resposta);
-        return `pergunta ${perguntaId} respondida no Mercado Livre`;
-      } catch (erro) {
-        return `erro ao responder no Mercado Livre: ${msg(erro)}`;
-      }
-    }
-    if (acao === 'ml_atualizar_anuncio') {
-      const itemId = texto('itemId');
-      const justificativa = texto('justificativa');
-      if (!itemId || !justificativa) return 'erro: itemId e justificativa são obrigatórios';
-      const titulo = texto('titulo') || undefined;
-      const precoBRL = Number(dados.precoBRL) > 0 ? Number(dados.precoBRL) : undefined;
-      if (!titulo && !precoBRL) return 'erro: envie titulo e/ou precoBRL';
-      try {
-        await atualizarItem(store, itemId, { titulo, precoBRL });
-        return `anúncio ${itemId} atualizado (${[titulo && 'título', precoBRL && `preço R$ ${precoBRL}`].filter(Boolean).join(' + ')}) — motivo: ${justificativa}`;
-      } catch (erro) {
-        return `erro ao atualizar o anúncio: ${msg(erro)}`;
-      }
-    }
-    if (acao === 'ig_publicar_post') {
-      const imagemUrl = texto('imagemUrl');
-      const legenda = texto('legenda');
-      if (!imagemUrl || !legenda) return 'erro: imagemUrl e legenda são obrigatórios';
-      try {
-        const id = await publicarFotoInstagram(imagemUrl, legenda);
-        return `post publicado no Instagram (mídia ${id})`;
-      } catch (erro) {
-        return `erro ao publicar no Instagram: ${msg(erro)}`;
-      }
-    }
-    if (acao === 'gads_exportar_campanha') {
-      const nomeCampanha = texto('nomeCampanha');
-      const anuncios = Array.isArray(dados.anuncios) ? (dados.anuncios as Record<string, unknown>[]) : [];
-      if (!nomeCampanha || !anuncios.length) return 'erro: nomeCampanha e anuncios são obrigatórios';
-      const linhas: AnuncioGoogle[] = anuncios.map((a) => ({
-        campanha: nomeCampanha,
-        grupo: String(a.grupo ?? 'Grupo 1'),
-        titulo1: String(a.titulo1 ?? ''),
-        titulo2: a.titulo2 ? String(a.titulo2) : undefined,
-        titulo3: a.titulo3 ? String(a.titulo3) : undefined,
-        descricao1: String(a.descricao1 ?? ''),
-        descricao2: a.descricao2 ? String(a.descricao2) : undefined,
-        palavrasChave: String(a.palavrasChave ?? ''),
-        urlFinal: String(a.urlFinal ?? ''),
-      }));
-      const caminho = await salvarCsvCampanha(store, nomeCampanha, gerarCsvGoogleAds(linhas));
-      return `campanha "${nomeCampanha}" exportada em ${caminho} — importe no Google Ads Editor e publique`;
-    }
 
     if (acao === 'disparar_fluxo') {
       if (!this.deps.fluxos) return 'erro: disparo de fluxo indisponível nesta ponte';

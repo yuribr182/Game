@@ -348,7 +348,6 @@ function opcoesResponsavel(selecionado: string): string {
   const funcionarios = snap()?.funcionarios.filter((f) => f.status === 'ativo') ?? [];
   const times = timesAtivos();
   return `<option value="">— responsável —</option>
-    <option value="briefing:" ${selecionado.startsWith('briefing') ? 'selected' : ''}>🧠 Agente de Briefing (embutido) — fecha decisões e premissas</option>
     ${funcionarios.map((f) => `<option value="funcionario:${f.id}" ${selecionado === `funcionario:${f.id}` ? 'selected' : ''}>${esc(f.nome)}</option>`).join('')}
     ${times.map((t) => `<option value="time:${t.id}" ${selecionado === `time:${t.id}` ? 'selected' : ''}>${esc(t.emoji)} Time ${esc(t.nome)}</option>`).join('')}`;
 }
@@ -463,11 +462,10 @@ function colherFluxoDraft(): void {
     const valor = (attr: string): string =>
       (document.querySelector(`[data-fx-${attr}="${i}"]`) as HTMLInputElement | HTMLSelectElement | null)?.value ?? '';
     const resp = valor('resp').split(':');
-    const tipo = (resp[0] as 'funcionario' | 'time' | 'briefing') || e.responsavelTipo;
     return {
       nome: valor('nome') || e.nome,
-      responsavelTipo: tipo,
-      responsavelId: tipo === 'briefing' ? '' : resp.slice(1).join(':') || e.responsavelId,
+      responsavelTipo: (resp[0] as 'funcionario' | 'time') || e.responsavelTipo,
+      responsavelId: resp.slice(1).join(':') || e.responsavelId,
       instrucao: valor('instrucao') || e.instrucao,
       aprovacao: (valor('aprov') as 'manual' | 'automatica') || e.aprovacao,
     };
@@ -514,8 +512,7 @@ async function agirFluxo(acao: string, id: string): Promise<void> {
       if (!nome) return toast('⚠️ Dê um nome ao fluxo.', 'bad');
       for (const [i, e] of fluxoEstagiosDraft.entries()) {
         if (!e.nome.trim()) return toast(`⚠️ Estágio ${i + 1}: falta o nome.`, 'bad');
-        if (e.responsavelTipo !== 'briefing' && !e.responsavelId)
-          return toast(`⚠️ Estágio ${i + 1}: escolha o responsável.`, 'bad');
+        if (!e.responsavelId) return toast(`⚠️ Estágio ${i + 1}: escolha o responsável.`, 'bad');
         if (e.instrucao.trim().length < 10) return toast(`⚠️ Estágio ${i + 1}: escreva a instrução.`, 'bad');
       }
       const dados = { nome, emoji, estagios: fluxoEstagiosDraft };
@@ -568,7 +565,6 @@ const CONTEXTOS_ROTINA: Record<string, string> = {
   crm: '🧲 CRM (clientes + funil)',
   projetos: '📋 Projetos (status real)',
   financeiro: '💰 Financeiro (resumo)',
-  mercadolivre: '🛒 Mercado Livre (perguntas + anúncios reais)',
 };
 
 const ACOES_ROTINA_ROTULO: Record<string, string> = {
@@ -576,10 +572,6 @@ const ACOES_ROTINA_ROTULO: Record<string, string> = {
   registrar_nota_cliente: '📝 Anotar em cliente',
   criar_rascunho_projeto: '📋 Criar rascunho de projeto',
   disparar_fluxo: '🔗 Disparar fluxo (esteira)',
-  ml_responder_pergunta: '🛒 Responder pergunta no ML (publica!)',
-  ml_atualizar_anuncio: '🛒 Atualizar anúncio no ML (publica!)',
-  ig_publicar_post: '📸 Publicar post no Instagram (publica!)',
-  gads_exportar_campanha: '🎯 Exportar campanha Google Ads (CSV)',
 };
 
 function nomeResponsavelRotina(r: RotinaReal): string {
@@ -644,23 +636,15 @@ function formRotina(): string {
     <div class="wizard-checks">${Object.entries(CONTEXTOS_ROTINA)
       .map(([k, rot]) => `<label><input type="checkbox" data-ctx-rotina="${k}" ${marcadoCtx(k)} /> ${rot}</label>`)
       .join('')}</div>
-    <label>Ações que o agente PODE executar (as marcadas com "publica!" saem para o mundo — iniciar projeto e dinheiro são sempre seus)</label>
+    <label>Ações que o agente PODE executar (criar/anotar apenas — iniciar projeto e dinheiro são sempre seus)</label>
     <div class="wizard-checks">${Object.entries(ACOES_ROTINA_ROTULO)
       .map(([k, rot]) => `<label><input type="checkbox" data-acao-check-rotina="${k}" ${marcadoAcao(k)} /> ${rot}</label>`)
       .join('')}</div>
-    <p class="modal-hint">${statusIntegracoes()}</p>
     <div class="pr-acoes" style="margin-top:8px">
       <button class="btn btn-primary" data-acao-rotina="salvar">${r ? 'Salvar rotina' : 'Criar rotina'}</button>
       <button class="btn" data-acao-rotina="cancelar">Cancelar</button>
     </div>
   </div>`;
-}
-
-function statusIntegracoes(): string {
-  const i = snap()?.integracoes;
-  if (!i) return '';
-  const st = (ok: boolean) => (ok ? '✅' : '🔌 falta chave no server/.env');
-  return `Integrações — Mercado Livre: ${st(i.mercadoLivre)} · Instagram: ${st(i.instagram)} · Google Ads: ✅ CSV sempre disponível${i.googleAdsApi ? ' + API' : ''}`;
 }
 
 function blocoRotinas(): string {
@@ -1826,20 +1810,6 @@ function iniciarPaineis(): void {
   const abaEmpresa = document.querySelector('.tab[data-tab="company"]');
   if (abaEmpresa) abaEmpresa.textContent = '💰 Financeiro';
 
-  // nome real da agência: clique no nome (HUD) para renomear
-  const brand = document.getElementById('companyName');
-  brand?.setAttribute('title', 'Clique para renomear a agência');
-  brand?.addEventListener('click', () => {
-    const atual = snap()?.config.nomeEmpresa ?? '';
-    const nome = prompt('Nome da agência:', atual);
-    if (nome?.trim()) {
-      void api
-        .atualizarConfig({ nomeEmpresa: nome.trim() })
-        .then(() => toast('✏️ Nome da agência atualizado.', 'good'))
-        .catch((erro: Error) => toast(`⚠️ ${erro.message}`, 'bad'));
-    }
-  });
-
   // painel profissional (T4): botão ⛶ expande a gestão para a tela toda
   const nav = document.querySelector('.side-panel .tabs');
   if (nav && !document.querySelector('.painel-expandir')) {
@@ -2083,9 +2053,7 @@ declare global {
 if (G.modoReal && G.real) {
   window.UIReal = {
     abrirAtividadePorFuncionario(indice: number) {
-      // a ordem da cena é agrupada por time (salas) — o uid do boneco é a verdade
-      const uid = G.state?.employees[indice]?.uid;
-      const funcionario = snap()?.funcionarios.find((f) => f.id === uid && f.status === 'ativo');
+      const funcionario = snap()?.funcionarios.filter((f) => f.status === 'ativo')[indice];
       if (!funcionario) return;
       const projeto = snap()?.projetos.find(
         (p) =>

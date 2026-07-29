@@ -1,58 +1,135 @@
-# 🏢 Agência Real — escritório vivo de agentes de IA
+# 💻 App Agency Tycoon
 
-> 📘 **Novo por aqui? Leia o [TUTORIAL.md](TUTORIAL.md)** — o guia completo:
-> o que depende de você (chaves, tokens, aprovações), como operar a agência e
-> como desenvolver o projeto.
+> 📘 **Novo por aqui? Leia o [TUTORIAL.md](TUTORIAL.md)** — o guia completo de
+> como trabalhar no projeto: o que depende de você (chaves, tokens,
+> aprovações), como operar o **Modo Empresa Real** (agentes de IA de verdade,
+> times, rotinas 24/7 e fluxos) e como desenvolver/publicar.
 
-**Não é um jogo.** É a sua agência de verdade, com uma cara única: um
-**escritório isométrico animado** onde cada personagem é um **funcionário-agente
-de IA real** (Claude, na nuvem da Anthropic) trabalhando em **projetos reais**
-que você cadastra — e tudo que aparece na tela é informação real: caixa,
-contas, clientes, custo de API, data e hora.
+Jogo web no estilo **tycoon** para empreendedores. Você comanda uma agência de
+desenvolvimento de aplicativos: começa com **uma mesa numa garagem** e faz a
+empresa crescer até virar um campus de tecnologia.
 
-> O projeto nasceu como o jogo *App Agency Tycoon* e foi **pivotado em
-> 2026-07-28**: a temática e a animação ficaram; a simulação foi removida.
+O escritório é uma **cena isométrica 3D animada** (renderizada em Canvas, sem
+imagens externas): trabalhadores andam pelo ambiente e digitam em mesas de
+madeira com monitores mostrando código, entregas de apps deslizam até a porta,
+carros passam na rua e o letreiro neon exibe o nome da empresa — tudo em
+movimento contínuo.
 
-## O que você vê
+⏱️ **Ritmo estilo The Sims**: 1 dia de jogo = **24 minutos reais**, com relógio
+no topo (Dia X · HHh) e ciclo dia/noite acompanhando o horário — manhã clara,
+noite com janelas acesas. Controle a velocidade com os botões **⏸ / 1x / 2x /
+3x** no topo (atalhos: espaço pausa; teclas 1, 2 e 3).
 
-- 🏙️ **Cena viva**: funcionários andam, sentam, digitam (com **balões** da
-  etapa real que estão executando e um **mini-terminal ao vivo** com zoom),
-  clientes entram na recepção quando uma venda fecha, dia/noite acompanha o
-  **relógio real**.
-- 📋 **Projetos reais**: wizard de especificação, progresso reportado pelo
-  agente, QA automático, Pull Request de verdade em projetos de código, chat
-  com o funcionário no meio do trabalho.
-- 👥 **Equipe e Times**: contrate agentes com persona/especialidades, monte
-  **squads por demanda** — o coordenador do time delega entre os membros.
-- 🔁 **Rotinas 24/7**: trabalhos recorrentes com cron na nuvem (qualificar
-  leads toda manhã, relatórios…), com ações no CRM sob guard-rails.
-- 🔗 **Fluxos**: esteiras ligando agentes/times (captação → proposta →
-  execução → entrega) com **sua aprovação** entre estágios.
-- 💰 **Financeiro de agência**: vendas, contas a receber (regime de caixa),
-  custos fixos + custo de API ao vivo, DRE, margem por projeto, CRM com funil,
-  propostas em PDF geradas por agente, standup matinal e Modo TV.
+🏆 A aba **📊 Empresa** traz as estatísticas completas da agência e **15
+conquistas** com recompensas em dinheiro e reputação.
 
-## Como rodar
+Você já começa com uma **sala montada com cara de escritório**: **3 mesas de
+desenvolvedor**, a **mesa da secretária** na recepção, uma **cozinha em cômodo
+separado** (geladeira, fogão, pia, microondas, mesa de jantar e máquina de café),
+lounge com sofá e TV e sala de reunião. Funcionários **desocupados vão até a
+cozinha tomar café** — atravessando a porta, pegando a caneca e voltando.
 
-```bash
-npm install && npm --prefix server install
-cp server/.env.example server/.env    # coloque sua ANTHROPIC_API_KEY
-npm run empresa                        # ponte + interface
-# abra http://localhost:5173/agencia/
+### Direcionamento de tarefas
+
+Na aba **Equipe**, cada funcionário tem um seletor **🎯 Tarefa**: deixe em
+*Auto* (a produção é dividida entre os projetos) ou **fixe-o num projeto
+específico** para priorizar uma entrega. Os cartões de projeto mostram a
+velocidade efetiva (⚡ pts/s) e quantos estão fixados.
+
+### Sistemas de jogo
+
+- **Ganhos offline**: a agência continua produzindo enquanto o jogo está
+  fechado (eficiência 60%, cap de 8h). Ao voltar, um resumo mostra dias
+  passados, apps entregues, saldo e reputação do período.
+- **Eventos aleatórios**: cliente VIP, destaque na mídia, queda de energia,
+  bug em produção, pedido de aumento e proposta de investidor — vários com
+  **escolhas** que afetam dinheiro, reputação e moral da equipe (ter um QA
+  no time evita o evento de bug!).
+- **Energia individual**: trabalhar cansa; funcionário exausto pausa sozinho
+  para um café e volta renovado. A energia afeta a produção (50%–110%).
+- **Fases de projeto**: todo app passa por Design 🎨 → Código ⌨️ → Testes 🧪.
+  Designers brilham na 1ª fase, devs na 2ª e QAs na 3ª — escale bem!
+- **Evolução de carreira**: devs acumulam experiência e podem ser
+  **promovidos** (júnior → pleno → sênior) pagando a taxa de promoção.
+- **Produtos próprios**: com 25 ⭐, lance apps seus que geram renda passiva
+  diária — podem viralizar (+35%) ou sofrer com a concorrência.
+- **Ciclo dia/noite** na cena, com janelas acesas à noite.
+- **Personagens clicáveis**: clique em alguém na cena para ver nome, cargo,
+  energia e tarefa atual.
+
+### Câmera
+
+- **Roda do mouse**: zoom (centrado no cursor)
+- **Arrastar**: mover a câmera
+- **Duplo clique**: reenquadrar
+
+### Cargos com visual próprio
+
+Júnior usa **boné**, sênior usa **óculos**, designer usa **boina**, QA usa
+**fones**, gerente usa **terno e gravata** e a secretária usa **headset** — dá
+para reconhecer a equipe só de olhar a cena.
+
+### Pacote de arte
+
+Todo o mobiliário é um **pacote de arte vetorial próprio** (`js/props.js`):
+geladeira, fogão, bancada, pia, microondas, mesa de jantar, sofá, mesa de centro,
+TV, balcão de recepção, mesa de reunião, cadeiras, bebedouro, impressora, rack de
+servidores, estante e plantas — cada objeto desenhado por código com sombreamento
+isométrico. Não depende de nenhuma imagem externa e é fácil de estender: basta
+adicionar uma função em `Props.draw` e posicioná-la no layout.
+
+## 🎮 Como jogar
+
+Abra o arquivo **`index.html`** no navegador (não precisa de servidor, instalação
+ou internet). Clique em **Novo Jogo** e comece a empreender.
+
+### Loop do jogo
+
+1. **Contrate** desenvolvedores na aba **Equipe** (júnior → pleno → sênior, além
+   de designer, QA e gerente).
+2. **Aceite contratos** de apps na aba **Projetos**. Cada projeto precisa de
+   pontos de trabalho e tem um prazo em dias.
+3. Sua equipe produz **pontos de trabalho por segundo** — as barras de progresso
+   avançam automaticamente. Ao concluir, você ganha **dinheiro 💵 e reputação ⭐**.
+4. Use o lucro para **comprar mesas 🪑**, contratar mais gente e comprar
+   **melhorias 🛒** (PCs, café, CI/CD, IA...).
+5. Com reputação suficiente, **expanda o escritório** para tiers maiores, que
+   liberam mais mesas e mais projetos simultâneos.
+6. Cuidado com os **salários** (cobrados por dia) e os **prazos** — estourar um
+   prazo custa reputação.
+
+### Crescimento do escritório
+
+| Tier | Escritório | Mesas | Projetos simultâneos |
+|------|------------|:-----:|:-------------------:|
+| 🏚️ | Garagem | 2 | 1 |
+| 🏬 | Sala compartilhada | 4 | 2 |
+| 🏢 | Escritório | 8 | 3 |
+| 🏙️ | Andar próprio | 14 | 4 |
+| 🏰 | Sede corporativa | 24 | 6 |
+| 🌆 | Campus Tech | 40 | 9 |
+
+O progresso é **salvo automaticamente** no navegador (localStorage).
+
+## 🗂️ Estrutura do projeto
+
+```
+index.html        # marcação e telas
+css/styles.css    # visual (tema escuro)
+js/data.js        # dados e balanceamento (tiers, cargos, upgrades, contratos)
+js/game.js        # motor: estado, regras, economia, tarefas e loop
+js/audio.js       # efeitos sonoros gerados por WebAudio (sem arquivos)
+js/props.js       # pacote de arte: móveis/objetos isométricos (Canvas 2D)
+js/iso.js         # cena isométrica animada (cozinha, rotas, câmera, cargos)
+js/ui.js          # renderização dos painéis (projetos, equipe, loja)
+js/main.js        # inicialização, eventos e game loop
 ```
 
-Tudo roda **100% na sua máquina**: a chave da API e os dados da agência ficam
-em `server/data/` (gitignored). Sem a ponte rodando, a interface mostra o
-overlay "🔌 A ponte está desligada".
+Dica: clique no **pad "+"** pulsante no chão do escritório para comprar uma nova
+mesa direto na cena.
 
-## Qualidade
+Feito com HTML, CSS e JavaScript puro — sem dependências nem build.
 
-```bash
-npm run check                  # typecheck + lint + testes + build (front)
-npm --prefix server run check  # typecheck + testes (ponte)
-```
-
-Documentação: [`TUTORIAL.md`](TUTORIAL.md) (guia completo) ·
-[`EMPRESA-REAL.md`](EMPRESA-REAL.md) (operação passo a passo) ·
-[`docs/PLANO-TIMES-FLUXOS.md`](docs/PLANO-TIMES-FLUXOS.md) (como os agentes
-conversam entre si) · [`docs/PRD.md`](docs/PRD.md) (status técnico).
+Inclui `manifest.json` + `sw.js`: quando servido por HTTP(S), o jogo é um
+**PWA instalável** que funciona offline. O save usa versionamento (v2) com
+migração automática de versões antigas.
